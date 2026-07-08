@@ -6,7 +6,16 @@ import storybook from 'eslint-plugin-storybook';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'storybook-static', 'node_modules', 'src/tokens/generated', 'figma/plugin/code.js'] },
+  {
+    ignores: [
+      'dist',
+      'storybook-static',
+      'node_modules',
+      'src/tokens/generated',
+      'figma/plugin/code.js',
+      'figma/spec-sheets-plugin/code.js',
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

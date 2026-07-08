@@ -1,0 +1,11 @@
+{
+  "name": "TDS Spec Sheets",
+  "id": "tds-spec-sheets-generator",
+  "api": "1.0.0",
+  "editorType": ["figma"],
+  "main": "code.js",
+  "ui": "ui.html",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

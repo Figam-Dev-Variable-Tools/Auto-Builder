@@ -214,6 +214,29 @@ const figma: any = {
     // only needs a node that accepts appendChild + property writes (vectorPaths/strokes/…).
     return makeNode('VECTOR');
   },
+  createNodeFromSvg(_svg: string) {
+    // Real Figma parses the SVG into a FrameNode with vector children. The mock returns a
+    // FrameNode-like node holding one VectorNode child (type='VECTOR' so renderIcon's traversal
+    // finds and recolors it) plus a `rescale` that scales the subtree — enough for the real
+    // renderIcon to run and for coverage assertions (children/resize/vector) to hold.
+    const frame = makeNode('FRAME');
+    frame.width = 24;
+    frame.height = 24;
+    frame.rescale = function (s: number) {
+      this.width *= s;
+      this.height *= s;
+      for (const c of this.children) {
+        c.width *= s;
+        c.height *= s;
+      }
+    };
+    const vec = makeNode('VECTOR');
+    vec.type = 'VECTOR';
+    vec.width = 24;
+    vec.height = 24;
+    frame.appendChild(vec);
+    return frame;
+  },
   createFrame() {
     stats.frames++;
     const fr = makeNode('FRAME');
@@ -313,33 +336,73 @@ async function main(): Promise<void> {
   );
   const comps = b.design.components;
   const expVariants = comps.reduce((a: number, c: any) => a + c.figmaVariantCombinations, 0);
-  const countProp = (t: string) =>
-    comps.reduce(
-      (a: number, c: any) =>
-        a + (c.figmaProperties || []).filter((p: any) => p.figmaPropertyType === t).length,
-      0,
-    );
 
-  // Each set's first variant must be the all-defaults combination (contract defaults).
-  // Sets are built grouped by page, so match by name rather than defs order.
+  // Plugin-side build transforms the harness must mirror when computing expectations:
+  //  • SPLIT_BY: Icon/Text render ONE set per value of the split axis (per-px cards), so a split
+  //    component contributes N sets and registers its props N times (once per card).
+  //  • INTERACTIVE: Radio/Switch gain a synthetic On/Off `State` variant (checked → variant), which
+  //    doubles their variant count and drops the `checked` BOOLEAN property.
+  const SPLIT_BY: Record<string, string> = { icon: 'size', text: 'variant' };
+  const INTERACTIVE = new Set(['radio', 'switch']);
+  const splitAxisOf = (c: any) => c.variantAxes.find((a: any) => a.name === SPLIT_BY[c.slug]);
+  const cardsFor = (c: any) => {
+    const ax = splitAxisOf(c);
+    return ax ? ax.options.length : 1;
+  };
+  const stateFactor = (c: any) => (INTERACTIVE.has(c.slug) ? 2 : 1);
+  const compByNameAll = new Map<string, any>();
+  for (const c of comps) compByNameAll.set(c.name, c);
+  const baseName = (setName: string) => String(setName).split(' / ')[0];
+  const compForSet = (s: any) => compByNameAll.get(baseName(s.name));
+
+  // Expected number of Component Sets: split components fan out to one set per split-axis option.
+  const expSets = comps.reduce((a: number, c: any) => a + cardsFor(c), 0);
+  // Expected variant components built: split preserves the total (Σ over cards = full cartesian);
+  // interactive doubles via the synthetic State axis.
+  const expVariantsBuilt = comps.reduce(
+    (a: number, c: any) => a + c.figmaVariantCombinations * stateFactor(c),
+    0,
+  );
+  // A property is registered once per card; interactive components drop the `checked` BOOLEAN
+  // (it is promoted to the synthetic State variant).
+  const countProp = (t: string) =>
+    comps.reduce((a: number, c: any) => {
+      let n = (c.figmaProperties || []).filter((p: any) => p.figmaPropertyType === t).length;
+      if (t === 'BOOLEAN' && INTERACTIVE.has(c.slug)) {
+        n -= (c.figmaProperties || []).filter(
+          (p: any) => p.figmaPropertyType === 'BOOLEAN' && p.propName === 'checked',
+        ).length;
+      }
+      return a + n * cardsFor(c);
+    }, 0);
+
+  // Each set's first variant must be the all-defaults combination (contract defaults). Sets are
+  // built grouped by page, so match by name. Iterate the ACTUAL sets so split cards (one per px)
+  // and interactive sets (with the synthetic On/Off `State` axis) are each verified.
   const setByName = new Map<string, any>();
   for (const s of createdSets) setByName.set(s.name, s);
+  const displayNameFor = (c: any, axis: any) => {
+    const fp = (c.figmaProperties || []).find(
+      (p: any) => p.figmaPropertyType === 'VARIANT' && p.propName === axis.name,
+    );
+    return (fp && fp.name) || axis.label || axis.name;
+  };
   let defaultFirstOk = 0;
-  comps.forEach((c: any) => {
-    const set = setByName.get(c.name);
-    if (!set || !set.children[0]) return;
-    const displayName: Record<string, string> = {};
-    for (const axis of c.variantAxes) {
-      const fp = (c.figmaProperties || []).find(
-        (p: any) => p.figmaPropertyType === 'VARIANT' && p.propName === axis.name,
-      );
-      displayName[axis.name] = (fp && fp.name) || axis.label || axis.name;
+  for (const set of createdSets) {
+    const c = compForSet(set);
+    if (!c || !set.children[0]) continue;
+    const splitAxis = splitAxisOf(c);
+    // The axes that name this set's variants: split axis excluded (fixed per card); interactive
+    // adds the synthetic State axis (default 'Off') at the end — mirrors buildCardSet's nameAxes.
+    let axes = c.variantAxes.filter((a: any) => !splitAxis || a.name !== splitAxis.name);
+    if (INTERACTIVE.has(c.slug)) {
+      axes = [...axes, { name: 'State', label: 'State', default: 'Off' }];
     }
-    const expected = c.variantAxes
-      .map((a: any) => `${displayName[a.name]}=${a.default}`)
+    const expected = axes
+      .map((a: any) => `${displayNameFor(c, a)}=${a.default}`)
       .join(', ');
     if (set.children[0].name === expected) defaultFirstOk++;
-  });
+  }
 
   // Every set description must carry the contract docs (Accessibility spec included).
   const describedOk = createdSets.filter(
@@ -384,7 +447,7 @@ async function main(): Promise<void> {
   let structuralRoots = 0;
   let structuralAL = 0;
   for (const s of createdSets) {
-    const slug = compByName.get(s.name)?.slug;
+    const slug = compForSet(s)?.slug; // split sets are "Name / Axis=opt" — resolve the base comp
     for (const ch of s.children) {
       if (ch.kind !== 'COMPONENT') continue;
       variantRoots.push(ch);
@@ -408,9 +471,13 @@ async function main(): Promise<void> {
   let swapSlotSets = 0; // sets that declare ≥1 instance-swap slot
   let swapSlotOk = 0;
   for (const s of createdSets) {
-    const c = compByName.get(s.name);
+    const c = compForSet(s); // resolve base comp for split sets ("Name / Axis=opt")
     if (!c) continue;
-    const nonVariant = (c.figmaProperties || []).filter((p: any) => p.figmaPropertyType !== 'VARIANT');
+    let nonVariant = (c.figmaProperties || []).filter((p: any) => p.figmaPropertyType !== 'VARIANT');
+    // Interactive Radio/Switch drop the `checked` BOOLEAN (promoted to the synthetic State variant).
+    if (INTERACTIVE.has(c.slug)) {
+      nonVariant = nonVariant.filter((p: any) => p.propName !== 'checked');
+    }
     if (s._props.length === nonVariant.length) propsComplete++;
     const swaps = nonVariant.filter((p: any) => p.figmaPropertyType === 'INSTANCE_SWAP');
     if (swaps.length) {
@@ -459,14 +526,25 @@ async function main(): Promise<void> {
     return l && d && JSON.stringify(l.value ?? l) !== JSON.stringify(d.value ?? d);
   }).length;
 
+  // (8) Real icon geometry: the Icon set's variants now draw a parsed SVG vector glyph (not a
+  // bare ellipse), proving design.icons flows through renderIcon into every Icon variant.
+  const hasVector = (n: any): boolean =>
+    n.kind === 'VECTOR' || (n.children || []).some(hasVector);
+  // Icon is now split into one set per size ("Icon / Size=…"); gather variants across all of them.
+  const iconSets = createdSets.filter((s) => compForSet(s)?.slug === 'icon');
+  const iconVariants = iconSets.flatMap((s: any) =>
+    s.children.filter((v: any) => v.kind === 'COMPONENT'),
+  );
+  const iconVariantsWithVector = iconVariants.filter(hasVector).length;
+
   const checks: Array<[string, number, number]> = [
     ['collections', stats.collections, cols.length],
     ['variables', stats.variables, expVars],
     ['alias values resolved', stats.aliasValues, expAlias],
     ['effect styles', stats.effectStyles, b.tokens.effectStyles.length],
     ['text styles', stats.textStyles, b.tokens.textStyles.length],
-    ['component sets', stats.sets, comps.length],
-    ['variant components', stats.components, expVariants + 1 /* +1 placeholder */],
+    ['component sets', stats.sets, expSets],
+    ['variant components', stats.components, expVariantsBuilt + 1 /* +1 placeholder */],
     ['pages (Foundation reused + 7 created)', 1 + stats.createdPages, PAGE_TITLES.length],
     // Cover is a doc CARD (auto-layout frame named 'Cover') on the Foundation page, not a Section.
     ['cover card present', createdFrames.filter((f) => f.name === 'Cover').length, 1],
@@ -474,8 +552,8 @@ async function main(): Promise<void> {
     ['TEXT props', stats.props.TEXT, countProp('TEXT')],
     ['BOOLEAN props', stats.props.BOOLEAN, countProp('BOOLEAN')],
     ['INSTANCE_SWAP props', stats.props.INSTANCE_SWAP, countProp('INSTANCE_SWAP')],
-    ['default variant first', defaultFirstOk, comps.length],
-    ['descriptions with a11y', describedOk, comps.length],
+    ['default variant first', defaultFirstOk, createdSets.length],
+    ['descriptions with a11y', describedOk, createdSets.length],
     // Visual fidelity: CSS-derived bindings must actually paint variants. A floor of
     // variants/10 proves styling is broadly applied (regression guard for empty boxes).
     [
@@ -510,6 +588,7 @@ async function main(): Promise<void> {
     ['icon slot instances created (>0)', stats.instances > 0 ? 1 : 0, 1],
     ['chart series palette present (chart/1..6)', chartVars.length, 6],
     ['chart palette is theme-aware (light≠dark ≥4)', chartThemeAware >= 4 ? 4 : chartThemeAware, 4],
+    ['Icon variants draw a real vector glyph', iconVariantsWithVector, iconVariants.length],
   ];
 
   let ok = true;

@@ -1,7 +1,7 @@
 {
   "$schema": "https://tds.dev/schemas/variant-index.json",
   "version": 1,
-  "generatedAt": "2026-07-08T02:14:04.969Z",
+  "generatedAt": "2026-07-08T10:47:29.105Z",
   "generator": "scripts/build-ai-manifests.ts",
   "purpose": "Variant axis vocabulary + per-component axes and combination counts.",
   "stateAxisNote": "The state axis is deliberately NOT emitted as a Figma variant (would explode combos). disabled/loading survive as BOOLEAN component props.",
@@ -1017,7 +1017,12 @@
             "file-text",
             "printer",
             "link",
-            "bell-off"
+            "bell-off",
+            "logo-naver",
+            "logo-apple",
+            "logo-kakao",
+            "logo-google",
+            "logo-facebook"
           ],
           "default": "star"
         },
@@ -1043,7 +1048,7 @@
           "default": "stroke"
         }
       ],
-      "reactCombos": 1300
+      "reactCombos": 1350
     },
     {
       "slug": "icon-button",

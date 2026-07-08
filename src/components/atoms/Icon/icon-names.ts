@@ -149,6 +149,12 @@ export const iconNames = [
   'printer',
   'link',
   'bell-off',
+  // Brand logos (filled marks, not stroke glyphs)
+  'logo-naver',
+  'logo-apple',
+  'logo-kakao',
+  'logo-google',
+  'logo-facebook',
 ] as const;
 
 export type IconName = (typeof iconNames)[number];

@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-size: 12px;
+        color: #1e1e1e;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 12px; }
+      h1 { font-size: 13px; margin: 0 0 2px; }
+      p.sub { margin: 0 0 12px; color: #888; }
+      .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+      .toolbar input[type='search'] { flex: 1; padding: 6px 8px; border: 1px solid #e0e0e0; border-radius: 6px; font: inherit; }
+      button {
+        font: inherit; font-weight: 600; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer;
+      }
+      button.primary { background: #18a0fb; color: #fff; }
+      button.primary:disabled { background: #b3ddff; cursor: default; }
+      button.ghost { background: #f0f0f0; color: #333; padding: 5px 8px; font-weight: 500; }
+      .list { max-height: 280px; overflow: auto; border: 1px solid #ececec; border-radius: 8px; padding: 6px; }
+      .group-title { font-weight: 700; color: #555; margin: 8px 4px 4px; text-transform: capitalize; }
+      label.row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
+      label.row:hover { background: #f6f6f6; }
+      label.row.hidden { display: none; }
+      .actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+      .count { color: #888; margin-right: auto; }
+      #log {
+        margin-top: 10px; max-height: 120px; overflow: auto; background: #0d0d0d; color: #b9f6ca;
+        font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; border-radius: 8px; padding: 8px;
+        white-space: pre-wrap; display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TDS Spec Sheets</h1>
+    <p class="sub">Storybook 메타(<code>*.meta.ts</code>)로 컴포넌트 명세 시트를 생성합니다.</p>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="컴포넌트 검색…" />
+      <button class="ghost" id="all">전체</button>
+      <button class="ghost" id="none">해제</button>
+    </div>
+
+    <div class="list" id="list">불러오는 중…</div>
+
+    <div class="actions">
+      <span class="count" id="count">0개 선택</span>
+      <button class="primary" id="generate" disabled>생성</button>
+    </div>
+
+    <pre id="log"></pre>
+
+    <script>
+      const listEl = document.getElementById('list');
+      const countEl = document.getElementById('count');
+      const genBtn = document.getElementById('generate');
+      const logEl = document.getElementById('log');
+      let comps = [];
+
+      function selected() {
+        return Array.from(document.querySelectorAll('input.cb:checked')).map((c) => c.value);
+      }
+      function refresh() {
+        const n = selected().length;
+        countEl.textContent = n + '개 선택';
+        genBtn.disabled = n === 0;
+      }
+      function render() {
+        const byCat = {};
+        for (const c of comps) (byCat[c.category] ||= []).push(c);
+        const order = ['atom', 'molecule', 'organism'];
+        listEl.innerHTML = '';
+        for (const cat of order) {
+          if (!byCat[cat]) continue;
+          const t = document.createElement('div');
+          t.className = 'group-title';
+          t.textContent = cat + 's (' + byCat[cat].length + ')';
+          listEl.appendChild(t);
+          for (const c of byCat[cat]) {
+            const lab = document.createElement('label');
+            lab.className = 'row';
+            lab.dataset.name = (c.name + ' ' + c.slug).toLowerCase();
+            lab.innerHTML =
+              '<input type="checkbox" class="cb" value="' + c.slug + '" checked /> <span>' + c.name + '</span>';
+            listEl.appendChild(lab);
+          }
+        }
+        listEl.querySelectorAll('input.cb').forEach((cb) => cb.addEventListener('change', refresh));
+        refresh();
+      }
+
+      document.getElementById('all').onclick = () => {
+        document.querySelectorAll('label.row:not(.hidden) input.cb').forEach((c) => (c.checked = true));
+        refresh();
+      };
+      document.getElementById('none').onclick = () => {
+        document.querySelectorAll('input.cb').forEach((c) => (c.checked = false));
+        refresh();
+      };
+      document.getElementById('search').oninput = (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        document.querySelectorAll('label.row').forEach((r) => {
+          r.classList.toggle('hidden', q && !r.dataset.name.includes(q));
+        });
+      };
+      genBtn.onclick = () => {
+        logEl.style.display = 'block';
+        logEl.textContent = '';
+        genBtn.disabled = true;
+        parent.postMessage({ pluginMessage: { type: 'generate', slugs: selected() } }, '*');
+      };
+
+      onmessage = (e) => {
+        const msg = e.data.pluginMessage;
+        if (!msg) return;
+        if (msg.type === 'components') {
+          comps = msg.components;
+          render();
+        } else if (msg.type === 'log') {
+          logEl.textContent += msg.message + '\n';
+          logEl.scrollTop = logEl.scrollHeight;
+        } else if (msg.type === 'done') {
+          logEl.textContent += '\n✅ 완료: ' + msg.message + '\n';
+          genBtn.disabled = false;
+          refresh();
+        }
+      };
+
+      parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
+    </script>
+  </body>
+</html>

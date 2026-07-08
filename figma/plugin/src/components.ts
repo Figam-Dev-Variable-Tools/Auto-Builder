@@ -14,7 +14,7 @@ import type { VariableRegistry } from './variables';
 import type { PageTitle, Pages } from './pages';
 import type { DocFonts, Palette } from './doc';
 import type { VariantLayers } from './recipes';
-import { CORNERS, RECIPES, boundFill } from './recipes';
+import { CORNERS, RECIPES, boundFill, renderIcon } from './recipes';
 import { docCard, pageCanvas, stack, txt } from './doc';
 import { PAGE_TITLES, classifyCounts, pageForComponent } from './pages';
 const DOC_PAGES: PageTitle[] = ['Foundation'];
@@ -69,6 +69,7 @@ interface Ctx {
   placeholder: ComponentNode;
   labelFont: FontName;
   fonts: DocFonts;
+  icons: Record<string, string>;
 }
 
 /** Axis options with the declared default first, so the set's default variant matches the contract. */
@@ -238,11 +239,14 @@ function buildVariant(
   comp: ComponentDef,
   combo: Record<string, string>,
   displayName: Record<string, string>,
+  nameAxes: VariantAxis[],
   ctx: Ctx,
 ): VariantLayers {
   const node = figma.createComponent();
-  // Variant naming MUST stay identical (keeps "default variant first" grouping/assertions).
-  node.name = comp.variantAxes.map((a) => `${displayName[a.name]}=${combo[a.name]}`).join(', ');
+  // Variant name carries exactly the axes that define this set's variant properties. Normally
+  // that's comp.variantAxes; a split card drops the fixed axis, an interactive toggle adds the
+  // synthetic `State` axis. Every variant in one set MUST share the same axis set (Figma rule).
+  node.name = nameAxes.map((a) => `${displayName[a.name]}=${combo[a.name]}`).join(', ');
 
   const ch = resolveChannels(comp, combo);
 
@@ -259,6 +263,7 @@ function buildVariant(
       effects: ctx.effects,
       placeholder: ctx.placeholder,
       fonts: ctx.fonts,
+      icons: ctx.icons,
     });
   }
 
@@ -398,8 +403,11 @@ async function wireProperties(
   set: ComponentSetNode,
   variants: VariantLayers[],
   placeholder: ComponentNode,
+  skipProps?: Set<string>,
 ): Promise<void> {
-  const props = comp.figmaProperties || [];
+  // A prop promoted to a synthetic VARIANT (e.g. Radio/Switch `checked` → On/Off) must NOT also be
+  // added as a component property, or it would be represented twice.
+  const props = (comp.figmaProperties || []).filter((p) => !skipProps?.has(p.propName));
   let firstTextId: string | null = null;
   let k = 0;
   const tick = async () => {
@@ -481,6 +489,73 @@ async function wireProperties(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Per-component build strategy (plugin-side rendering choices, not contract changes).
+// ---------------------------------------------------------------------------
+
+/** Components whose card is split into one set per value of the named axis, so each px/scale reads
+ *  as its own legible card instead of one giant blob of near-identical variants. */
+const SPLIT_BY: Record<string, string> = { icon: 'size', text: 'variant' };
+
+/** Components rendered as Figma **interactive components**: a synthetic On/Off `State` variant axis
+ *  is added (a boolean prop can't be prototyped) and click reactions toggle Off↔On. */
+const INTERACTIVE_TOGGLE = new Set<string>(['radio', 'switch']);
+
+/** The synthetic On/Off axis injected for INTERACTIVE_TOGGLE components (drives the recipe overlay
+ *  via `combo.State` and replaces the `checked` boolean). */
+const STATE_AXIS: VariantAxis = { name: 'State', label: 'State', options: ['Off', 'On'], default: 'Off' };
+
+/** Wire prototype reactions so an interactive Radio/Switch set click-toggles between its Off and On
+ *  variants (SMART_ANIMATE mimics the CSS thumb-slide / dot-scale). Pairs variants by every axis
+ *  except `State`. All writes are best-effort — older runtimes / the headless mock may lack reactions. */
+async function wireToggleReactions(
+  combos: Record<string, string>[],
+  variants: VariantLayers[],
+): Promise<void> {
+  const keyOf = (c: Record<string, string>) =>
+    Object.keys(c)
+      .filter((k) => k !== 'State')
+      .sort()
+      .map((k) => `${k}=${c[k]}`)
+      .join(',');
+  const byKey = new Map<string, { off?: ComponentNode; on?: ComponentNode }>();
+  for (let i = 0; i < combos.length; i++) {
+    const entry = byKey.get(keyOf(combos[i])) ?? {};
+    if (combos[i].State === 'On') entry.on = variants[i].node;
+    else entry.off = variants[i].node;
+    byKey.set(keyOf(combos[i]), entry);
+  }
+
+  const transition = { type: 'SMART_ANIMATE', easing: { type: 'EASE_OUT' }, duration: 0.2 };
+  const mkReaction = (destinationId: string) => ({
+    trigger: { type: 'ON_CLICK' },
+    actions: [
+      { type: 'NODE', destinationId, navigation: 'CHANGE_TO', transition, preserveScrollPosition: false },
+    ],
+  });
+
+  type ReactableNode = {
+    id: string;
+    setReactionsAsync?: (r: unknown[]) => Promise<void>;
+    reactions?: unknown[];
+  };
+  const apply = async (from: ComponentNode, toId: string) => {
+    const n = from as unknown as ReactableNode;
+    if (typeof n.setReactionsAsync === 'function') await n.setReactionsAsync([mkReaction(toId)]);
+    else n.reactions = [mkReaction(toId)];
+  };
+
+  for (const { off, on } of byKey.values()) {
+    if (!off || !on) continue;
+    try {
+      await apply(off, on.id);
+      await apply(on, off.id);
+    } catch {
+      /* reactions unsupported in this runtime — the variants still render, just not interactive */
+    }
+  }
+}
+
 /** Bundle-level metadata reproduced on the library cover. */
 export interface LibMeta {
   name: string;
@@ -492,31 +567,47 @@ export interface LibMeta {
 
 /**
  * The shared INSTANCE_SWAP source used by every icon slot (Button/IconButton/Link/Input/…).
- * It is a faithful reproduction of the Storybook **Icon** primitive — a token-colored glyph on
- * the 24-grid, matching the Icon component's default (size md · stroke) render — so every slot
- * shows a real, swappable icon instead of a grey placeholder box. Color is bound to the
- * `color.fg.default` Variable so it reads as a proper icon and tracks the theme.
+ * It is a faithful reproduction of the Storybook **Icon** primitive — the real default glyph
+ * (the Icon component's default `name: 'star'`, size md · stroke) drawn on the 24-grid — so every
+ * slot shows a real, recognizable, swappable icon instead of a bare grey ellipse. Color is bound
+ * to the `color.fg.default` Variable so it reads as a proper icon and tracks the theme.
  */
-function makePlaceholder(vars: VariableRegistry): ComponentNode {
+function makePlaceholder(vars: VariableRegistry, icons: Record<string, string>): ComponentNode {
   const icon = figma.createComponent();
   icon.name = 'Icon';
   icon.resize(SLOT, SLOT);
   icon.fills = [];
-  const g = Math.round(SLOT * 0.72);
-  const mark = figma.createEllipse();
-  mark.resize(g, g);
-  mark.fills = [];
-  const v = vars.get('color.fg.default');
-  if (v) {
-    mark.strokes = [boundFill({ r: 0.1, g: 0.1, b: 0.1 }, v)];
-    mark.strokeWeight = 2;
+
+  const markup = icons.star ?? icons.image;
+  if (markup) {
+    const glyph = renderIcon(markup, SLOT, {
+      vars,
+      filled: false,
+      colorId: 'color.fg.default',
+      strokeWidth: 2,
+    });
+    icon.appendChild(glyph);
+    glyph.x = 0;
+    glyph.y = 0;
   } else {
-    mark.strokes = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.43 } }];
-    mark.strokeWeight = 2;
+    // Fallback ring if the bundle carries no icon geometry — still token-colored, never empty.
+    const g = Math.round(SLOT * 0.72);
+    const mark = figma.createEllipse();
+    mark.resize(g, g);
+    mark.fills = [];
+    const v = vars.get('color.fg.default');
+    if (v) {
+      mark.strokes = [boundFill({ r: 0.1, g: 0.1, b: 0.1 }, v)];
+      mark.strokeWeight = 2;
+    } else {
+      mark.strokes = [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.43 } }];
+      mark.strokeWeight = 2;
+    }
+    icon.appendChild(mark);
+    mark.x = (SLOT - g) / 2;
+    mark.y = (SLOT - g) / 2;
   }
-  icon.appendChild(mark);
-  mark.x = (SLOT - g) / 2;
-  mark.y = (SLOT - g) / 2;
+
   icon.x = -800;
   icon.y = -800;
   return icon;
@@ -536,7 +627,7 @@ const PAGE_DESCRIPTIONS: Partial<Record<PageTitle, string>> = {
 
 export async function buildComponents(
   defs: ComponentDef[],
-  base: { vars: VariableRegistry; effects: Map<string, string> },
+  base: { vars: VariableRegistry; effects: Map<string, string>; icons: Record<string, string> },
   doc: { palette: Palette; fonts: DocFonts },
   lib: LibMeta,
   pages: Pages,
@@ -551,7 +642,7 @@ export async function buildComponents(
   // `figma.currentPage =` setter does not reliably move the page in the plugin runtime,
   // which left every set stacked on one page and crashed combineAsVariants.
   if (foundationPage) await figma.setCurrentPageAsync(foundationPage);
-  const placeholder = makePlaceholder(base.vars);
+  const placeholder = makePlaceholder(base.vars, base.icons);
   const ctx: Ctx = { ...base, placeholder, labelFont: fonts.regular, fonts };
 
   const catCounts: Record<string, number> = {};
@@ -618,68 +709,119 @@ export async function buildComponents(
     root.y = 0;
     page.appendChild(root);
 
+    // Build one doc card + Component Set. `nameAxes` are the axes that define this set's variant
+    // properties (a split card omits the fixed axis; an interactive toggle adds `State`).
+    const buildCardSet = async (
+      comp: ComponentDef,
+      ci: number,
+      combos: Record<string, string>[],
+      nameAxes: VariantAxis[],
+      displayName: Record<string, string>,
+      titleSuffix: string | null,
+      skipProps: Set<string> | undefined,
+      interactive: boolean,
+    ): Promise<void> => {
+      // The component's doc card (attached to the page canvas BEFORE combining so the
+      // card body — the combine parent — is already on the current page).
+      const tags = (comp.tags || []).slice(0, 3).join(', ');
+      const badge = `${combos.length} variants` + (tags ? ` · ${tags}` : '');
+      const card = docCard({
+        eyebrow: `${cap(comp.category)} · ${pageTitle}`,
+        title: titleSuffix ? `${comp.name} · ${titleSuffix}` : comp.name,
+        description: comp.description,
+        palette,
+        fonts,
+        badge,
+      });
+      body.appendChild(card.root);
+
+      // Build variants incrementally, yielding so Figma stays responsive on huge sets.
+      const variants: VariantLayers[] = [];
+      for (let vi = 0; vi < combos.length; vi++) {
+        variants.push(buildVariant(comp, combos[vi], displayName, nameAxes, ctx));
+        built++;
+        if (built % YIELD_EVERY === 0) {
+          progress(
+            pct(),
+            `${pageTitle} · ${comp.name} (${ci + 1}/${comps.length}) — ${vi + 1}/${combos.length} variants · ${built}/${totalVariants} total`,
+          );
+          await breathe();
+        }
+      }
+
+      progress(pct(), `${comp.name}${titleSuffix ? ` · ${titleSuffix}` : ''}: combining ${combos.length} variants…`);
+      await breathe();
+      // Parent = the card's body frame — it is on the current page, so the same-page
+      // guard passes. Appending a big set into an auto-layout card is one reflow (OK).
+      const set = figma.combineAsVariants(
+        variants.map((v) => v.node),
+        card.body,
+      );
+      set.name = titleSuffix ? `${comp.name} / ${titleSuffix}` : comp.name;
+      set.description = describeComponent(comp);
+      // Every variant is created at (0,0); combineAsVariants preserves those positions, so the
+      // set would collapse into one overlapping blob. Make the set a wrapping Auto Layout grid —
+      // under Auto Layout the variants physically cannot overlap, whatever their positions were.
+      gridComponentSet(set, variants);
+      await breathe();
+
+      await wireProperties(comp, set, variants, placeholder, skipProps);
+      if (interactive) await wireToggleReactions(combos, variants);
+
+      log(`${comp.name}${titleSuffix ? ` · ${titleSuffix}` : ''} [${pageTitle}]: ${combos.length} variants`);
+    };
+
     for (let ci = 0; ci < comps.length; ci++) {
       const comp = comps[ci];
-      const combos = cartesian(comp.variantAxes);
 
       // One component's failure must not abort the whole run — isolate and continue.
       try {
-        // Human-facing variant property names (e.g. axis "variant" -> "Style").
+        // Interactive toggles gain a synthetic On/Off `State` axis so the set can be prototyped.
+        const interactive = INTERACTIVE_TOGGLE.has(comp.slug);
+        const axes: VariantAxis[] = interactive ? [...comp.variantAxes, STATE_AXIS] : comp.variantAxes;
+
+        // Human-facing variant property names (e.g. axis "variant" -> "Style"; synthetic → its label).
         const displayName: Record<string, string> = {};
-        for (const axis of comp.variantAxes) {
+        for (const axis of axes) {
           const fp = (comp.figmaProperties || []).find(
             (p) => p.figmaPropertyType === 'VARIANT' && p.propName === axis.name,
           );
           displayName[axis.name] = fp?.name || axis.label || axis.name;
         }
 
-        // The component's doc card (attached to the page canvas BEFORE combining so the
-        // card body — the combine parent — is already on the current page).
-        const tags = (comp.tags || []).slice(0, 3).join(', ');
-        const badge = `${combos.length} variants` + (tags ? ` · ${tags}` : '');
-        const card = docCard({
-          eyebrow: `${cap(comp.category)} · ${pageTitle}`,
-          title: comp.name,
-          description: comp.description,
-          palette,
-          fonts,
-          badge,
-        });
-        body.appendChild(card.root);
-
-        // Build variants incrementally, yielding so Figma stays responsive on huge sets.
-        const variants: VariantLayers[] = [];
-        for (let vi = 0; vi < combos.length; vi++) {
-          variants.push(buildVariant(comp, combos[vi], displayName, ctx));
-          built++;
-          if (built % YIELD_EVERY === 0) {
-            progress(
-              pct(),
-              `${pageTitle} · ${comp.name} (${ci + 1}/${comps.length}) — ${vi + 1}/${combos.length} variants · ${built}/${totalVariants} total`,
+        // Split components (Icon/Text) render one card per value of the split axis (px/scale), so
+        // each size reads cleanly instead of one 1000+ near-identical-variant blob.
+        const splitAxisName = SPLIT_BY[comp.slug];
+        const splitAxis = splitAxisName ? axes.find((a) => a.name === splitAxisName) : undefined;
+        if (splitAxisName && splitAxis) {
+          const rest = axes.filter((a) => a.name !== splitAxisName);
+          for (const opt of orderedOptions(splitAxis)) {
+            const combos = cartesian(rest).map((c) => ({ ...c, [splitAxisName]: opt }));
+            await buildCardSet(
+              comp,
+              ci,
+              combos,
+              rest,
+              displayName,
+              `${displayName[splitAxisName]}=${opt}`,
+              undefined,
+              false,
             );
-            await breathe();
           }
+          continue;
         }
 
-        progress(pct(), `${comp.name}: combining ${combos.length} variants…`);
-        await breathe();
-        // Parent = the card's body frame — it is on the current page, so the same-page
-        // guard passes. Appending a big set into an auto-layout card is one reflow (OK).
-        const set = figma.combineAsVariants(
-          variants.map((v) => v.node),
-          card.body,
+        const combos = cartesian(axes);
+        await buildCardSet(
+          comp,
+          ci,
+          combos,
+          axes,
+          displayName,
+          null,
+          interactive ? new Set(['checked']) : undefined,
+          interactive,
         );
-        set.name = comp.name;
-        set.description = describeComponent(comp);
-        // Every variant is created at (0,0); combineAsVariants preserves those positions, so the
-        // set would collapse into one overlapping blob. Make the set a wrapping Auto Layout grid —
-        // under Auto Layout the variants physically cannot overlap, whatever their positions were.
-        gridComponentSet(set, variants);
-        await breathe();
-
-        await wireProperties(comp, set, variants, placeholder);
-
-        log(`${comp.name} [${pageTitle}]: ${combos.length} variants`);
       } catch (e) {
         warn(`${comp.name}: skipped (${String(e)})`);
       }

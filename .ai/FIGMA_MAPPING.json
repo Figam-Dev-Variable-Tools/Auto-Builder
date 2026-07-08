@@ -1,7 +1,7 @@
 {
   "$schema": "https://tds.dev/schemas/figma-mapping.json",
   "version": 1,
-  "generatedAt": "2026-07-08T02:14:04.969Z",
+  "generatedAt": "2026-07-08T10:47:29.105Z",
   "generator": "scripts/build-ai-manifests.ts",
   "title": "Storybook -> Figma mapping (post type-preset split).",
   "source": "figma/tds.plugin.json (design.components)",
@@ -12,9 +12,10 @@
     "molecules": 45,
     "organisms": 24,
     "componentSets": 86,
-    "totalFigmaVariants": 3792,
+    "totalFigmaVariants": 3842,
     "tokenCollections": 5,
-    "tokens": 281
+    "tokens": 281,
+    "icons": 135
   },
   "pageTaxonomy": [
     "Foundation",
@@ -164,7 +165,12 @@
             "file-text",
             "printer",
             "link",
-            "bell-off"
+            "bell-off",
+            "logo-naver",
+            "logo-apple",
+            "logo-kakao",
+            "logo-google",
+            "logo-facebook"
           ]
         },
         {

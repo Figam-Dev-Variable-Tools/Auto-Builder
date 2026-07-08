@@ -56,7 +56,7 @@ async function run(): Promise<void> {
   progress(0.3, 'Component sets…');
   await buildComponents(
     d.components,
-    { vars, effects },
+    { vars, effects, icons: d.icons ?? {} },
     { palette, fonts },
     {
       name: d.name,

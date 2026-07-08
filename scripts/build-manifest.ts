@@ -25,6 +25,7 @@ import { allCollections, tokenRegistry } from '../src/tokens/index';
 import type { ComponentMeta } from '../src/core/types';
 import { variantCount } from '../src/core/defineComponent';
 import { cssBindingsFor } from './lib/css-bindings';
+import { extractIcons } from './lib/extract-icons';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -176,6 +177,10 @@ if (problems.length) {
   for (const p of problems) console.warn(`   - ${p}`);
 }
 
+// Per-icon inner SVG markup (name → shapes) so the Figma plugin can draw the real glyph for the
+// Icon set and every icon slot instead of a generic placeholder. Parsed from the icon registry.
+const icons = extractIcons(ROOT);
+
 const manifest = {
   $schema: 'https://tds.dev/schemas/design-system-manifest.json',
   version: 1,
@@ -191,7 +196,9 @@ const manifest = {
     totalFigmaVariants: components.reduce((a, c) => a + c.figmaVariantCombinations, 0),
     tokenCollections: allCollections.length,
     tokens: tokenRegistry.size,
+    icons: Object.keys(icons).length,
   },
+  icons,
   components,
 };
 
@@ -227,3 +234,4 @@ console.log(
   `✓ CSS-derived visual bindings: ${cssBindingTotal} across ${components.length} components` +
     (cssNotes.length ? ` (${cssNotes.length} without CSS bindings)` : ''),
 );
+console.log(`✓ icon geometry: ${Object.keys(icons).length} glyphs extracted from icons.tsx`);

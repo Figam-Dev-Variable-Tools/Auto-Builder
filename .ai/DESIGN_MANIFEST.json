@@ -1,7 +1,7 @@
 {
   "$schema": "https://tds.dev/schemas/design-manifest.json",
   "version": 1,
-  "generatedAt": "2026-07-08T02:14:04.969Z",
+  "generatedAt": "2026-07-08T10:47:29.105Z",
   "generator": "scripts/build-ai-manifests.ts",
   "title": "TDS Design System summary",
   "designLock": "Storybook is the ONLY source of visual truth (immutable); Figma is a pixel-perfect reproduction, never a redesign.",
@@ -25,7 +25,7 @@
       "molecules": 45,
       "organisms": 24,
       "componentSets": 86,
-      "totalFigmaVariants": 3792,
+      "totalFigmaVariants": 3842,
       "note": "Figma-facing entries after `type` (A/B/C) preset splitting in build-manifest.ts."
     }
   },

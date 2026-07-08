@@ -23,6 +23,12 @@
  *   src/generated/design-system.manifest.json, src/tokens/generated/figma.tokens.json, figma/tds.plugin.json
  * plus a dynamic import of every *.meta.ts (mirrors scripts/build-catalog.ts) for the 60-source view.
  */
+/* eslint-disable @typescript-eslint/no-explicit-any --
+   Codegen script that ingests dynamically-shaped GENERATED JSON at its read boundaries
+   (src/generated/design-system.manifest.json, src/tokens/generated/figma.tokens.json,
+   figma/tds.plugin.json, package.json) plus *.meta.ts modules loaded via dynamic import.
+   `any` is the pragmatic type here; the authoritative shapes are typed in scripts/build-manifest.ts,
+   src/core and src/tokens. */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';

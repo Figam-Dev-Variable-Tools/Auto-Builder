@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { cx } from '@/utils/cx';
@@ -6,6 +6,7 @@ import { toDataAttrs } from '@core/defineComponent';
 import { Icon } from '../../atoms/Icon';
 import type { IconName } from '../../atoms/Icon';
 import { toastMeta } from './Toast.meta';
+import { ToastContext } from './toast-context';
 import './Toast.css';
 
 export type ToastTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
@@ -101,18 +102,7 @@ export function Toast({
 }
 
 /* ------------------------------- provider -------------------------------- */
-
-interface ToastContextValue {
-  toast: (options: ToastOptions) => string;
-  dismiss: (id: string) => void;
-}
-const ToastContext = createContext<ToastContextValue | null>(null);
-
-export function useToast(): ToastContextValue {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within <ToastProvider>');
-  return ctx;
-}
+/* `ToastContext` + `useToast` live in ./toast-context so this file exports only components. */
 
 let toastSeq = 0;
 

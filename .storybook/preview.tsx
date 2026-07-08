@@ -1,40 +1,6 @@
 import type { Decorator, Preview } from '@storybook/react';
-import { useEffect } from 'react';
-import type { ReactNode } from 'react';
 import '../src/styles/global.css';
-
-/** Component wrapper so the hook obeys the rules-of-hooks lint rule. */
-function ThemeFrame({
-  theme,
-  font,
-  children,
-}: {
-  theme: string;
-  font: string;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    // 'default' keeps the built-in body/display pairing (no attribute).
-    if (font === 'default') document.documentElement.removeAttribute('data-font');
-    else document.documentElement.setAttribute('data-font', font);
-  }, [theme, font]);
-  return (
-    <div
-      data-theme={theme}
-      data-font={font === 'default' ? undefined : font}
-      style={{
-        background: 'var(--tds-color-bg-canvas)',
-        color: 'var(--tds-color-fg-default)',
-        padding: 'var(--tds-space-6)',
-        minHeight: '100vh',
-        fontFamily: 'var(--tds-font-family-body)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+import { ThemeFrame } from './decorators';
 
 /** Applies the selected theme + font to the story root + document element (for portals). */
 const withTheme: Decorator = (Story, context) => {

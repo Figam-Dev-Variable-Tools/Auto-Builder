@@ -1,4 +1,6 @@
-export { Toast, ToastProvider, useToast } from './Toast';
+export { Toast, ToastProvider } from './Toast';
+export { useToast } from './toast-context';
+export type { ToastContextValue } from './toast-context';
 export type {
   ToastProps,
   ToastOptions,

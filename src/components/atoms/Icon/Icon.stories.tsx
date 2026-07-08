@@ -25,6 +25,48 @@ export const Filled: Story = {
   args: { name: 'heart', filled: true, color: 'var(--tds-color-danger-solid)' },
 };
 
+export const BrandLogos: Story = {
+  render: () => {
+    const logos = iconNames.filter((n) => n.startsWith('logo-'));
+    return (
+      <div>
+        <p
+          style={{
+            marginBottom: 'var(--tds-space-4)',
+            color: 'var(--tds-color-fg-muted)',
+            fontSize: 'var(--tds-font-size-sm)',
+          }}
+        >
+          {logos.length} brand logos, classified as <code>logo-*</code> — filled marks. Mono marks
+          (Naver / Apple / Kakao / Facebook) inherit <code>color</code>; Google keeps its official
+          colors. Kakao is the speech-bubble symbol (the SocialLoginButton supplies the yellow surface).
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--tds-space-5)', flexWrap: 'wrap' }}>
+          {logos.map((name) => (
+            <div
+              key={name}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--tds-space-2)',
+                padding: 'var(--tds-space-4)',
+                border: '1px solid var(--tds-color-border-subtle)',
+                borderRadius: 'var(--tds-radius-lg)',
+                fontSize: 'var(--tds-font-size-xs)',
+                color: 'var(--tds-color-fg-muted)',
+              }}
+            >
+              <Icon name={name} size="xl" />
+              {name}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  },
+};
+
 export const Gallery: Story = {
   render: () => (
     <div>

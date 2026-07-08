@@ -45,6 +45,11 @@ export function Icon({
 }: IconProps) {
   const px = typeof size === 'number' ? size : SIZE_MAP[size];
   const decorative = !title;
+  // Brand logos (logo-*) are filled marks (mono paths use currentColor; Google carries its own
+  // colors) — always render them filled with no stroke, so they never pick up the stroke-mode
+  // currentColor outline and match the Figma plugin's logo rendering exactly.
+  const isLogo = name.startsWith('logo-');
+  const asFilled = filled || isLogo;
 
   return (
     <svg
@@ -52,8 +57,8 @@ export function Icon({
       width={px}
       height={px}
       viewBox="0 0 24 24"
-      fill={filled ? 'currentColor' : 'none'}
-      stroke={filled ? 'none' : 'currentColor'}
+      fill={asFilled ? 'currentColor' : 'none'}
+      stroke={asFilled ? 'none' : 'currentColor'}
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"

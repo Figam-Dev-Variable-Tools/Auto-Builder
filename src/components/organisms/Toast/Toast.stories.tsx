@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Toast, ToastProvider, useToast } from './Toast';
+import { Toast, ToastProvider } from './Toast';
+import { useToast } from './toast-context';
 import { toastMeta } from './Toast.meta';
 import { argTypesFromMeta, metaParameters } from '@core/storybook';
 import { Button } from '../../atoms/Button';

@@ -1,0 +1,6248 @@
+{
+  "$schema": "https://tds.dev/schemas/spec-sheets-data.json",
+  "version": 1,
+  "generatedAt": "2026-07-08T11:30:50.732Z",
+  "generator": "figma/spec-sheets-plugin/build-spec-data.ts",
+  "source": "src/components/metas.ts (componentMetas) + src/tokens/generated/figma.tokens.json",
+  "note": "Platform support defaults to [\"web\"] — ComponentMeta does not yet track Android/iOS.",
+  "count": 60,
+  "tokenScales": {
+    "radius": [
+      {
+        "id": "radius.none",
+        "name": "none"
+      },
+      {
+        "id": "radius.xs",
+        "name": "xs"
+      },
+      {
+        "id": "radius.sm",
+        "name": "sm"
+      },
+      {
+        "id": "radius.md",
+        "name": "md"
+      },
+      {
+        "id": "radius.lg",
+        "name": "lg"
+      },
+      {
+        "id": "radius.xl",
+        "name": "xl"
+      },
+      {
+        "id": "radius.2xl",
+        "name": "2xl"
+      },
+      {
+        "id": "radius.3xl",
+        "name": "3xl"
+      },
+      {
+        "id": "radius.full",
+        "name": "full"
+      },
+      {
+        "id": "radius.control",
+        "name": "control"
+      },
+      {
+        "id": "radius.surface",
+        "name": "surface"
+      },
+      {
+        "id": "radius.pill",
+        "name": "pill"
+      }
+    ],
+    "spacing": [
+      {
+        "id": "space.0",
+        "name": "0"
+      },
+      {
+        "id": "space.1",
+        "name": "1"
+      },
+      {
+        "id": "space.2",
+        "name": "2"
+      },
+      {
+        "id": "space.3",
+        "name": "3"
+      },
+      {
+        "id": "space.4",
+        "name": "4"
+      },
+      {
+        "id": "space.5",
+        "name": "5"
+      },
+      {
+        "id": "space.6",
+        "name": "6"
+      },
+      {
+        "id": "space.7",
+        "name": "7"
+      },
+      {
+        "id": "space.8",
+        "name": "8"
+      },
+      {
+        "id": "space.9",
+        "name": "9"
+      },
+      {
+        "id": "space.10",
+        "name": "10"
+      },
+      {
+        "id": "space.12",
+        "name": "12"
+      },
+      {
+        "id": "space.14",
+        "name": "14"
+      },
+      {
+        "id": "space.16",
+        "name": "16"
+      },
+      {
+        "id": "space.20",
+        "name": "20"
+      },
+      {
+        "id": "space.24",
+        "name": "24"
+      },
+      {
+        "id": "space.28",
+        "name": "28"
+      },
+      {
+        "id": "space.32",
+        "name": "32"
+      },
+      {
+        "id": "space.px",
+        "name": "px"
+      },
+      {
+        "id": "space.0.5",
+        "name": "0.5"
+      },
+      {
+        "id": "space.1.5",
+        "name": "1.5"
+      },
+      {
+        "id": "space.2.5",
+        "name": "2.5"
+      },
+      {
+        "id": "space.3.5",
+        "name": "3.5"
+      }
+    ],
+    "shadowStyles": [
+      "shadow/xs",
+      "shadow/sm",
+      "shadow/md",
+      "shadow/lg",
+      "shadow/xl",
+      "shadow/focus"
+    ]
+  },
+  "components": [
+    {
+      "name": "Icon",
+      "slug": "icon",
+      "category": "atom",
+      "description": "Reusable SVG icon system rendered on a 24×24 grid with `currentColor`. Supports size, color, stroke width and filled/stroke modes.",
+      "tags": [
+        "icon",
+        "svg",
+        "foundation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "name",
+          "label": "Icon",
+          "options": [
+            "check",
+            "close",
+            "chevron-down",
+            "chevron-up",
+            "chevron-left",
+            "chevron-right",
+            "search",
+            "plus",
+            "minus",
+            "info",
+            "alert-triangle",
+            "alert-circle",
+            "check-circle",
+            "x-circle",
+            "user",
+            "home",
+            "settings",
+            "menu",
+            "arrow-right",
+            "arrow-left",
+            "external-link",
+            "eye",
+            "eye-off",
+            "heart",
+            "star",
+            "bell",
+            "calendar",
+            "mail",
+            "lock",
+            "trash",
+            "edit",
+            "download",
+            "upload",
+            "more-horizontal",
+            "more-vertical",
+            "loader",
+            "sun",
+            "moon",
+            "arrow-up",
+            "arrow-down",
+            "play",
+            "pause",
+            "stop",
+            "skip-forward",
+            "skip-back",
+            "volume",
+            "camera",
+            "video",
+            "mic",
+            "image",
+            "file",
+            "folder",
+            "clipboard",
+            "copy",
+            "save",
+            "paperclip",
+            "shopping-cart",
+            "credit-card",
+            "gift",
+            "dollar-sign",
+            "message-circle",
+            "send",
+            "phone",
+            "share",
+            "at-sign",
+            "help-circle",
+            "zap",
+            "flag",
+            "bookmark",
+            "thumbs-up",
+            "thumbs-down",
+            "award",
+            "shield",
+            "grid",
+            "list",
+            "filter",
+            "refresh",
+            "sliders",
+            "maximize",
+            "minimize",
+            "log-in",
+            "log-out",
+            "globe",
+            "map-pin",
+            "clock",
+            "wifi",
+            "cloud",
+            "code",
+            "terminal",
+            "database",
+            "server",
+            "activity",
+            "trending-up",
+            "bar-chart",
+            "pie-chart",
+            "git-branch",
+            "users",
+            "user-plus",
+            "coffee",
+            "chevrons-up-down",
+            "chevrons-up",
+            "chevrons-down",
+            "chevrons-left",
+            "chevrons-right",
+            "columns",
+            "table",
+            "layout",
+            "square",
+            "check-square",
+            "x-square",
+            "circle",
+            "dot",
+            "plus-circle",
+            "minus-circle",
+            "filter-x",
+            "grip-vertical",
+            "grip-horizontal",
+            "rotate-ccw",
+            "rotate-cw",
+            "zoom-in",
+            "zoom-out",
+            "maximize-2",
+            "minimize-2",
+            "tag",
+            "hash",
+            "unlock",
+            "file-text",
+            "printer",
+            "link",
+            "bell-off",
+            "logo-naver",
+            "logo-apple",
+            "logo-kakao",
+            "logo-google",
+            "logo-facebook"
+          ],
+          "default": "star",
+          "description": "The glyph to render. Each name maps to a Figma vector/component."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "mode",
+          "label": "Mode",
+          "options": [
+            "stroke",
+            "filled"
+          ],
+          "default": "stroke"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "strokeWidth",
+          "type": "number",
+          "default": 2,
+          "figmaType": "TEXT",
+          "description": "Stroke width (stroke mode)."
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "CSS color override (defaults to currentColor)."
+        },
+        {
+          "name": "spin",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Continuously rotate (inline spinner for loader/refresh)."
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Accessible label; omit for decorative icons."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "height": "size.control.sm"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Button",
+      "slug": "button",
+      "category": "atom",
+      "description": "Primary interactive control. Fully token-driven across five visual types and six tones, with loading and icon affordances.",
+      "tags": [
+        "action",
+        "form",
+        "interactive"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Content layout preset — A: label only · B: icon + label · C: icon only (square)."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "solid",
+            "outline",
+            "ghost",
+            "soft",
+            "link"
+          ],
+          "default": "solid",
+          "description": "Visual emphasis / fill style of the button."
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "brand",
+          "description": "Semantic color role."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill",
+            "square"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Button",
+          "figmaType": "TEXT",
+          "description": "Label text."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "fullWidth",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "iconStart",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Leading icon slot."
+        },
+        {
+          "name": "iconEnd",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Trailing icon slot."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "active",
+        "focus",
+        "disabled",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "pressed",
+        "focused",
+        "disabled",
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "background",
+          "token": "color.brand.solid",
+          "when": {
+            "variant": "solid",
+            "tone": "brand"
+          }
+        },
+        {
+          "property": "color",
+          "token": "color.brand.fg",
+          "when": {
+            "variant": "solid",
+            "tone": "brand"
+          }
+        },
+        {
+          "property": "border-color",
+          "token": "color.brand.border",
+          "when": {
+            "variant": "outline",
+            "tone": "brand"
+          }
+        },
+        {
+          "property": "border-color",
+          "token": "color.neutral.border",
+          "when": {
+            "variant": "outline",
+            "tone": "neutral"
+          }
+        },
+        {
+          "property": "border-color",
+          "token": "color.success.border",
+          "when": {
+            "variant": "outline",
+            "tone": "success"
+          }
+        },
+        {
+          "property": "border-color",
+          "token": "color.warning.border",
+          "when": {
+            "variant": "outline",
+            "tone": "warning"
+          }
+        },
+        {
+          "property": "border-color",
+          "token": "color.danger.border",
+          "when": {
+            "variant": "outline",
+            "tone": "danger"
+          }
+        },
+        {
+          "property": "corner-radius",
+          "token": "radius.control"
+        },
+        {
+          "property": "height",
+          "token": "size.control.md",
+          "when": {
+            "size": "md"
+          }
+        },
+        {
+          "property": "transition",
+          "token": "motion.duration.hover"
+        }
+      ],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "paddingX": "space.4",
+        "paddingY": "space.2",
+        "cornerRadius": "radius.control",
+        "fill": "color.brand.solid",
+        "height": "size.control.md",
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "IconButton",
+      "slug": "icon-button",
+      "category": "atom",
+      "description": "Square, icon-only action. Requires an accessible label.",
+      "tags": [
+        "action",
+        "icon",
+        "interactive"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "solid",
+            "outline",
+            "ghost",
+            "soft"
+          ],
+          "default": "ghost"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "neutral"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill",
+            "square"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "default": "Action",
+          "figmaType": "TEXT",
+          "description": "Required aria-label."
+        },
+        {
+          "name": "icon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "pressed",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Toggle/selected state (aria-pressed)."
+        },
+        {
+          "name": "indicator",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Notification dot."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "active",
+        "focus",
+        "disabled",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "pressed",
+        "focused",
+        "disabled",
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "cornerRadius": "radius.control",
+        "height": "size.control.md",
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Text",
+      "slug": "text",
+      "category": "atom",
+      "description": "Typography primitive. Every visual style maps to a Text Style token, so React text and Figma Text Styles stay in lockstep.",
+      "tags": [
+        "typography",
+        "foundation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "display",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "bodyLg",
+            "body",
+            "bodySm",
+            "label",
+            "caption",
+            "code"
+          ],
+          "default": "body",
+          "description": "Text Style token to apply."
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "default",
+            "muted",
+            "subtle",
+            "brand",
+            "success",
+            "warning",
+            "danger",
+            "inverse"
+          ],
+          "default": "default"
+        },
+        {
+          "name": "align",
+          "label": "Align",
+          "options": [
+            "start",
+            "center",
+            "end"
+          ],
+          "default": "start"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "The quick brown fox",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "truncate",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "as",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Rendered HTML element (polymorphic)."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Label",
+      "slug": "label",
+      "category": "atom",
+      "description": "Form field label with required/optional and disabled affordances.",
+      "tags": [
+        "form",
+        "typography"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Email address",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "required",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Muted \"(optional)\" hint."
+        },
+        {
+          "name": "hint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Trailing help-circle icon with this accessible label."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "htmlFor",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Associates the label with a control id."
+        }
+      ],
+      "states": [
+        "default",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Link",
+      "slug": "link",
+      "category": "atom",
+      "description": "Navigational text link with tone and underline options; supports external affordance.",
+      "tags": [
+        "navigation",
+        "text"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "danger"
+          ],
+          "default": "brand"
+        },
+        {
+          "name": "underline",
+          "label": "Underline",
+          "options": [
+            "hover",
+            "always",
+            "none"
+          ],
+          "default": "hover"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Learn more",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "href",
+          "type": "text",
+          "default": "#",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "external",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Adds an external-link icon + rel/target."
+        },
+        {
+          "name": "leadingIcon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Leading icon."
+        },
+        {
+          "name": "trailingIcon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Trailing icon."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Input",
+      "slug": "input",
+      "category": "atom",
+      "description": "Single-line text field with three visual types, adornment slots and the full validation-state matrix.",
+      "tags": [
+        "form",
+        "input",
+        "interactive"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled",
+            "underline"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "Placeholder",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "options": [
+            "default",
+            "error",
+            "success"
+          ],
+          "default": "default",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "readOnly",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "clearable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Show a clear (×) button while the field has a value."
+        },
+        {
+          "name": "revealable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Password reveal (eye) toggle."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Trailing async spinner."
+        },
+        {
+          "name": "statusIcon",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Auto status icon for error/success."
+        },
+        {
+          "name": "iconStart",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "iconEnd",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "background",
+          "token": "color.field.bg"
+        },
+        {
+          "property": "border-color",
+          "token": "color.field.border"
+        },
+        {
+          "property": "corner-radius",
+          "token": "radius.control"
+        },
+        {
+          "property": "height",
+          "token": "size.control.md",
+          "when": {
+            "size": "md"
+          }
+        }
+      ],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "paddingX": "space.3",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1",
+        "height": "size.control.md",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Textarea",
+      "slug": "textarea",
+      "category": "atom",
+      "description": "Multi-line text field sharing the Input visual language and state matrix.",
+      "tags": [
+        "form",
+        "input"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "resize",
+          "label": "Resize",
+          "options": [
+            "none",
+            "vertical",
+            "both"
+          ],
+          "default": "vertical"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "Write something…",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "rows",
+          "type": "number",
+          "default": 4,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "options": [
+            "default",
+            "error",
+            "success"
+          ],
+          "default": "default",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "showCount",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Live character counter (uses maxLength)."
+        },
+        {
+          "name": "autoResize",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Grow to fit content."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "readOnly",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "paddingX": "space.3",
+        "paddingY": "space.2",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Checkbox",
+      "slug": "checkbox",
+      "category": "atom",
+      "description": "Binary (and indeterminate) selection control with an optional label.",
+      "tags": [
+        "form",
+        "selection"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "success",
+            "danger"
+          ],
+          "default": "brand"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Label",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Secondary helper line under the label."
+        },
+        {
+          "name": "checked",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "indeterminate",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "invalid",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Radio",
+      "slug": "radio",
+      "category": "atom",
+      "description": "Single-choice selection control, grouped by shared `name`.",
+      "tags": [
+        "form",
+        "selection"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "success",
+            "danger"
+          ],
+          "default": "brand"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Label",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Secondary helper line under the label."
+        },
+        {
+          "name": "checked",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "invalid",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Switch",
+      "slug": "switch",
+      "category": "atom",
+      "description": "On/off toggle for immediate settings changes.",
+      "tags": [
+        "form",
+        "toggle"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "success",
+            "danger"
+          ],
+          "default": "brand"
+        },
+        {
+          "name": "labelPosition",
+          "label": "Label",
+          "options": [
+            "end",
+            "start"
+          ],
+          "default": "end"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Enabled",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "checked",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "showIcons",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Check/close glyphs inside the thumb."
+        },
+        {
+          "name": "invalid",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Badge",
+      "slug": "badge",
+      "category": "atom",
+      "description": "Compact status/label indicator. Non-interactive.",
+      "tags": [
+        "status",
+        "label"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "solid",
+            "soft",
+            "outline"
+          ],
+          "default": "soft"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger",
+            "info"
+          ],
+          "default": "neutral"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill"
+          ],
+          "default": "pill"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Badge",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "dot",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Show a leading status dot."
+        },
+        {
+          "name": "icon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Leading icon slot."
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "figmaType": "TEXT",
+          "description": "Numeric value; renders as {max}+ above the cap."
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "default": 99,
+          "figmaType": "TEXT",
+          "description": "Cap for count."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1",
+        "paddingX": "space.2",
+        "paddingY": "space.0.5",
+        "cornerRadius": "radius.pill",
+        "fill": "color.neutral.subtle"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Tag",
+      "slug": "tag",
+      "category": "atom",
+      "description": "Static, optionally-dismissable keyword label for categorisation.",
+      "tags": [
+        "label",
+        "metadata"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "soft",
+            "outline",
+            "solid"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger",
+            "info"
+          ],
+          "default": "neutral"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Tag",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "icon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Leading icon or status dot."
+        },
+        {
+          "name": "closable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1",
+        "paddingX": "space.2",
+        "cornerRadius": "radius.sm",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Chip",
+      "slug": "chip",
+      "category": "atom",
+      "description": "Interactive, selectable/removable token for filters and multi-select input.",
+      "tags": [
+        "selection",
+        "filter",
+        "interactive"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "soft",
+            "outline",
+            "solid"
+          ],
+          "default": "soft"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger",
+            "info"
+          ],
+          "default": "neutral"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "children",
+          "type": "text",
+          "default": "Chip",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "selected",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "removable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "icon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed",
+        "disabled"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1",
+        "paddingX": "space.2",
+        "cornerRadius": "radius.pill",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Avatar",
+      "slug": "avatar",
+      "category": "atom",
+      "description": "Represents a user or entity via image, initials or icon fallback, with optional status.",
+      "tags": [
+        "media",
+        "identity"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "circle",
+            "rounded"
+          ],
+          "default": "circle"
+        },
+        {
+          "name": "status",
+          "label": "Status",
+          "options": [
+            "none",
+            "online",
+            "offline",
+            "busy",
+            "away"
+          ],
+          "default": "none"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "src",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Image URL."
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "default": "Jane Doe",
+          "figmaType": "TEXT",
+          "description": "Used for initials + alt text."
+        }
+      ],
+      "states": [
+        "default",
+        "loading",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "loading",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "cornerRadius": "radius.pill",
+        "height": "size.control.md"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Divider",
+      "slug": "divider",
+      "category": "atom",
+      "description": "Visual or semantic separator between content, with an optional inline label.",
+      "tags": [
+        "layout",
+        "separator"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "orientation",
+          "label": "Orientation",
+          "options": [
+            "horizontal",
+            "vertical"
+          ],
+          "default": "horizontal"
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "solid",
+            "dashed"
+          ],
+          "default": "solid"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "subtle",
+            "default",
+            "strong"
+          ],
+          "default": "default"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Optional inline label (horizontal only)."
+        },
+        {
+          "name": "labelPosition",
+          "type": "select",
+          "options": [
+            "start",
+            "center",
+            "end"
+          ],
+          "default": "center",
+          "figmaType": "TEXT",
+          "description": "Label alignment along the rule."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "strokeColor": "color.border.default",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Spinner",
+      "slug": "spinner",
+      "category": "atom",
+      "description": "Indeterminate loading indicator driven by Motion tokens.",
+      "tags": [
+        "feedback",
+        "loading"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "brand"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "default": "Loading",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "labelPlacement",
+          "type": "select",
+          "options": [
+            "hidden",
+            "end",
+            "bottom"
+          ],
+          "default": "hidden",
+          "figmaType": "TEXT",
+          "description": "Visible label position."
+        }
+      ],
+      "states": [
+        "default",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "loading"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "height": "size.control.sm"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Progress",
+      "slug": "progress",
+      "category": "atom",
+      "description": "Linear progress indicator supporting determinate and indeterminate modes.",
+      "tags": [
+        "feedback",
+        "loading"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "brand"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "pill",
+            "square"
+          ],
+          "default": "pill"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "value",
+          "type": "number",
+          "default": 60,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "default": 100,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "variant",
+          "type": "select",
+          "options": [
+            "linear",
+            "circular"
+          ],
+          "default": "linear",
+          "figmaType": "TEXT",
+          "description": "Bar or ring."
+        },
+        {
+          "name": "indeterminate",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "showValue",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Render the percentage."
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "figmaType": "TEXT"
+        }
+      ],
+      "states": [
+        "default",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "cornerRadius": "radius.pill",
+        "fill": "color.bg.muted"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Tooltip",
+      "slug": "tooltip",
+      "category": "atom",
+      "description": "Contextual label revealed on hover/focus of a trigger, with a Motion-token entrance.",
+      "tags": [
+        "overlay",
+        "feedback"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "placement",
+          "label": "Placement",
+          "options": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ],
+          "default": "top"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "inverse",
+            "default"
+          ],
+          "default": "inverse"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "content",
+          "type": "text",
+          "default": "Tooltip",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "delay",
+          "type": "number",
+          "default": 150,
+          "figmaType": "TEXT",
+          "description": "Show delay (ms)."
+        },
+        {
+          "name": "closeDelay",
+          "type": "number",
+          "default": 0,
+          "figmaType": "TEXT",
+          "description": "Hide delay (ms)."
+        },
+        {
+          "name": "children",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Trigger element."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "paddingX": "space.2",
+        "paddingY": "space.1",
+        "cornerRadius": "radius.sm",
+        "fill": "color.bg.inverse"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Image",
+      "slug": "image",
+      "category": "atom",
+      "description": "Responsive image with aspect-ratio, object-fit, loading skeleton and error fallback.",
+      "tags": [
+        "media"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "fit",
+          "label": "Fit",
+          "options": [
+            "cover",
+            "contain",
+            "fill"
+          ],
+          "default": "cover"
+        },
+        {
+          "name": "radius",
+          "label": "Radius",
+          "options": [
+            "none",
+            "sm",
+            "md",
+            "lg",
+            "full"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "ratio",
+          "label": "Ratio",
+          "options": [
+            "auto",
+            "square",
+            "4:3",
+            "16:9",
+            "3:2"
+          ],
+          "default": "auto"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "src",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "alt",
+          "type": "text",
+          "default": "",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "caption",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Caption under the image (renders a <figure>)."
+        }
+      ],
+      "states": [
+        "default",
+        "loading",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "loading",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE",
+        "cornerRadius": "radius.md",
+        "fill": "color.bg.subtle"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Skeleton",
+      "slug": "skeleton",
+      "category": "atom",
+      "description": "Loading placeholder that mimics the shape of content while it loads. Text, circle and rectangle shapes with an optional shimmer animation.",
+      "tags": [
+        "feedback",
+        "loading",
+        "placeholder"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "text",
+            "circle",
+            "rect",
+            "rounded"
+          ],
+          "default": "text",
+          "description": "Silhouette of the placeholder."
+        },
+        {
+          "name": "animation",
+          "label": "Animation",
+          "options": [
+            "shimmer",
+            "pulse",
+            "none"
+          ],
+          "default": "shimmer"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "width",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "CSS width (e.g. 100%, 240px)."
+        },
+        {
+          "name": "height",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "CSS height (e.g. 1em, 48px)."
+        },
+        {
+          "name": "lines",
+          "type": "number",
+          "default": 1,
+          "figmaType": "TEXT",
+          "description": "Number of text lines (shape=\"text\")."
+        }
+      ],
+      "states": [
+        "loading"
+      ],
+      "interactions": [
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "background",
+          "token": "color.bg.muted"
+        },
+        {
+          "property": "corner-radius",
+          "token": "radius.sm"
+        }
+      ],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.2",
+        "cornerRadius": "radius.sm",
+        "fill": "color.bg.muted"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Slider",
+      "slug": "slider",
+      "category": "atom",
+      "description": "Single-value range slider built on a native <input type=\"range\"> for full keyboard and accessibility support, styled across sizes and tones with a live value readout.",
+      "tags": [
+        "form",
+        "input",
+        "range"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "brand",
+            "neutral",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "brand"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "min",
+          "type": "number",
+          "default": 0,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "default": 100,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "step",
+          "type": "number",
+          "default": 1,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "showValue",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Show the live value readout."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "fill",
+          "token": "color.brand.solid",
+          "when": {
+            "tone": "brand"
+          }
+        },
+        {
+          "property": "track",
+          "token": "color.bg.muted"
+        },
+        {
+          "property": "corner-radius",
+          "token": "radius.pill"
+        }
+      ],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.3",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Sparkline",
+      "slug": "sparkline",
+      "category": "atom",
+      "description": "Compact, axis-less trend chart sized to sit inline with text or in a stat tile. Token-driven SVG. Type A: line (with optional emphasized endpoint) · Type B: bars.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "inline"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: line · B: bars."
+        },
+        {
+          "name": "color",
+          "label": "Series color",
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "default": "1"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "width",
+          "type": "number",
+          "default": 96,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "default": 28,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "endDot",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Emphasize the last point (line)."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "NONE"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "SocialLoginButton",
+      "slug": "social-login-button",
+      "category": "atom",
+      "description": "OAuth continue-with button. One brand-locked variant per provider (Kakao, Naver, Apple, Google, Facebook, email) — each carries its official palette and logo mark. Supports a full-width label form and a compact circular icon-only form.",
+      "tags": [
+        "action",
+        "auth",
+        "oauth",
+        "social-login"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "provider",
+          "label": "Provider",
+          "options": [
+            "kakao",
+            "naver",
+            "apple",
+            "google",
+            "facebook",
+            "email"
+          ],
+          "default": "kakao",
+          "description": "OAuth provider. Selects the brand palette and logo mark."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill",
+            "square"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "CTA text. Defaults to the provider’s localized label."
+        },
+        {
+          "name": "fullWidth",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Stretch to fill the container."
+        },
+        {
+          "name": "iconOnly",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Render as a circular mark-only button (label becomes the aria-label)."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "active",
+        "focus",
+        "disabled",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "pressed",
+        "focused",
+        "disabled",
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "corner-radius",
+          "token": "radius.control"
+        },
+        {
+          "property": "height",
+          "token": "size.control.md",
+          "when": {
+            "size": "md"
+          }
+        },
+        {
+          "property": "padding-x",
+          "token": "space.4"
+        },
+        {
+          "property": "transition",
+          "token": "motion.duration.hover"
+        }
+      ],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "paddingX": "space.4",
+        "paddingY": "space.2",
+        "cornerRadius": "radius.control",
+        "height": "size.control.md",
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "FormField",
+      "slug": "form-field",
+      "category": "molecule",
+      "description": "Composes Label + control + hint/error text and wires the accessibility relationships (id, aria-describedby, aria-invalid).",
+      "tags": [
+        "form",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "layout",
+          "label": "Layout",
+          "options": [
+            "vertical",
+            "horizontal"
+          ],
+          "default": "vertical"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "default": "Email",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "hint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Helper text below the control."
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Error message with alert icon (overrides hint)."
+        },
+        {
+          "name": "success",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Success message with check icon."
+        },
+        {
+          "name": "required",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Muted \"(optional)\" label hint."
+        },
+        {
+          "name": "labelHint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Help-circle tooltip on the label."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "error",
+        "success",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "error",
+        "success",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.1.5"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "TextField",
+      "slug": "text-field",
+      "category": "molecule",
+      "description": "Label + Input composed into a ready-to-use field. Three purpose-built layouts: Type A (stacked label), Type B (floating label), Type C (inline label). Wires the accessibility relationships automatically.",
+      "tags": [
+        "form",
+        "input",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "A — label stacked above · B — floating label · C — label inline (left)."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "label",
+          "type": "text",
+          "default": "Email address",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "inputType",
+          "type": "text",
+          "default": "text",
+          "figmaType": "TEXT",
+          "description": "HTML input type (text, password, email…)."
+        },
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "you@example.com",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "hint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Helper text below the field."
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Error message with alert icon (overrides hint)."
+        },
+        {
+          "name": "success",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Success message with check icon."
+        },
+        {
+          "name": "required",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "optional",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Muted \"(optional)\" label hint."
+        },
+        {
+          "name": "labelHint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Help-circle tooltip on the label."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "options": [
+            "default",
+            "error",
+            "success"
+          ],
+          "default": "default",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "clearable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Clear (×) button (via Input)."
+        },
+        {
+          "name": "revealable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Password reveal toggle (via Input)."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Trailing async spinner (via Input)."
+        },
+        {
+          "name": "iconStart",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "iconEnd",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error",
+        "success",
+        "readonly"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [
+        {
+          "property": "gap",
+          "token": "space.1.5"
+        },
+        {
+          "property": "label-color",
+          "token": "color.fg.default"
+        },
+        {
+          "property": "field-border",
+          "token": "color.field.border"
+        },
+        {
+          "property": "field-border",
+          "token": "color.border.focus",
+          "when": {
+            "status": "default"
+          }
+        }
+      ],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.1.5",
+        "cornerRadius": "radius.control"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "SearchInput",
+      "slug": "search-input",
+      "category": "molecule",
+      "description": "Search field composing Input with a leading search icon, clear affordance and submit-on-Enter.",
+      "tags": [
+        "form",
+        "search",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "Search…",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "clearable",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "filterActive",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Highlight the filter button (needs onFilter)."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "focus",
+        "loading",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "focused",
+        "loading",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Select",
+      "slug": "select",
+      "category": "molecule",
+      "description": "Accessible single-select built on a native <select> styled to match the Input language.",
+      "tags": [
+        "form",
+        "selection"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "Select an option",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "options": [
+            "default",
+            "error",
+            "success"
+          ],
+          "default": "default",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "iconStart",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Leading icon slot."
+        },
+        {
+          "name": "statusIcon",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Auto status icon for error/success."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error",
+        "success"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error",
+        "success"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "paddingX": "space.3",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1",
+        "height": "size.control.md",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Tabs",
+      "slug": "tabs",
+      "category": "molecule",
+      "description": "Compound tabbed navigation (Tabs, Tabs.List, Tabs.Tab, Tabs.Panel) with roving-tabindex keyboard support.",
+      "tags": [
+        "navigation",
+        "compound"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Orientation preset — A: tabs on top · B: tabs on the left (vertical) · C: tabs on the bottom."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "line",
+            "solid",
+            "pill"
+          ],
+          "default": "line"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "align",
+          "label": "Align",
+          "options": [
+            "start",
+            "center",
+            "stretch"
+          ],
+          "default": "start"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Controlled active tab value."
+        },
+        {
+          "name": "defaultValue",
+          "type": "text",
+          "figmaType": "TEXT"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.4"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Accordion",
+      "slug": "accordion",
+      "category": "molecule",
+      "description": "Compound disclosure list (Accordion, Accordion.Item, Accordion.Trigger, Accordion.Content) with single/multiple modes and animated expansion.",
+      "tags": [
+        "disclosure",
+        "compound"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: divided rows · B: separated cards."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "separated",
+            "contained",
+            "ghost"
+          ],
+          "default": "separated"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "mode",
+          "label": "Mode",
+          "options": [
+            "single",
+            "multiple"
+          ],
+          "default": "single"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "defaultValue",
+          "type": "text",
+          "figmaType": "TEXT"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.2"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Breadcrumb",
+      "slug": "breadcrumb",
+      "category": "molecule",
+      "description": "Hierarchical navigation trail with configurable separators and overflow collapsing.",
+      "tags": [
+        "navigation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "separator",
+          "label": "Separator",
+          "options": [
+            "chevron",
+            "slash",
+            "dot"
+          ],
+          "default": "chevron"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "items",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Array of { label, href, current, icon }."
+        },
+        {
+          "name": "maxItems",
+          "type": "number",
+          "figmaType": "TEXT",
+          "description": "Collapse the middle once items exceed this count."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Pagination",
+      "slug": "pagination",
+      "category": "molecule",
+      "description": "Page navigation with previous/next controls and truncated page ranges.",
+      "tags": [
+        "navigation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "ghost"
+          ],
+          "default": "ghost"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "page",
+          "type": "number",
+          "default": 1,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "default": 10,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "siblingCount",
+          "type": "number",
+          "default": 1,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "showEdges",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "First/last page jump buttons."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.1",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Card",
+      "slug": "card",
+      "category": "molecule",
+      "description": "Surface container with a compound API (Card, Card.Header, Card.Body, Card.Footer, Card.Media). Card.Header covers the standalone header pattern.",
+      "tags": [
+        "surface",
+        "container",
+        "compound"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: vertical (stacked) · B: horizontal (media beside content) · C: overlay (media background)."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "elevated",
+            "outlined",
+            "filled"
+          ],
+          "default": "elevated"
+        },
+        {
+          "name": "padding",
+          "label": "Padding",
+          "options": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "radius",
+          "label": "Radius",
+          "options": [
+            "md",
+            "lg",
+            "xl"
+          ],
+          "default": "lg"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "interactive",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Adds hover/press affordance + focusability."
+        },
+        {
+          "name": "selected",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Selected accent (for selectable card grids)."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "cornerRadius": "radius.surface",
+        "fill": "color.bg.surface",
+        "strokeColor": "color.border.default",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "ListItem",
+      "slug": "list-item",
+      "category": "molecule",
+      "description": "Row with leading media, title/description text and trailing content; optionally interactive/selectable.",
+      "tags": [
+        "list",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: compact row · B: comfortable two-line."
+        },
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "default",
+            "interactive"
+          ],
+          "default": "default"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "title",
+          "type": "text",
+          "default": "List item title",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "leading",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "trailing",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "selected",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "withChevron",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Trailing navigation chevron."
+        },
+        {
+          "name": "dragHandle",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Leading drag handle for reordering."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.3",
+        "paddingX": "space.3",
+        "paddingY": "space.2",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Dropdown",
+      "slug": "dropdown",
+      "category": "molecule",
+      "description": "Menu surface anchored to a trigger, with keyboard navigation and outside-click dismissal.",
+      "tags": [
+        "overlay",
+        "menu"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "placement",
+          "label": "Placement",
+          "options": [
+            "bottom-start",
+            "bottom-end",
+            "top-start",
+            "top-end"
+          ],
+          "default": "bottom-start"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "trigger",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "items",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Array of menu items."
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "active"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "pressed"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "paddingY": "space.1",
+        "cornerRadius": "radius.lg",
+        "fill": "color.bg.surface",
+        "strokeColor": "color.border.default",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "SocialLogin",
+      "slug": "social-login",
+      "category": "molecule",
+      "description": "OAuth sign-in block. Two layout presets: Type A — full-width labelled buttons stacked with a divider and a secondary icon row; Type B — a compact centered grid of circular provider marks.",
+      "tags": [
+        "auth",
+        "oauth",
+        "social-login",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: full-width stack · B: icon grid."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "pill",
+            "square"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "dividerLabel",
+          "type": "text",
+          "default": "다른 계정으로 계속하기",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "showOthers",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Show the secondary icon-only row."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Disable every provider button."
+        }
+      ],
+      "states": [
+        "default",
+        "loading",
+        "disabled"
+      ],
+      "interactions": [
+        "normal",
+        "loading",
+        "disabled"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "EmptyState",
+      "slug": "empty-state",
+      "category": "molecule",
+      "description": "Placeholder shown when there is no data, no results or an error — an icon, a title, a supporting message and an optional primary action.",
+      "tags": [
+        "feedback",
+        "data-display",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "align",
+          "label": "Align",
+          "options": [
+            "center",
+            "start"
+          ],
+          "default": "center"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "neutral",
+            "brand",
+            "danger"
+          ],
+          "default": "neutral",
+          "description": "Colors the icon medallion."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "title",
+          "type": "text",
+          "default": "표시할 항목이 없습니다",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Supporting message."
+        },
+        {
+          "name": "icon",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Illustration / icon slot."
+        },
+        {
+          "name": "action",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Primary action slot."
+        },
+        {
+          "name": "secondaryAction",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Secondary action slot."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.4",
+        "paddingX": "space.6",
+        "paddingY": "space.8",
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Popover",
+      "slug": "popover",
+      "category": "molecule",
+      "description": "Anchored overlay that floats arbitrary content next to a trigger. Positioned on a side × align grid with an optional arrow — the base primitive for Menu, Combobox, Autocomplete and DatePicker.",
+      "tags": [
+        "overlay",
+        "popover",
+        "floating",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "side",
+          "label": "Side",
+          "options": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ],
+          "default": "bottom",
+          "description": "Which side of the trigger the panel opens on."
+        },
+        {
+          "name": "align",
+          "label": "Align",
+          "options": [
+            "start",
+            "center",
+            "end"
+          ],
+          "default": "center",
+          "description": "Alignment along the chosen side."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "arrow",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Show the pointer arrow."
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Optional header title."
+        },
+        {
+          "name": "open",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Controlled open state."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": true
+      },
+      "tokens": [
+        {
+          "property": "background",
+          "token": "color.bg.surface"
+        },
+        {
+          "property": "border-color",
+          "token": "color.border.default"
+        },
+        {
+          "property": "corner-radius",
+          "token": "radius.surface"
+        },
+        {
+          "property": "shadow",
+          "token": "shadow.lg"
+        }
+      ],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.2",
+        "paddingX": "space.4",
+        "paddingY": "space.3",
+        "cornerRadius": "radius.surface",
+        "fill": "color.bg.surface",
+        "strokeColor": "color.border.default",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Combobox",
+      "slug": "combobox",
+      "category": "molecule",
+      "description": "Single-select with type-to-filter. Composes the Input field with a filtered listbox popup and full keyboard navigation (ARIA combobox pattern).",
+      "tags": [
+        "form",
+        "selection",
+        "search",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "검색 또는 선택",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Selected option value (controlled)."
+        },
+        {
+          "name": "emptyText",
+          "type": "text",
+          "default": "결과가 없습니다",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "clearable",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.1",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Autocomplete",
+      "slug": "autocomplete",
+      "category": "molecule",
+      "description": "Free-text field with live suggestions. Unlike Combobox the typed value is preserved even without a selection — suitable for search boxes and async lookups (loading state included).",
+      "tags": [
+        "form",
+        "search",
+        "suggestions",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "입력해 검색",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Input text (controlled)."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Async suggestions in flight."
+        },
+        {
+          "name": "emptyText",
+          "type": "text",
+          "default": "제안이 없습니다",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "minChars",
+          "type": "number",
+          "default": 1,
+          "figmaType": "TEXT",
+          "description": "Chars typed before suggestions open."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "loading",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "loading",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.1",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "DatePicker",
+      "slug": "date-picker",
+      "category": "molecule",
+      "description": "Single-date field with a calendar popup. Composes the Input with a month grid — pick by click or type an ISO date (YYYY-MM-DD). Min/max bounds disable out-of-range days.",
+      "tags": [
+        "form",
+        "date",
+        "calendar",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "variant",
+          "label": "Type",
+          "options": [
+            "outline",
+            "filled"
+          ],
+          "default": "outline"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "placeholder",
+          "type": "text",
+          "default": "YYYY-MM-DD",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Selected date as ISO YYYY-MM-DD (controlled)."
+        },
+        {
+          "name": "min",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Earliest selectable ISO date."
+        },
+        {
+          "name": "max",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Latest selectable ISO date."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.2",
+        "cornerRadius": "radius.control",
+        "fill": "color.field.bg",
+        "strokeColor": "color.field.border",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "FileUpload",
+      "slug": "file-upload",
+      "category": "molecule",
+      "description": "Drag-and-drop file input with click-to-browse, accept/size/count validation and a removable file list. Single or multiple files.",
+      "tags": [
+        "form",
+        "upload",
+        "file",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: full dropzone · B: compact inline row."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "neutral",
+            "brand"
+          ],
+          "default": "neutral",
+          "description": "Dropzone accent while idle."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "multiple",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "accept",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "e.g. image/*,.pdf"
+        },
+        {
+          "name": "hint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Helper line under the prompt."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "paddingX": "space.6",
+        "paddingY": "space.6",
+        "cornerRadius": "radius.surface",
+        "fill": "color.bg.subtle",
+        "strokeColor": "color.border.strong",
+        "strokeWidth": "border.width.1",
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "ImageUpload",
+      "slug": "image-upload",
+      "category": "molecule",
+      "description": "Image-specific uploader: drag-and-drop or browse, with a thumbnail preview grid and per-image remove. Defaults to accepting images and rendering object-URL previews.",
+      "tags": [
+        "form",
+        "upload",
+        "image",
+        "media",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: wrapping grid · B: single-row strip."
+        },
+        {
+          "name": "size",
+          "label": "Thumb size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "shape",
+          "label": "Shape",
+          "options": [
+            "rounded",
+            "square",
+            "circle"
+          ],
+          "default": "rounded"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "multiple",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "accept",
+          "type": "text",
+          "default": "image/*",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "hint",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Helper line under the prompt."
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused",
+        "disabled",
+        "error"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.3",
+        "cornerRadius": "radius.surface",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Menu",
+      "slug": "menu",
+      "category": "molecule",
+      "description": "Composable action menu: a trigger plus freely-arranged MenuItem / MenuLabel / MenuSeparator children, with roving-focus keyboard navigation, icons and shortcut hints. Use over Dropdown when items need grouping, labels or custom content.",
+      "tags": [
+        "overlay",
+        "menu",
+        "navigation",
+        "composition"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "placement",
+          "label": "Placement",
+          "options": [
+            "bottom-start",
+            "bottom-end",
+            "top-start",
+            "top-end"
+          ],
+          "default": "bottom-start"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "trigger",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Element that opens the menu."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.0",
+        "paddingX": "space.1",
+        "paddingY": "space.1",
+        "cornerRadius": "radius.surface",
+        "fill": "color.bg.surface",
+        "strokeColor": "color.border.default",
+        "strokeWidth": "border.width.1"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "BarChart",
+      "slug": "bar-chart",
+      "category": "molecule",
+      "description": "Categorical magnitude chart. Token-driven SVG bars anchored to the baseline with direct value labels (relief for the palette’s low-contrast hues). Type A: vertical columns · Type B: horizontal bars.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "magnitude"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Orientation — A: vertical columns · B: horizontal bars."
+        },
+        {
+          "name": "color",
+          "label": "Series color",
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "default": "1"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "height",
+          "type": "number",
+          "default": 200,
+          "figmaType": "TEXT",
+          "description": "Plot height in px."
+        },
+        {
+          "name": "showValues",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN",
+          "description": "Direct value labels on bars."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "LineChart",
+      "slug": "line-chart",
+      "category": "molecule",
+      "description": "Change-over-time chart. Token-driven SVG with one axis, recessive gridlines, a legend for multiple series and direct end-labels. Type A: lines · Type B: filled area.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "time-series"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: line · B: filled area."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "height",
+          "type": "number",
+          "default": 200,
+          "figmaType": "TEXT",
+          "description": "Plot height in px."
+        },
+        {
+          "name": "showDots",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Show point markers."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "DonutChart",
+      "slug": "donut-chart",
+      "category": "molecule",
+      "description": "Part-to-whole chart. Token-driven SVG segments with a 2px surface gap between slices, a legend carrying direct value/percent labels, and an optional center total. Type A: donut · Type B: pie.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "part-to-whole"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: donut (center hole) · B: pie (solid)."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "total",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Center label (donut). Defaults to the sum."
+        },
+        {
+          "name": "showLegend",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "RadarChart",
+      "slug": "radar-chart",
+      "category": "molecule",
+      "description": "Multivariate comparison chart. Token-driven SVG polar grid with one axis per variable, recessive concentric gridlines and a legend for multiple series. Type A: filled polygons · Type B: line-only outlines.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "multivariate"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: translucent filled polygons · B: line-only outlines."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "size",
+          "type": "number",
+          "default": 220,
+          "figmaType": "TEXT",
+          "description": "Square plot size in px."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Gauge",
+      "slug": "gauge",
+      "category": "molecule",
+      "description": "Single-value radial gauge. A recessive track arc with a token-driven value arc filled to the value ratio, plus a large tabular value read-out and label. Type A: 180° semicircle · Type B: 270° arc.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "single-value"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: 반원 180° · B: 270° 아크."
+        },
+        {
+          "name": "color",
+          "label": "Series color",
+          "options": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "default": "1"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "value",
+          "type": "number",
+          "figmaType": "TEXT",
+          "description": "Current value, clamped to [min, max]."
+        },
+        {
+          "name": "min",
+          "type": "number",
+          "default": 0,
+          "figmaType": "TEXT",
+          "description": "Scale minimum."
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "default": 100,
+          "figmaType": "TEXT",
+          "description": "Scale maximum."
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Caption below the value."
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "default": 180,
+          "figmaType": "TEXT",
+          "description": "Gauge diameter in px."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "ScatterChart",
+      "slug": "scatter-chart",
+      "category": "molecule",
+      "description": "Correlation chart plotting (x, y) points on two numeric axes. Token-driven SVG with recessive gridlines, per-point hover tooltip and a legend for multiple series. Type A: points · Type B: points + linear (least-squares) trend line.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "correlation",
+        "scatter"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: 점 · B: 점+회귀 추세선(옵션)"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "height",
+          "type": "number",
+          "default": 220,
+          "figmaType": "TEXT",
+          "description": "Plot height in px."
+        },
+        {
+          "name": "xLabel",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "X-axis caption."
+        },
+        {
+          "name": "yLabel",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Y-axis caption."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Heatmap",
+      "slug": "heatmap",
+      "category": "molecule",
+      "description": "Matrix magnitude chart. A single-hue sequential ramp encodes each cell value (light = low → dark = high) over `var(--chart-1)`, with row/column labels, a hover tooltip and a low→high scale legend. Type A: square cells · Type B: value labels shown in cells.",
+      "tags": [
+        "chart",
+        "data-viz",
+        "matrix",
+        "heatmap"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "A: 사각 셀 · B: 값 라벨 표시."
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "ariaLabel",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Accessible summary; falls back to an auto-generated matrix summary."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.3",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Alert",
+      "slug": "alert",
+      "category": "organism",
+      "description": "Contextual message with tone-driven icon, optional title, action and dismissal. Type A/B/C are layout presets: A — inline, B — full-width banner, C — prominent (left accent bar).",
+      "tags": [
+        "feedback",
+        "status"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: inline · B: banner (full-width) · C: prominent (accent bar)."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "subtle",
+            "solid",
+            "outline"
+          ],
+          "default": "subtle"
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "info",
+            "success",
+            "warning",
+            "danger",
+            "neutral"
+          ],
+          "default": "info"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "title",
+          "type": "text",
+          "default": "Heads up",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "children",
+          "type": "text",
+          "default": "This is an alert message.",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "showIcon",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "closable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "action",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.3",
+        "paddingX": "space.4",
+        "paddingY": "space.3",
+        "cornerRadius": "radius.lg",
+        "fill": "color.info.subtle"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Modal",
+      "slug": "modal",
+      "category": "organism",
+      "description": "Accessible dialog rendered in a portal with focus trapping, scroll lock and scrim dismissal.",
+      "tags": [
+        "overlay",
+        "dialog"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Presentation preset — A: centered dialog · B: bottom sheet · C: fullscreen."
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "full"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "placement",
+          "label": "Placement",
+          "options": [
+            "center",
+            "top"
+          ],
+          "default": "center"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "open",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": "Dialog title",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "children",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "closable",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "footer",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "cornerRadius": "radius.surface",
+        "fill": "color.bg.surface",
+        "paddingX": "space.6",
+        "paddingY": "space.5"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Drawer",
+      "slug": "drawer",
+      "category": "organism",
+      "description": "Edge-anchored panel (portal + focus trap) that slides in from any side.",
+      "tags": [
+        "overlay",
+        "panel"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Form-factor preset — A: flush (edge-anchored) · B: floating (inset card) · C: full (fills the cross axis)."
+        },
+        {
+          "name": "side",
+          "label": "Side",
+          "options": [
+            "right",
+            "left",
+            "top",
+            "bottom"
+          ],
+          "default": "right"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "open",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "default": "Panel",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "closable",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "footer",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "fill": "color.bg.surface",
+        "paddingX": "space.5",
+        "paddingY": "space.5"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Toast",
+      "slug": "toast",
+      "category": "organism",
+      "description": "Transient notification managed by ToastProvider/useToast, with tone, action and auto-dismiss.",
+      "tags": [
+        "feedback",
+        "overlay"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: compact · B: rich with title/actions."
+        },
+        {
+          "name": "tone",
+          "label": "Tone",
+          "options": [
+            "neutral",
+            "info",
+            "success",
+            "warning",
+            "danger"
+          ],
+          "default": "neutral"
+        },
+        {
+          "name": "placement",
+          "label": "Placement",
+          "options": [
+            "bottom-right",
+            "bottom-center",
+            "top-right",
+            "top-center"
+          ],
+          "default": "bottom-right"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "title",
+          "type": "text",
+          "default": "Saved",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "duration",
+          "type": "number",
+          "default": 4000,
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "closable",
+          "type": "boolean",
+          "default": true,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "action",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": "space.3",
+        "paddingX": "space.4",
+        "paddingY": "space.3",
+        "cornerRadius": "radius.lg",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Table",
+      "slug": "table",
+      "category": "organism",
+      "description": "Data grid with column config, density, striping/bordering, sticky header, sortable columns, row selection and a loading state.",
+      "tags": [
+        "data",
+        "layout"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: comfortable · B: compact density."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "default",
+            "striped",
+            "bordered"
+          ],
+          "default": "default"
+        },
+        {
+          "name": "size",
+          "label": "Density",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "columns",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Column definitions (supports `sortable`)."
+        },
+        {
+          "name": "data",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Row data."
+        },
+        {
+          "name": "stickyHeader",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN"
+        },
+        {
+          "name": "selectable",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Row selection checkboxes + select-all."
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Loading row with spinner."
+        },
+        {
+          "name": "caption",
+          "type": "text",
+          "figmaType": "TEXT"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "loading"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "loading"
+      ],
+      "customize": {
+        "radius": true,
+        "padding": false,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "fill": "color.bg.surface",
+        "cornerRadius": "radius.lg"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Header",
+      "slug": "header",
+      "category": "organism",
+      "description": "Application top bar with brand, primary navigation and action slots. Type A/B/C are layout presets: A — standard (brand · nav · actions), B — centered brand with nav below, C — compact (nav hidden).",
+      "tags": [
+        "layout",
+        "navigation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: standard · B: centered brand · C: compact."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "surface",
+            "transparent",
+            "elevated"
+          ],
+          "default": "surface"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "sticky",
+          "label": "Sticky",
+          "options": [
+            "false",
+            "true"
+          ],
+          "default": "false"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "brand",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "search",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Search slot (nav ↔ actions)."
+        },
+        {
+          "name": "actions",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "menuOpen",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Mobile menu open state (with onMenuToggle)."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "paddingX": "space.6",
+        "fill": "color.bg.surface",
+        "height": "size.control.lg",
+        "primaryAxisAlign": "SPACE_BETWEEN",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Footer",
+      "slug": "footer",
+      "category": "organism",
+      "description": "Site footer. Type A/B/C are layout presets: A — multi-column links + bottom bar, B — simple centered brand + social, C — minimal single row.",
+      "tags": [
+        "layout",
+        "navigation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: columns · B: simple · C: minimal."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "surface",
+            "transparent"
+          ],
+          "default": "surface"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "brand",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "columns",
+          "type": "text",
+          "figmaType": "TEXT",
+          "description": "Array of { title, links[] } (links support `external`)."
+        },
+        {
+          "name": "newsletter",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Newsletter / subscribe slot."
+        },
+        {
+          "name": "social",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "copyright",
+          "type": "text",
+          "figmaType": "TEXT"
+        },
+        {
+          "name": "legal",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Legal / policy link row."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "paddingX": "space.6",
+        "paddingY": "space.8",
+        "fill": "color.bg.surface",
+        "itemSpacing": "space.6"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Sidebar",
+      "slug": "sidebar",
+      "category": "organism",
+      "description": "Vertical navigation rail with a compound API (Sidebar, Sidebar.Section, Sidebar.Item) and a collapsed icon-only mode.",
+      "tags": [
+        "layout",
+        "navigation",
+        "compound"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "default": "A",
+          "description": "Density / grouping preset — A: standard · B: compact (condensed) · C: boxed (sections in cards)."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "surface",
+            "floating"
+          ],
+          "default": "surface"
+        },
+        {
+          "name": "width",
+          "label": "Width",
+          "options": [
+            "narrow",
+            "default",
+            "wide"
+          ],
+          "default": "default"
+        },
+        {
+          "name": "collapsed",
+          "label": "Collapsed",
+          "options": [
+            "false",
+            "true"
+          ],
+          "default": "false"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "header",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        },
+        {
+          "name": "footer",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP"
+        }
+      ],
+      "states": [
+        "default",
+        "hover",
+        "focus"
+      ],
+      "interactions": [
+        "normal",
+        "hovered",
+        "focused"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "VERTICAL",
+        "itemSpacing": "space.1",
+        "paddingX": "space.3",
+        "paddingY": "space.4",
+        "fill": "color.bg.surface"
+      },
+      "isComponentSet": true
+    },
+    {
+      "name": "Navbar",
+      "slug": "navbar",
+      "category": "organism",
+      "description": "Declarative navigation bar: pass a list of links and it renders them with active-state handling (aria-current), an alignment axis and a responsive collapse into a mobile panel. Slot-based Header is the alternative when you need a custom layout.",
+      "tags": [
+        "layout",
+        "navigation"
+      ],
+      "platforms": [
+        "web"
+      ],
+      "variantProps": [
+        {
+          "name": "type",
+          "label": "Type",
+          "options": [
+            "A",
+            "B"
+          ],
+          "default": "A",
+          "description": "Layout preset — A: single inline row · B: brand+actions row with nav below."
+        },
+        {
+          "name": "variant",
+          "label": "Style",
+          "options": [
+            "surface",
+            "transparent",
+            "elevated"
+          ],
+          "default": "surface"
+        },
+        {
+          "name": "size",
+          "label": "Size",
+          "options": [
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "md"
+        },
+        {
+          "name": "align",
+          "label": "Nav align",
+          "options": [
+            "start",
+            "center",
+            "end"
+          ],
+          "default": "start"
+        },
+        {
+          "name": "sticky",
+          "label": "Sticky",
+          "options": [
+            "false",
+            "true"
+          ],
+          "default": "false"
+        }
+      ],
+      "componentProps": [
+        {
+          "name": "brand",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Logo / brand slot."
+        },
+        {
+          "name": "actions",
+          "type": "instanceSwap",
+          "figmaType": "INSTANCE_SWAP",
+          "description": "Trailing actions slot."
+        },
+        {
+          "name": "menuOpen",
+          "type": "boolean",
+          "default": false,
+          "figmaType": "BOOLEAN",
+          "description": "Mobile panel open state."
+        }
+      ],
+      "states": [
+        "default"
+      ],
+      "interactions": [
+        "normal"
+      ],
+      "customize": {
+        "radius": false,
+        "padding": true,
+        "shadow": false
+      },
+      "tokens": [],
+      "figma": {
+        "layoutMode": "HORIZONTAL",
+        "paddingX": "space.6",
+        "fill": "color.bg.surface",
+        "height": "size.control.lg",
+        "primaryAxisAlign": "SPACE_BETWEEN",
+        "counterAxisAlign": "CENTER"
+      },
+      "isComponentSet": true
+    }
+  ]
+}

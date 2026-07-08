@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2017",
+    "lib": ["es2017"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "typeRoots": ["../../node_modules/@figma"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
+}

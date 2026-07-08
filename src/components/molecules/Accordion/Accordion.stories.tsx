@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Accordion } from './Accordion';
 import { accordionMeta } from './Accordion.meta';
 import { argTypesFromMeta, metaParameters } from '@core/storybook';
+import { expect, userEvent, within } from '@storybook/test';
 import { Text } from '../../atoms/Text';
 import { Icon } from '../../atoms/Icon';
 
@@ -38,6 +39,22 @@ const renderItems = (args: React.ComponentProps<typeof Accordion>) => (
 );
 
 export const Default: Story = { render: renderItems };
+
+/** Interaction test — clicking a collapsed trigger expands it (aria-expanded flips to true). */
+export const Expands: Story = {
+  render: renderItems,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const returns = canvas.getByRole('button', { name: /return policy/i });
+    await step('returns starts collapsed', async () => {
+      await expect(returns).toHaveAttribute('aria-expanded', 'false');
+    });
+    await step('click expands it', async () => {
+      await userEvent.click(returns);
+      await expect(returns).toHaveAttribute('aria-expanded', 'true');
+    });
+  },
+};
 
 /** Type B — each item is a separated card (border + radius + gap between rows). */
 export const TypeB: Story = { render: (a) => renderItems({ ...a, type: 'B' }) };

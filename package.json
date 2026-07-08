@@ -23,6 +23,9 @@
     "plugin:typecheck": "tsc -p figma/plugin/tsconfig.json",
     "plugin:test": "tsx figma/plugin/test/harness.ts",
     "figma:build": "npm run ds:build && npm run plugin:typecheck && npm run plugin:build && npm run plugin:test",
+    "spec:data": "tsx figma/spec-sheets-plugin/build-spec-data.ts",
+    "spec:typecheck": "tsc -p figma/spec-sheets-plugin/tsconfig.json",
+    "spec:build": "npm run spec:data && npm run spec:typecheck && esbuild figma/spec-sheets-plugin/src/code.ts --bundle --loader:.json=json --format=iife --target=es2017 --outfile=figma/spec-sheets-plugin/code.js",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""

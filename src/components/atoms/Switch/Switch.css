@@ -41,7 +41,7 @@
   transition: background-color var(--tds-motion-duration-enter) var(--tds-motion-easing-standard);
 }
 .tds-switch__thumb {
-  --switch-thumb-size: var(--tds-color-white);
+  --switch-thumb-bg: var(--tds-color-white);
   position: absolute;
   top: var(--switch-padding);
   left: var(--switch-padding);
@@ -51,9 +51,23 @@
   width: calc(var(--switch-height) - 2 * var(--switch-padding));
   height: calc(var(--switch-height) - 2 * var(--switch-padding));
   border-radius: var(--tds-radius-pill);
-  background: var(--switch-thumb-size);
+  background: var(--switch-thumb-bg);
   box-shadow: var(--tds-shadow-sm);
-  transition: transform var(--tds-motion-duration-enter) var(--tds-motion-easing-emphasized);
+  transition:
+    transform var(--tds-motion-duration-enter) var(--tds-motion-easing-emphasized),
+    box-shadow var(--tds-motion-duration-hover) var(--tds-motion-easing-standard);
+}
+
+/* Hover — subtle feedback on the track + thumb (transform-free so it never fights the checked slide).
+   Reduced-motion is handled globally in reset.css, so no per-component guard is needed. */
+.tds-switch:not(.tds-switch--disabled):hover .tds-switch__track {
+  background: color-mix(in srgb, var(--tds-color-bg-muted) 86%, var(--tds-color-fg-muted));
+}
+.tds-switch:not(.tds-switch--disabled):hover .tds-switch__input:checked + .tds-switch__track {
+  background: color-mix(in srgb, var(--switch-accent) 88%, black);
+}
+.tds-switch:not(.tds-switch--disabled):hover .tds-switch__thumb {
+  box-shadow: var(--tds-shadow-md);
 }
 
 /* Thumb icons (showIcons) — cross-fade check/close on toggle */

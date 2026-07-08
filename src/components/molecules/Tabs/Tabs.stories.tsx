@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Tabs } from './Tabs';
 import { tabsMeta } from './Tabs.meta';
 import { argTypesFromMeta, metaParameters } from '@core/storybook';
+import { expect, userEvent, within } from '@storybook/test';
 import { Text } from '../../atoms/Text';
 import { Icon } from '../../atoms/Icon';
 
@@ -45,6 +46,24 @@ export const TypeA: Story = { render: (a) => Demo({ ...a, type: 'A' }) };
 export const TypeB: Story = { render: (a) => Demo({ ...a, type: 'B' }) };
 /** Type C — tabs on the bottom. */
 export const TypeC: Story = { render: (a) => Demo({ ...a, type: 'C' }) };
+
+/** Interaction test — clicking a tab selects it and deselects the previous (aria-selected). */
+export const Selects: Story = {
+  render: Demo,
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const overview = canvas.getByRole('tab', { name: 'Overview' });
+    const specs = canvas.getByRole('tab', { name: 'Specs' });
+    await step('overview selected by default', async () => {
+      await expect(overview).toHaveAttribute('aria-selected', 'true');
+    });
+    await step('click Specs moves selection', async () => {
+      await userEvent.click(specs);
+      await expect(specs).toHaveAttribute('aria-selected', 'true');
+      await expect(overview).toHaveAttribute('aria-selected', 'false');
+    });
+  },
+};
 
 /** Fill styles (the `variant` axis, labelled "Style"). */
 export const Line: Story = { render: Demo };

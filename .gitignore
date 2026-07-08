@@ -3,6 +3,7 @@ dist
 dist-ssr
 storybook-static
 figma/plugin/code.js
+figma/spec-sheets-plugin/code.js
 *.tsbuildinfo
 *.local
 .DS_Store

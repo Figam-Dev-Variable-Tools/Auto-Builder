@@ -134,6 +134,8 @@ export interface DesignBundle {
   name: string;
   description: string;
   summary?: unknown;
+  /** Per-icon inner SVG markup (icon name → concatenated shape tags), from icons.tsx. */
+  icons?: Record<string, string>;
   components: ComponentDef[];
 }
 

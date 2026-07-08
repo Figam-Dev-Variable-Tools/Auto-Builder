@@ -41,6 +41,8 @@ export interface RecipeCtx {
   effects: Map<string, string>;
   placeholder: ComponentNode;
   fonts: DocFonts;
+  /** Per-icon inner SVG markup (icon name → shape tags) from the bundle's design.icons. */
+  icons: Record<string, string>;
 }
 
 export type Recipe = (ctx: RecipeCtx) => VariantLayers;
@@ -191,12 +193,146 @@ function labelText(
   return t;
 }
 
+/** Force a text node onto a single line — it never wraps; truncates with … only if it overflows
+ *  (mirrors the field/label CSS `white-space: nowrap`). Keeps placeholders/helper text on one row. */
+function noWrap(t: TextNode): void {
+  t.textTruncation = 'ENDING';
+  t.maxLines = 1;
+}
+
 /** An icon-slot instance (kept manually swappable, and mapped into `swaps`). */
 function iconSlot(placeholder: ComponentNode, name: string, px: number): InstanceNode {
   const inst = placeholder.createInstance();
   inst.name = name;
   inst.resize(px, px);
   return inst;
+}
+
+/** Node types createNodeFromSvg can emit for a shape tag — Figma does NOT always produce VECTOR.
+ *  `<circle>/<ellipse>` → ELLIPSE, `<rect>` → RECTANGLE, `<line>` → LINE, `<polygon>` → POLYGON,
+ *  overlapping fills → BOOLEAN_OPERATION. All of these carry fills/strokes and must be recolored,
+ *  otherwise they keep the literal black from the SVG string and read as broken / off-theme. */
+const SHAPE_NODE_TYPES = new Set([
+  'VECTOR',
+  'ELLIPSE',
+  'RECTANGLE',
+  'LINE',
+  'POLYGON',
+  'STAR',
+  'BOOLEAN_OPERATION',
+]);
+
+/** Apply a callback to every paintable shape node in a subtree (whatever createNodeFromSvg produced).
+ *  Container frames/groups are traversed but not recolored themselves. */
+function eachShape(node: SceneNode, fn: (v: SceneNode & MinimalStrokesMixin & MinimalFillsMixin) => void): void {
+  if (SHAPE_NODE_TYPES.has(node.type)) {
+    fn(node as SceneNode & MinimalStrokesMixin & MinimalFillsMixin);
+  }
+  const kids = (node as unknown as { children?: readonly SceneNode[] }).children;
+  if (kids) for (const c of kids) eachShape(c, fn);
+}
+
+/** Token-colored ring inside a `size`×`size` frame — the graceful fallback when an icon has no
+ *  markup or `createNodeFromSvg` rejects it. Never empty, always theme-bound. */
+function iconRingFallback(
+  size: number,
+  vars: VariableRegistry,
+  filled: boolean,
+  colorId: string,
+  litColor?: string,
+): FrameNode {
+  const frame = box(size, size);
+  frame.name = 'icon';
+  const g = Math.round(size * 0.72);
+  const mark = circle(g);
+  const ref = vars.get(colorId);
+  const paint: SolidPaint = litColor
+    ? { type: 'SOLID', color: hexRGB(litColor), opacity: 1 }
+    : ref
+      ? boundFill(INK, ref)
+      : { type: 'SOLID', color: INK, opacity: 1 };
+  if (filled) {
+    mark.fills = [paint];
+    mark.strokes = [];
+  } else {
+    mark.fills = [];
+    mark.strokes = [paint];
+    mark.strokeWeight = 2;
+  }
+  absChild(frame, mark, (size - g) / 2, (size - g) / 2);
+  return frame;
+}
+
+/**
+ * Draw a real icon glyph from its inner SVG markup (design.icons[name]). The markup is wrapped in
+ * a 24-grid `<svg>` and parsed natively by `figma.createNodeFromSvg` — Figma handles relative
+ * commands, arcs, circles and rects, so no manual path normalizer is needed. The frame is scaled
+ * to `size` (from the 24 viewBox) and every vector is recolored: stroke icons paint the stroke
+ * channel, filled icons the fill, each BOUND to the icon color Variable where one exists. Mirrors
+ * the Storybook Icon (feather stroke-style on a 24 grid, `currentColor`).
+ */
+export function renderIcon(
+  markup: string,
+  size: number,
+  opts: {
+    vars: VariableRegistry;
+    filled?: boolean;
+    colorId?: string;
+    strokeWidth?: number;
+    /** Recolor to this literal hex SOLID paint (e.g. `#ffffff`) instead of a token-bound paint. */
+    litColor?: string;
+    /** Skip recoloring entirely — keep the markup's own `fill="#…"` (multicolor logos like Google). */
+    preserveColors?: boolean;
+  },
+): FrameNode {
+  const {
+    vars,
+    filled = false,
+    colorId = 'color.fg.default',
+    strokeWidth = 2,
+    litColor,
+    preserveColors = false,
+  } = opts;
+  if (!markup || !markup.trim()) return iconRingFallback(size, vars, filled, colorId, litColor);
+  const stroke = filled ? 'none' : '#000000';
+  const fill = filled ? '#000000' : 'none';
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" ` +
+    `fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" ` +
+    `stroke-linecap="round" stroke-linejoin="round">${markup}</svg>`;
+
+  let frame: FrameNode;
+  try {
+    frame = figma.createNodeFromSvg(svg);
+  } catch {
+    // A single malformed glyph must never render wrong or abort the set — degrade to a
+    // token-colored ring so the slot still reads as an icon and tracks the theme.
+    return iconRingFallback(size, vars, filled, colorId, litColor);
+  }
+  frame.name = 'icon';
+  frame.fills = [];
+  if (size !== 24) frame.rescale(size / 24);
+
+  // Multicolor marks keep the fills createNodeFromSvg parsed from the markup — never recolor.
+  if (preserveColors) return frame;
+
+  const ref = vars.get(colorId);
+  const paint = (): SolidPaint =>
+    litColor
+      ? { type: 'SOLID', color: hexRGB(litColor), opacity: 1 }
+      : ref
+        ? boundFill(INK, ref)
+        : { type: 'SOLID', color: INK, opacity: 1 };
+  eachShape(frame, (v) => {
+    if (filled) {
+      v.fills = [paint()];
+      v.strokes = [];
+    } else {
+      v.strokes = [paint()];
+      v.fills = [];
+    }
+  });
+  return frame;
 }
 
 // ---------------------------------------------------------------------------
@@ -318,6 +454,22 @@ function glyph(
   return labelText(font, chars, vars, colorId, undefined, sizePx);
 }
 
+/**
+ * A real vector icon glyph — the token-colored replacement for the typed `✕ / ✓ / ‹ / ›` characters.
+ * Renders the icon from the shared icon set (`close`/`check`/`chevron-*`/…) so dropdown chevrons,
+ * tag/chip closes, breadcrumb/pagination arrows and calendar navigation are true vectors, not text.
+ * Missing markup degrades to `renderIcon`'s token-colored ring, never a blank slot.
+ */
+function iconGlyph(
+  icons: Record<string, string>,
+  name: string,
+  size: number,
+  vars: VariableRegistry,
+  colorId: string,
+): FrameNode {
+  return renderIcon(icons[name] ?? '', size, { vars, filled: false, colorId, strokeWidth: 2 });
+}
+
 // ---------------------------------------------------------------------------
 // Field-shaped molecule helpers — mirror the shared Input field language so the
 // form composites (TextField/SearchInput/Select/Combobox/Autocomplete/DatePicker/
@@ -404,22 +556,6 @@ function magnifierGlyph(vars: VariableRegistry, size: number): FrameNode {
   return f;
 }
 
-/** A chevron glyph (down by default) drawn as a bound-color stroked vector. */
-function chevronGlyph(vars: VariableRegistry, size: number, colorId = 'color.fg.muted'): FrameNode {
-  const f = box(size, size);
-  f.fills = [];
-  const a = size * 0.28;
-  const b = size * 0.6;
-  const v = strokePathVar(
-    `M${a.toFixed(1)},${(size * 0.4).toFixed(1)} L${(size / 2).toFixed(1)},${(size * 0.62).toFixed(1)} L${b.toFixed(1)},${(size * 0.4).toFixed(1)}`,
-    vars,
-    colorId,
-    1.5,
-  );
-  f.appendChild(v);
-  return f;
-}
-
 /** A calendar glyph (bordered body + top bar) for date fields. */
 function calendarGlyph(vars: VariableRegistry, size: number): FrameNode {
   const f = box(size, size);
@@ -461,14 +597,26 @@ function uploadGlyph(vars: VariableRegistry, size: number): FrameNode {
   return f;
 }
 
-/** A muted image plate (surface + sun disc) for image-upload tiles. */
-function imagePlate(vars: VariableRegistry, w: number, h: number): FrameNode {
+/** A muted image placeholder plate: a `color.bg.muted` surface centering the real `image` icon
+ *  (mountain + sun) from the icon set — the standard "no image / broken image" affordance. */
+function imagePlate(
+  vars: VariableRegistry,
+  icons: Record<string, string>,
+  w: number,
+  h: number,
+): FrameNode {
   const plate = box(w, h);
+  plate.layoutMode = 'HORIZONTAL';
+  plate.primaryAxisAlignItems = 'CENTER';
+  plate.counterAxisAlignItems = 'CENTER';
+  plate.primaryAxisSizingMode = 'FIXED';
+  plate.counterAxisSizingMode = 'FIXED';
+  plate.resize(w, h);
+  plate.clipsContent = true;
   applyFill(plate, vars, 'color.bg.muted');
   bindRadius(plate, vars, 'radius.sm');
-  const sun = circle(Math.max(6, Math.round(h * 0.3)));
-  applyFill(sun, vars, 'color.fg.subtle');
-  absChild(plate, sun, Math.round(w * 0.16), Math.round(h * 0.18));
+  const glyphPx = Math.max(12, Math.round(Math.min(w, h) * 0.5));
+  plate.appendChild(iconGlyph(icons, 'image', glyphPx, vars, 'color.fg.subtle'));
   return plate;
 }
 
@@ -524,6 +672,7 @@ function popupSurface(
 function optionRow(
   vars: VariableRegistry,
   fonts: DocFonts,
+  icons: Record<string, string>,
   width: number,
   text: string,
   selected: boolean,
@@ -550,7 +699,7 @@ function optionRow(
   r.appendChild(t);
   fillGrow(t);
   if (selected) {
-    const chk = glyph(fonts.bold, '✓', vars, 'color.brand.solid', 12);
+    const chk = iconGlyph(icons, 'check', 14, vars, 'color.brand.solid');
     r.appendChild(chk);
   }
   return r;
@@ -561,6 +710,7 @@ function calendarSurface(
   vars: VariableRegistry,
   effects: Map<string, string>,
   fonts: DocFonts,
+  icons: Record<string, string>,
   width: number,
 ): FrameNode {
   const cal = popupSurface(vars, effects, width);
@@ -573,9 +723,9 @@ function calendarSurface(
   header.primaryAxisSizingMode = 'FIXED';
   header.counterAxisSizingMode = 'FIXED';
   header.resize(width - 16, 20);
-  header.appendChild(glyph(fonts.regular, '‹', vars, 'color.fg.muted', 14));
+  header.appendChild(iconGlyph(icons, 'chevron-left', 16, vars, 'color.fg.muted'));
   header.appendChild(labelText(fonts.semibold, '2026 · 7', vars, 'color.fg.default', 'font.size.sm', 13));
-  header.appendChild(glyph(fonts.regular, '›', vars, 'color.fg.muted', 14));
+  header.appendChild(iconGlyph(icons, 'chevron-right', 16, vars, 'color.fg.muted'));
   cal.appendChild(header);
 
   const week = box(width - 16, 16);
@@ -716,9 +866,9 @@ const button: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
 };
 
 /** Checkbox — square box + toggled check / indeterminate mark + label. */
-const checkbox: Recipe = ({ node, combo, ch, vars, fonts }) => {
+const checkbox: Recipe = ({ node, combo, ch, vars, fonts, icons }) => {
   const s = px(16, 18, 22, combo.size);
-  const glyph = px(12, 14, 16, combo.size);
+  const glyphPx = px(12, 14, 16, combo.size);
   const accent = accentToken(combo);
   const onAccent = onAccentToken(combo);
 
@@ -740,7 +890,7 @@ const checkbox: Recipe = ({ node, combo, ch, vars, fonts }) => {
   const check = centered(box(s, s), s, s);
   applyFill(check, vars, accent);
   bindRadius(check, vars, 'radius.sm');
-  const tick = labelText(fonts.bold, '✓', vars, onAccent, undefined, glyph);
+  const tick = iconGlyph(icons, 'check', glyphPx, vars, onAccent);
   check.appendChild(tick);
   check.x = 0;
   check.y = 0;
@@ -788,13 +938,15 @@ const radio: Recipe = ({ node, combo, ch, vars, fonts }) => {
   applyFill(dot, vars, accent);
   dot.x = (s - Math.round(s * 0.5)) / 2;
   dot.y = (s - Math.round(s * 0.5)) / 2;
-  dot.visible = false;
+  // `checked` is a synthetic On/Off VARIANT here (injected in components.ts) so the set can be an
+  // interactive component (click toggles Off↔On). `State` is undefined for a non-injected build.
+  dot.visible = combo.State === 'On';
   ring.appendChild(dot);
 
   const label = labelText(fonts.regular, 'Label', vars, ch.text, ch.fontSize, 14);
   node.appendChild(label);
 
-  return { node, label, swaps: {}, bools: { checked: dot } };
+  return { node, label, swaps: {}, bools: {} };
 };
 
 /** Switch — pill track + thumb; `checked` reveals the accent "on" overlay (thumb at end). */
@@ -834,7 +986,9 @@ const switchRecipe: Recipe = ({ node, combo, ch, vars, fonts }) => {
   on.appendChild(thumbOn);
   on.x = 0;
   on.y = 0;
-  on.visible = false;
+  // `checked` is a synthetic On/Off VARIANT here (injected in components.ts) so the set can be an
+  // interactive component (click toggles Off↔On, SMART_ANIMATE slides the thumb).
+  on.visible = combo.State === 'On';
   track.appendChild(on);
 
   const label = labelText(fonts.regular, 'Enabled', vars, ch.text, ch.fontSize, 14);
@@ -848,7 +1002,7 @@ const switchRecipe: Recipe = ({ node, combo, ch, vars, fonts }) => {
     node.appendChild(label);
   }
 
-  return { node, label, swaps: {}, bools: { checked: on } };
+  return { node, label, swaps: {}, bools: {} };
 };
 
 /** Badge — tone pill (variant solid/soft/outline) + optional dot / icon + label. */
@@ -911,19 +1065,30 @@ const avatar: Recipe = ({ node, combo, ch, vars, fonts }) => {
             ? 64
             : 40;
 
+  // Outer container does NOT clip — so the status dot can sit on the avatar edge without being cut
+  // off by the pill radius. The avatar body (fill + initials + rounded clip) lives in an inner frame.
   node.layoutMode = 'HORIZONTAL';
   node.primaryAxisAlignItems = 'CENTER';
   node.counterAxisAlignItems = 'CENTER';
   node.primaryAxisSizingMode = 'FIXED';
   node.counterAxisSizingMode = 'FIXED';
   node.resize(s, s);
-  node.clipsContent = true;
-  // Avatar.css fills with color.bg.muted (the meta declares no fill → ch.fill is undefined), and
-  // shape drives the radius (circle → pill · rounded → lg) rather than the fixed base radius.
-  applyFill(node, vars, ch.fill || 'color.bg.muted');
-  bindRadius(node, vars, combo.shape === 'rounded' ? 'radius.lg' : 'radius.pill');
+  node.clipsContent = false;
+  node.fills = [];
   if (combo.state === 'error') node.opacity = 0.6;
 
+  const body = box(s, s);
+  body.layoutMode = 'HORIZONTAL';
+  body.primaryAxisAlignItems = 'CENTER';
+  body.counterAxisAlignItems = 'CENTER';
+  body.primaryAxisSizingMode = 'FIXED';
+  body.counterAxisSizingMode = 'FIXED';
+  body.resize(s, s);
+  body.clipsContent = true;
+  // Avatar.css fills with color.bg.muted (the meta declares no fill → ch.fill is undefined), and
+  // shape drives the radius (circle → pill · rounded → lg) rather than the fixed base radius.
+  applyFill(body, vars, ch.fill || 'color.bg.muted');
+  bindRadius(body, vars, combo.shape === 'rounded' ? 'radius.lg' : 'radius.pill');
   const initials = labelText(
     fonts.semibold,
     'JD',
@@ -932,9 +1097,11 @@ const avatar: Recipe = ({ node, combo, ch, vars, fonts }) => {
     undefined,
     Math.round(s * 0.4),
   );
-  node.appendChild(initials);
+  body.appendChild(initials);
+  place(node, body);
 
-  // Status dot (VARIANT `status`): each value paints its own dot; `none` shows nothing.
+  // Status dot (VARIANT `status`): each value paints its own dot; `none` shows nothing. Placed on
+  // the bottom-right edge, slightly inset so it overlaps the body rim and stays fully inside `node`.
   const statusFill: Record<string, string> = {
     online: 'color.success.solid',
     busy: 'color.danger.solid',
@@ -953,7 +1120,8 @@ const avatar: Recipe = ({ node, combo, ch, vars, fonts }) => {
       undefined,
       1.5,
     );
-    absChild(node, dot, s - d, s - d);
+    const inset = Math.round(d * 0.15);
+    absChild(node, dot, s - d - inset, s - d - inset);
   }
 
   return { node, label: null, swaps: {}, bools: {} };
@@ -1049,7 +1217,7 @@ const progress: Recipe = ({ node, combo, ch, vars }) => {
 };
 
 /** Tag — tone pill (soft/outline/solid) + leading icon slot + optional trailing ✕ (closable). */
-const tag: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const tag: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   const tone = combo.tone || 'neutral';
   const variant = combo.variant || 'outline';
   const { fillId, textId, strokeId } = tonePill(variant, tone);
@@ -1077,7 +1245,7 @@ const tag: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   const label = labelText(fonts.medium, 'Tag', vars, textId, 'font.size.xs', 12);
   node.appendChild(label);
 
-  const close = glyph(fonts.bold, '✕', vars, textId, 11);
+  const close = iconGlyph(icons, 'close', 12, vars, textId);
   close.visible = false;
   node.appendChild(close);
 
@@ -1085,7 +1253,7 @@ const tag: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
 };
 
 /** Chip — interactive tone pill (pill radius) + leading icon/check (selected) + trailing ✕ (removable). */
-const chip: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const chip: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   const tone = combo.tone || 'neutral';
   const variant = combo.variant || 'soft';
   const { fillId, textId, strokeId } = tonePill(variant, tone);
@@ -1111,14 +1279,14 @@ const chip: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   node.appendChild(icon);
 
   // Selected → a leading check glyph (the real Chip shows a check when selected).
-  const check = glyph(fonts.bold, '✓', vars, textId, combo.size === 'sm' ? 12 : 14);
+  const check = iconGlyph(icons, 'check', combo.size === 'sm' ? 12 : 14, vars, textId);
   check.visible = false;
   node.appendChild(check);
 
   const label = labelText(fonts.medium, 'Chip', vars, textId, fontId, 14);
   node.appendChild(label);
 
-  const remove = glyph(fonts.bold, '✕', vars, textId, 11);
+  const remove = iconGlyph(icons, 'close', 12, vars, textId);
   remove.visible = false;
   node.appendChild(remove);
 
@@ -1240,7 +1408,7 @@ const textarea: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** Link — inline tone-colored text; underline=always draws the underline; leading/trailing icon slots. */
-const link: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const link: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   const toneColor =
     combo.state === 'disabled'
       ? 'color.fg.disabled'
@@ -1278,7 +1446,7 @@ const link: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   trailing.visible = false;
   node.appendChild(trailing);
 
-  const ext = glyph(fonts.medium, '↗', vars, toneColor, iconPx);
+  const ext = iconGlyph(icons, 'external-link', iconPx, vars, toneColor);
   ext.visible = false;
   node.appendChild(ext);
 
@@ -1421,7 +1589,7 @@ const tooltip: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** Image — placeholder surface with radius per axis, ratio per axis, and a simple image glyph. */
-const image: Recipe = ({ node, combo, vars }) => {
+const image: Recipe = ({ node, combo, vars, icons }) => {
   const radiusId =
     combo.radius === 'none'
       ? 'radius.none'
@@ -1451,37 +1619,54 @@ const image: Recipe = ({ node, combo, vars }) => {
   applyFill(node, vars, 'color.bg.subtle');
   bindRadius(node, vars, radiusId);
 
-  // Simple "image" glyph — a muted plate with a sun disc, mirroring the fallback icon.
-  const plate = box(44, 32);
-  applyFill(plate, vars, 'color.bg.muted');
-  bindRadius(plate, vars, 'radius.sm');
-  const sun = circle(10);
-  applyFill(sun, vars, 'color.fg.subtle');
-  absChild(plate, sun, 6, 5);
-  node.appendChild(plate);
+  // Placeholder / broken-image affordance — the real `image` icon (mountain + sun) centered on the
+  // surface, matching Image.tsx's skeleton/error fallback instead of an ad-hoc plate+sun.
+  const glyphPx = Math.max(24, Math.round(Math.min(w, h) * 0.32));
+  node.appendChild(iconGlyph(icons, 'image', glyphPx, vars, 'color.fg.subtle'));
 
   return { node, label: null, swaps: {}, bools: {} };
 };
 
-/** Icon — a single generic glyph on a size-scaled grid; stroke vs filled per `mode`. */
-const icon: Recipe = ({ node, combo, vars }) => {
+/** Icon — the real glyph for `combo.name`, size-scaled on the 24 grid; stroke vs filled per `mode`. */
+const icon: Recipe = ({ node, combo, vars, icons }) => {
   const s = px5({ xs: 14, sm: 16, md: 20, lg: 24, xl: 32 }, combo.size, 20);
-  const g = Math.round(s * 0.72);
+  const markup = icons[combo.name];
+  // Brand logos are fill-based marks (not stroke glyphs): force filled regardless of mode, and
+  // keep multicolor logos' own colors (logo-google carries explicit hex fills); mono logos get
+  // filled with the token icon color so they stay visible + themeable.
+  const isLogo = combo.name.startsWith('logo-');
+  const preserve = /fill="#/i.test(markup);
+  const filled = isLogo ? true : combo.mode === 'filled';
 
   node.resize(s, s);
   node.fills = [];
 
-  const mark = circle(g);
-  if (combo.mode === 'filled') {
-    applyFill(mark, vars, 'color.fg.default');
-    mark.strokes = [];
+  if (markup) {
+    const glyph = renderIcon(markup, s, {
+      vars,
+      filled,
+      colorId: 'color.fg.default',
+      strokeWidth: 2,
+      preserveColors: isLogo && preserve,
+    });
+    node.appendChild(glyph);
+    glyph.x = 0;
+    glyph.y = 0;
   } else {
-    mark.fills = [];
-    applyStroke(mark, vars, 'color.fg.default', undefined, 2);
+    // Defensive fallback (all 130 names ship markup): a token-colored ring, never an empty box.
+    const g = Math.round(s * 0.72);
+    const mark = circle(g);
+    if (filled) {
+      applyFill(mark, vars, 'color.fg.default');
+      mark.strokes = [];
+    } else {
+      mark.fills = [];
+      applyStroke(mark, vars, 'color.fg.default', undefined, 2);
+    }
+    mark.x = (s - g) / 2;
+    mark.y = (s - g) / 2;
+    node.appendChild(mark);
   }
-  mark.x = (s - g) / 2;
-  mark.y = (s - g) / 2;
-  node.appendChild(mark);
 
   return { node, label: null, swaps: {}, bools: {} };
 };
@@ -1504,7 +1689,7 @@ const PROVIDER_LABEL: Record<string, string> = {
   email: '이메일로 계속하기',
 };
 
-const socialLoginButton: Recipe = ({ node, combo, vars, fonts }) => {
+const socialLoginButton: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const provider = combo.provider || 'kakao';
   const p = PROVIDER[provider];
   const heightId =
@@ -1541,10 +1726,27 @@ const socialLoginButton: Recipe = ({ node, combo, vars, fonts }) => {
   bindRadius(node, vars, radiusId);
   if (combo.state === 'disabled') node.opacity = 0.5;
 
-  // Brand mark placeholder — a disc in the on-brand foreground color.
-  const badge = circle(mark);
-  litFill(badge, p.fg);
-  node.appendChild(badge);
+  // Real provider mark from the bundle glyphs (email falls back to the mail icon). Google keeps its
+  // 4 brand colors on the white button; every other mark is recolored to the on-brand foreground.
+  const markup = provider === 'email' ? icons['mail'] : icons['logo-' + provider];
+  const preserve = provider === 'google';
+  // Logos are filled marks; email reuses the stroke-style `mail` glyph, so render it STROKED
+  // (a filled envelope is a solid blob). Both are recolored to the on-brand foreground.
+  const strokeMark = provider === 'email';
+  if (markup) {
+    const g = renderIcon(markup, mark, {
+      vars,
+      filled: !strokeMark,
+      litColor: preserve ? undefined : p.fg,
+      preserveColors: preserve,
+    });
+    node.appendChild(g);
+  } else {
+    // Defensive: if a glyph is somehow missing, keep the old disc badge so nothing crashes.
+    const badge = circle(mark);
+    litFill(badge, p.fg);
+    node.appendChild(badge);
+  }
 
   const label = labelText(
     fonts.semibold,
@@ -1667,6 +1869,13 @@ function poly(pts: { x: number; y: number }[]): string {
   return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
 }
 
+/** Figma's `vectorPaths` parser rejects comma-separated coordinates — it wants whitespace, so
+ *  `M4.5,6.4 L8,9.9` fails with "Failed to convert path. Invalid command at ,6.4". Normalize every
+ *  `x,y` pair to `x y` at the one chokepoint where paths become Vectors. This is what un-skips the
+ *  chevron molecules (Select/Combobox/Dropdown/ListItem/Accordion/FileUpload) and the comma-pathed
+ *  charts (Line/Radar/Sparkline/Scatter-trend). */
+const figPath = (d: string): string => d.replace(/,/g, ' ');
+
 /** A stroked vector whose color is bound to a token Variable (grid rings / spokes). */
 function strokePathVar(
   data: string,
@@ -1675,7 +1884,7 @@ function strokePathVar(
   weight: number,
 ): VectorNode {
   const v = figma.createVector();
-  v.vectorPaths = [{ windingRule: 'NONE', data }];
+  v.vectorPaths = [{ windingRule: 'NONE', data: figPath(data) }];
   const ref = vars.get(colorId);
   v.strokes = ref ? [boundFill(SEED, ref)] : [{ type: 'SOLID', color: SEED, opacity: 1 }];
   v.strokeWeight = weight;
@@ -1699,7 +1908,7 @@ function strokePathSeries(
   weight: number,
 ): VectorNode {
   const v = figma.createVector();
-  v.vectorPaths = [{ windingRule: 'NONE', data }];
+  v.vectorPaths = [{ windingRule: 'NONE', data: figPath(data) }];
   const ref = vars.get(seriesId(i));
   v.strokes = ref ? [boundFill(SEED, ref)] : [{ type: 'SOLID', color: hexRGB(seriesHex(i)), opacity: 1 }];
   v.strokeWeight = weight;
@@ -1712,7 +1921,7 @@ function strokePathSeries(
 /** Filled vector whose color is BOUND to the series Variable (area / radar / donut wedges). */
 function fillPathSeries(data: string, vars: VariableRegistry, i: number, opacity = 1): VectorNode {
   const v = figma.createVector();
-  v.vectorPaths = [{ windingRule: 'NONZERO', data }];
+  v.vectorPaths = [{ windingRule: 'NONZERO', data: figPath(data) }];
   const ref = vars.get(seriesId(i));
   const paint: SolidPaint = ref
     ? boundFill(SEED, ref)
@@ -2449,24 +2658,34 @@ const heatmap: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** TextField — a Label + the shared Input field; Type A stacked · B floating · C inline (label left). */
-const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
+const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts, icons }) => {
   const type = combo.type;
   const sizeId = fieldFontId(combo.size);
   const inline = type === 'C';
+  const floating = type === 'B';
+  // Fixed root width per layout so every size variant lines up and the field is wide enough that
+  // "you@example.com" and the helper line fit on one row (Type C reserves a left label column).
+  const W = inline ? 320 : 280;
+  const labelColW = 140;
+  const iconPx = px(16, 18, 20, combo.size);
 
   node.layoutMode = inline ? 'HORIZONTAL' : 'VERTICAL';
   node.primaryAxisAlignItems = 'MIN';
-  node.counterAxisAlignItems = inline ? 'MIN' : 'MIN';
-  node.primaryAxisSizingMode = 'AUTO';
-  node.counterAxisSizingMode = 'FIXED';
-  node.resize(280, node.height);
+  node.counterAxisAlignItems = 'MIN';
+  if (inline) {
+    node.primaryAxisSizingMode = 'FIXED'; // fixed width
+    node.counterAxisSizingMode = 'AUTO'; // hug height
+  } else {
+    node.primaryAxisSizingMode = 'AUTO'; // hug height
+    node.counterAxisSizingMode = 'FIXED'; // fixed width
+  }
+  node.resize(W, node.height);
   node.fills = [];
   bindDim(node, 'itemSpacing', vars, inline ? 'space.4' : 'space.1.5');
   if (combo.state === 'disabled') node.opacity = 0.6;
 
   // Label row (label + required ✱ + optional hint). Type B floats it smaller/muted.
-  const floating = type === 'B';
-  const labelRow = box(inline ? 140 : node.width, 20);
+  const labelRow = box(inline ? labelColW : W, 20);
   labelRow.layoutMode = 'HORIZONTAL';
   labelRow.counterAxisAlignItems = 'CENTER';
   labelRow.primaryAxisSizingMode = inline ? 'FIXED' : 'AUTO';
@@ -2474,7 +2693,7 @@ const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
   labelRow.primaryAxisAlignItems = inline ? 'MAX' : 'MIN'; // Type C right-aligns the inline label
   labelRow.fills = [];
   if (inline) {
-    labelRow.resize(140, 20);
+    labelRow.resize(labelColW, 20);
     bindDim(labelRow, 'paddingTop', vars, 'space.2');
   }
   bindDim(labelRow, 'itemSpacing', vars, 'space.1');
@@ -2501,13 +2720,24 @@ const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
   );
   optional.visible = false;
   labelRow.appendChild(optional);
+  // Type A stacks the label above the control; Type C sits it to the left; Type B floats it.
   if (inline) place(node, labelRow);
   else if (!floating) node.appendChild(labelRow);
 
+  // Control column: the field row over the helper text — the vertical stack the label sits
+  // above (Type A) / to the left of (Type C). Mirrors TextField.css `.tds-text-field__control`.
+  const control = box(inline ? 160 : W, 40);
+  control.name = 'Control';
+  control.layoutMode = 'VERTICAL';
+  control.primaryAxisSizingMode = 'AUTO'; // hug height
+  control.counterAxisSizingMode = 'FIXED'; // width filled below
+  control.counterAxisAlignItems = 'MIN';
+  control.fills = [];
+  bindDim(control, 'itemSpacing', vars, 'space.1');
+
   // The field row itself.
-  const field = fieldRow(combo, vars, inline ? 200 : node.width);
+  const field = fieldRow(combo, vars, inline ? 160 : W);
   const swaps: Record<string, InstanceNode> = {};
-  const iconPx = px(16, 18, 20, combo.size);
   const start = iconSlot(placeholder, 'Icon Start', iconPx);
   start.visible = false; // default TextField has no leading icon (kept swappable)
   field.appendChild(start);
@@ -2515,7 +2745,8 @@ const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
   const ph = placeholderText(fonts.regular, 'you@example.com', vars, combo);
   field.appendChild(ph);
   fillGrow(ph);
-  const clearable = glyph(fonts.bold, '✕', vars, 'color.fg.muted', 12);
+  noWrap(ph); // single line — never wraps; fits fully at this width
+  const clearable = iconGlyph(icons, 'close', 12, vars, 'color.fg.muted');
   clearable.visible = false;
   field.appendChild(clearable);
   const revealable = circle(iconPx);
@@ -2527,15 +2758,34 @@ const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
   loading.visible = false;
   place(field, loading);
   const end = iconSlot(placeholder, 'Icon End', iconPx);
+  end.visible = false; // default TextField has no trailing icon (kept swappable)
   field.appendChild(end);
   swaps.iconEnd = end;
-  if (inline) {
-    place(node, field);
-    fillGrow(field);
-  } else {
-    node.appendChild(field);
-    fillGrow(field);
-  }
+  control.appendChild(field);
+  fillGrow(field);
+
+  // Helper text below the field — completes the label → field → helper stack; tinted per state.
+  const hintColor =
+    combo.state === 'error'
+      ? 'color.danger.solid'
+      : combo.state === 'success'
+        ? 'color.success.solid'
+        : 'color.fg.muted';
+  const hint = labelText(
+    fonts.regular,
+    'We never share your email.',
+    vars,
+    hintColor,
+    'font.size.xs',
+    12,
+  );
+  noWrap(hint);
+  fillGrow(hint); // take the control-column width so an over-long single line clips, not grows
+  control.appendChild(hint);
+  control.clipsContent = true; // clip an over-long hint at the column edge instead of overflowing
+
+  node.appendChild(control);
+  fillGrow(control); // fill remaining width (Type C) / full width (Types A·B); height hugs
 
   // Type B floating label: lift the label onto the field's top border with a field-bg notch
   // masking the stroke behind it (TextField.css [data-type='B'] .tds-text-field__label).
@@ -2557,7 +2807,7 @@ const textField: Recipe = ({ node, combo, ch, vars, placeholder, fonts }) => {
 };
 
 /** SearchInput — a field row with a leading magnifier + trailing clear ✕ / filter / spinner. */
-const searchInput: Recipe = ({ node, combo, vars, fonts }) => {
+const searchInput: Recipe = ({ node, combo, vars, fonts, icons }) => {
   node.layoutMode = 'HORIZONTAL';
   node.counterAxisAlignItems = 'CENTER';
   node.primaryAxisAlignItems = 'MIN';
@@ -2587,7 +2837,7 @@ const searchInput: Recipe = ({ node, combo, vars, fonts }) => {
   filterActive.visible = false;
   place(node, filterActive);
 
-  const clearable = glyph(fonts.bold, '✕', vars, 'color.fg.muted', 12);
+  const clearable = iconGlyph(icons, 'close', 12, vars, 'color.fg.muted');
   clearable.visible = combo.state !== 'loading';
   node.appendChild(clearable);
 
@@ -2601,7 +2851,7 @@ const searchInput: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** Select — an Input-style field + leading icon slot + trailing status marker + chevron-down. */
-const select: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const select: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   node.layoutMode = 'HORIZONTAL';
   node.counterAxisAlignItems = 'CENTER';
   node.primaryAxisAlignItems = 'MIN';
@@ -2641,7 +2891,7 @@ const select: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   statusIcon.visible = combo.state === 'error' || combo.state === 'success';
   place(node, statusIcon);
 
-  const chevron = chevronGlyph(vars, iconPx);
+  const chevron = iconGlyph(icons, 'chevron-down', iconPx, vars, 'color.fg.muted');
   place(node, chevron);
 
   const disabled = hiddenMarker(node, vars);
@@ -2650,7 +2900,7 @@ const select: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
 };
 
 /** Combobox — a field row + trailing clear ✕ (clearable) + chevron-down. */
-const combobox: Recipe = ({ node, combo, vars, effects, fonts }) => {
+const combobox: Recipe = ({ node, combo, vars, effects, fonts, icons }) => {
   const W = 240;
   const iconPx = px(16, 18, 20, combo.size);
   node.layoutMode = 'VERTICAL';
@@ -2667,10 +2917,10 @@ const combobox: Recipe = ({ node, combo, vars, effects, fonts }) => {
   const label = placeholderText(fonts.regular, '검색 또는 선택', vars, combo);
   field.appendChild(label);
   fillGrow(label);
-  const clearable = glyph(fonts.bold, '✕', vars, 'color.fg.subtle', 12);
+  const clearable = iconGlyph(icons, 'close', 12, vars, 'color.fg.subtle');
   clearable.visible = false;
   field.appendChild(clearable);
-  place(field, chevronGlyph(vars, iconPx, 'color.fg.subtle'));
+  place(field, iconGlyph(icons, 'chevron-down', iconPx, vars, 'color.fg.subtle'));
   node.appendChild(field);
   fillGrow(field);
 
@@ -2678,7 +2928,7 @@ const combobox: Recipe = ({ node, combo, vars, effects, fonts }) => {
   const pop = popupSurface(vars, effects, W);
   const optW = W - 8;
   ['Apple', 'Apricot', 'Avocado'].forEach((o, i) =>
-    pop.appendChild(optionRow(vars, fonts, optW, o, i === 0)),
+    pop.appendChild(optionRow(vars, fonts, icons, optW, o, i === 0)),
   );
   node.appendChild(pop);
 
@@ -2687,7 +2937,7 @@ const combobox: Recipe = ({ node, combo, vars, effects, fonts }) => {
 };
 
 /** Autocomplete — a field row with a trailing typing caret, swapped for a spinner while loading. */
-const autocomplete: Recipe = ({ node, combo, vars, effects, fonts }) => {
+const autocomplete: Recipe = ({ node, combo, vars, effects, fonts, icons }) => {
   const W = 240;
   const iconPx = px(16, 18, 20, combo.size);
   node.layoutMode = 'VERTICAL';
@@ -2713,7 +2963,7 @@ const autocomplete: Recipe = ({ node, combo, vars, effects, fonts }) => {
   const pop = popupSurface(vars, effects, W);
   const optW = W - 8;
   ['Suggestion 1', 'Suggestion 2', 'Suggestion 3'].forEach((o) =>
-    pop.appendChild(optionRow(vars, fonts, optW, o, false)),
+    pop.appendChild(optionRow(vars, fonts, icons, optW, o, false)),
   );
   node.appendChild(pop);
 
@@ -2722,7 +2972,7 @@ const autocomplete: Recipe = ({ node, combo, vars, effects, fonts }) => {
 };
 
 /** DatePicker — a field row with a muted YYYY-MM-DD placeholder + a trailing calendar glyph. */
-const datePicker: Recipe = ({ node, combo, vars, effects, fonts }) => {
+const datePicker: Recipe = ({ node, combo, vars, effects, fonts, icons }) => {
   const W = 240;
   const iconPx = px(16, 18, 20, combo.size);
   node.layoutMode = 'VERTICAL';
@@ -2744,7 +2994,7 @@ const datePicker: Recipe = ({ node, combo, vars, effects, fonts }) => {
   fillGrow(field);
 
   // Open calendar popup — the month grid with a brand-filled selected day.
-  node.appendChild(calendarSurface(vars, effects, fonts, W));
+  node.appendChild(calendarSurface(vars, effects, fonts, icons, W));
 
   const disabled = hiddenMarker(node, vars);
   return { node, label, swaps: {}, bools: { disabled } };
@@ -2830,7 +3080,7 @@ const fileUpload: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** ImageUpload — a thumbnail plate + a dashed add-tile; radius per shape, tile size per size. */
-const imageUpload: Recipe = ({ node, combo, vars, fonts }) => {
+const imageUpload: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const tile = combo.size === 'sm' ? 72 : combo.size === 'lg' ? 128 : 96;
   const radiusId =
     combo.shape === 'square'
@@ -2859,7 +3109,7 @@ const imageUpload: Recipe = ({ node, combo, vars, fonts }) => {
   thumb.counterAxisAlignItems = 'CENTER';
   thumb.primaryAxisSizingMode = 'FIXED';
   thumb.counterAxisSizingMode = 'FIXED';
-  const plate = imagePlate(vars, Math.round(tile * 0.5), Math.round(tile * 0.38));
+  const plate = imagePlate(vars, icons, Math.round(tile * 0.5), Math.round(tile * 0.38));
   place(thumb, plate);
   place(node, thumb);
 
@@ -2881,7 +3131,7 @@ const imageUpload: Recipe = ({ node, combo, vars, fonts }) => {
   (add as FrameNode & { dashPattern: number[] }).dashPattern = [4, 4];
   bindRadius(add, vars, radiusId);
   bindDim(add, 'itemSpacing', vars, 'space.1');
-  const glyphImg = imagePlate(vars, Math.round(tile * 0.34), Math.round(tile * 0.26));
+  const glyphImg = imagePlate(vars, icons, Math.round(tile * 0.34), Math.round(tile * 0.26));
   place(add, glyphImg);
   // Add-tile prompt — medium fg.default label + an optional fg.subtle hint (ImageUpload.css).
   const addLabel = labelText(fonts.medium, '이미지 추가', vars, 'color.fg.default', 'font.size.xs', 12);
@@ -2901,26 +3151,35 @@ const imageUpload: Recipe = ({ node, combo, vars, fonts }) => {
 const formField: Recipe = ({ node, combo, vars, fonts }) => {
   const horizontal = combo.layout === 'horizontal';
   const sizeId = fieldFontId(combo.size);
+  // Fixed root width for every variant so the label/field/helper columns line up and the field is
+  // wide enough that "you@example.com" and the helper line fit on one row in both layouts.
+  const W = 320;
+  const labelColW = 160;
 
   node.layoutMode = horizontal ? 'HORIZONTAL' : 'VERTICAL';
   node.primaryAxisAlignItems = 'MIN';
   node.counterAxisAlignItems = 'MIN';
-  node.primaryAxisSizingMode = 'AUTO';
-  node.counterAxisSizingMode = 'FIXED';
-  node.resize(300, node.height);
+  if (horizontal) {
+    node.primaryAxisSizingMode = 'FIXED'; // fixed width
+    node.counterAxisSizingMode = 'AUTO'; // hug height
+  } else {
+    node.primaryAxisSizingMode = 'AUTO'; // hug height
+    node.counterAxisSizingMode = 'FIXED'; // fixed width
+  }
+  node.resize(W, node.height);
   node.fills = [];
   bindDim(node, 'itemSpacing', vars, horizontal ? 'space.4' : 'space.1.5');
   if (combo.state === 'disabled') node.opacity = 0.6;
 
-  // Label row — FormField.css horizontal label is 160px wide with a top pad to baseline-align.
-  const labelRow = box(horizontal ? 160 : node.width, 20);
+  // Label row — FormField.css horizontal label is a fixed column with a top pad to baseline-align.
+  const labelRow = box(horizontal ? labelColW : W, 20);
   labelRow.layoutMode = 'HORIZONTAL';
   labelRow.counterAxisAlignItems = 'CENTER';
   labelRow.primaryAxisSizingMode = horizontal ? 'FIXED' : 'AUTO';
   labelRow.counterAxisSizingMode = 'AUTO';
   labelRow.fills = [];
   if (horizontal) {
-    labelRow.resize(160, 20);
+    labelRow.resize(labelColW, 20);
     bindDim(labelRow, 'paddingTop', vars, 'space.2');
   }
   bindDim(labelRow, 'itemSpacing', vars, 'space.1');
@@ -2942,19 +3201,21 @@ const formField: Recipe = ({ node, combo, vars, fonts }) => {
   if (horizontal) place(node, labelRow);
   else node.appendChild(labelRow);
 
-  // Control column (field box + hint line).
-  const control = box(horizontal ? 160 : node.width, 40);
+  // Control column (field box over hint line) — the label → field → helper vertical stack.
+  const control = box(horizontal ? labelColW : W, 40);
+  control.name = 'Control';
   control.layoutMode = 'VERTICAL';
-  control.primaryAxisSizingMode = 'AUTO';
-  control.counterAxisSizingMode = 'FIXED';
+  control.primaryAxisSizingMode = 'AUTO'; // hug height
+  control.counterAxisSizingMode = 'FIXED'; // width filled below
   control.counterAxisAlignItems = 'MIN';
   control.fills = [];
   bindDim(control, 'itemSpacing', vars, 'space.1');
 
-  const field = fieldRow(combo, vars, horizontal ? 160 : node.width);
+  const field = fieldRow(combo, vars, horizontal ? labelColW : W);
   const ph = placeholderText(fonts.regular, 'you@example.com', vars, combo);
   field.appendChild(ph);
   fillGrow(ph);
+  noWrap(ph); // single line — never wraps
   control.appendChild(field);
   fillGrow(field);
 
@@ -2972,15 +3233,13 @@ const formField: Recipe = ({ node, combo, vars, fonts }) => {
     'font.size.xs',
     12,
   );
+  noWrap(hint);
+  fillGrow(hint); // take the control-column width so an over-long single line clips, not grows
   control.appendChild(hint);
+  control.clipsContent = true; // clip an over-long hint at the column edge instead of overflowing
 
-  if (horizontal) {
-    place(node, control);
-    fillGrow(control);
-  } else {
-    node.appendChild(control);
-    fillGrow(control);
-  }
+  node.appendChild(control);
+  fillGrow(control); // fill remaining width (horizontal) / full width (vertical); height hugs
 
   const disabled = hiddenMarker(node, vars);
 
@@ -2993,7 +3252,7 @@ const formField: Recipe = ({ node, combo, vars, fonts }) => {
 // ---------------------------------------------------------------------------
 
 /** Card — surface container; A vertical · B horizontal · C overlay; media + title + body line. */
-const card: Recipe = ({ node, combo, ch, vars, effects, fonts }) => {
+const card: Recipe = ({ node, combo, ch, vars, effects, fonts, icons }) => {
   const type = combo.type;
   const fillId = combo.variant === 'filled' ? 'color.bg.subtle' : 'color.bg.surface';
   const strokeId = combo.variant === 'outlined' ? 'color.border.default' : 'transparent';
@@ -3030,7 +3289,7 @@ const card: Recipe = ({ node, combo, ch, vars, effects, fonts }) => {
   node.resize(W, overlay ? 200 : node.height);
 
   // Media block (full-bleed).
-  const media = imagePlate(vars, type === 'B' ? 96 : W, type === 'B' ? 120 : 132);
+  const media = imagePlate(vars, icons, type === 'B' ? 96 : W, type === 'B' ? 120 : 132);
   if (overlay) {
     media.resize(W, 200);
     absChild(node, media, 0, 0);
@@ -3108,7 +3367,7 @@ const card: Recipe = ({ node, combo, ch, vars, effects, fonts }) => {
 };
 
 /** ListItem — row: leading media + title/description stack + trailing/chevron; selected tint; A/B. */
-const listItem: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const listItem: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   const typeB = combo.type === 'B';
   const size = combo.size;
   const W = 300;
@@ -3200,7 +3459,7 @@ const listItem: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   place(node, trailing);
   swaps.trailing = trailing;
 
-  const chevron = chevronGlyph(vars, 16, 'color.fg.subtle');
+  const chevron = iconGlyph(icons, 'chevron-down', 16, vars, 'color.fg.subtle');
   chevron.visible = false;
   place(node, chevron);
 
@@ -3356,7 +3615,7 @@ const tabs: Recipe = ({ node, combo, vars, effects, fonts }) => {
 };
 
 /** Accordion — 2 disclosure items (first open: header + body); separated/contained/ghost; A/B. */
-const accordion: Recipe = ({ node, combo, vars, fonts }) => {
+const accordion: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const variant = combo.variant;
   const typeB = combo.type === 'B';
   const size = combo.size;
@@ -3421,7 +3680,7 @@ const accordion: Recipe = ({ node, combo, vars, fonts }) => {
     );
     header.appendChild(t);
     fillGrow(t);
-    const chevron = chevronGlyph(vars, 18, open ? 'color.brand.solid' : 'color.fg.muted');
+    const chevron = iconGlyph(icons, 'chevron-down', 18, vars, open ? 'color.brand.solid' : 'color.fg.muted');
     place(header, chevron);
     item.appendChild(header);
     fillGrow(header);
@@ -3468,11 +3727,12 @@ const accordion: Recipe = ({ node, combo, vars, fonts }) => {
 };
 
 /** Breadcrumb — 3 crumbs joined by the separator glyph; last crumb emphasized; size. */
-const breadcrumb: Recipe = ({ node, combo, vars, fonts }) => {
+const breadcrumb: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const size = combo.size;
   const fontPx = size === 'sm' ? 12 : 14;
   const sizeId = size === 'sm' ? 'font.size.xs' : 'font.size.sm';
-  const sepChar = combo.separator === 'slash' ? '/' : combo.separator === 'dot' ? '•' : '›';
+  // slash/dot separators are punctuation (kept as text); the default chevron is a real icon.
+  const sepChar = combo.separator === 'slash' ? '/' : combo.separator === 'dot' ? '•' : null;
 
   node.layoutMode = 'HORIZONTAL';
   node.counterAxisAlignItems = 'CENTER';
@@ -3497,14 +3757,20 @@ const breadcrumb: Recipe = ({ node, combo, vars, fonts }) => {
     );
     node.appendChild(t);
     if (i === 0) first = t;
-    if (!last) node.appendChild(glyph(fonts.regular, sepChar, vars, 'color.fg.subtle', fontPx));
+    if (!last) {
+      node.appendChild(
+        sepChar
+          ? glyph(fonts.regular, sepChar, vars, 'color.fg.subtle', fontPx)
+          : iconGlyph(icons, 'chevron-right', fontPx + 2, vars, 'color.fg.subtle'),
+      );
+    }
   });
 
   return { node, label: first, swaps: {}, bools: {} };
 };
 
 /** Pagination — prev · 1 2 3 · next; current emphasized; outline/ghost, shape, size. */
-const pagination: Recipe = ({ node, combo, vars, fonts }) => {
+const pagination: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const size = combo.size;
   const itemSize = size === 'sm' ? 28 : size === 'lg' ? 44 : 36;
   const fontPx = size === 'sm' ? 12 : size === 'lg' ? 16 : 14;
@@ -3521,7 +3787,13 @@ const pagination: Recipe = ({ node, combo, vars, fonts }) => {
   bindDim(node, 'itemSpacing', vars, 'space.1');
   if (combo.state === 'disabled') node.opacity = 0.5;
 
-  const mkItem = (txt: string, sel: boolean): { it: FrameNode; t: TextNode } => {
+  // A page cell. Numbered pages pass `txt`; the prev/next/edge arrows pass an `iconName` so they
+  // render as real vector chevrons (single ‹ › → chevron-*, edge « » → chevrons-*) instead of text.
+  const mkItem = (
+    txt: string | null,
+    sel: boolean,
+    iconName?: string,
+  ): { it: FrameNode; t: TextNode | null } => {
     const it = box(itemSize, itemSize);
     it.layoutMode = 'HORIZONTAL';
     it.primaryAxisAlignItems = 'CENTER';
@@ -3538,33 +3810,32 @@ const pagination: Recipe = ({ node, combo, vars, fonts }) => {
       1,
     );
     bindRadius(it, vars, radiusId);
-    const t = labelText(
-      fonts.medium,
-      txt,
-      vars,
-      sel ? 'color.brand.fg' : 'color.fg.muted',
-      sizeId,
-      fontPx,
-    );
-    it.appendChild(t);
+    const color = sel ? 'color.brand.fg' : 'color.fg.muted';
+    let t: TextNode | null = null;
+    if (iconName) {
+      it.appendChild(iconGlyph(icons, iconName, fontPx + 2, vars, color));
+    } else {
+      t = labelText(fonts.medium, txt ?? '', vars, color, sizeId, fontPx);
+      it.appendChild(t);
+    }
     return { it, t };
   };
 
   // showEdges reveals BOTH the first («) and last (») page jumps — bind both to the one boolean.
-  const edgeFirst = mkItem('«', false);
+  const edgeFirst = mkItem(null, false, 'chevrons-left');
   edgeFirst.it.visible = false;
   place(node, edgeFirst.it);
 
-  place(node, mkItem('‹', false).it);
+  place(node, mkItem(null, false, 'chevron-left').it);
   let label: TextNode | null = null;
   ['1', '2', '3'].forEach((n, i) => {
     const { it, t } = mkItem(n, i === 0);
     place(node, it);
     if (i === 0) label = t;
   });
-  place(node, mkItem('›', false).it);
+  place(node, mkItem(null, false, 'chevron-right').it);
 
-  const edgeLast = mkItem('»', false);
+  const edgeLast = mkItem(null, false, 'chevrons-right');
   edgeLast.it.visible = false;
   place(node, edgeLast.it);
 
@@ -3607,7 +3878,7 @@ function menuRow(
 }
 
 /** Dropdown — trigger button + anchored menu panel (3 item rows); placement, size. */
-const dropdown: Recipe = ({ node, combo, vars, placeholder, effects, fonts }) => {
+const dropdown: Recipe = ({ node, combo, vars, placeholder, effects, fonts, icons }) => {
   const size = combo.size;
   const top = combo.placement.startsWith('top');
   const end = combo.placement.endsWith('end');
@@ -3646,7 +3917,7 @@ const dropdown: Recipe = ({ node, combo, vars, placeholder, effects, fonts }) =>
   trigger.appendChild(
     labelText(fonts.medium, 'Options', vars, 'color.fg.default', itemFontId, itemFontPx),
   );
-  place(trigger, chevronGlyph(vars, 16, 'color.fg.muted'));
+  place(trigger, iconGlyph(icons, 'chevron-down', 16, vars, 'color.fg.muted'));
 
   const menuPanel = box(200, 120);
   menuPanel.layoutMode = 'VERTICAL';
@@ -4252,7 +4523,7 @@ function miniButton(
 }
 
 /** Modal — scrim + rounded dialog panel: title/close · body lines · footer buttons. */
-const modal: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
+const modal: Recipe = ({ node, combo, vars, effects, placeholder, fonts, icons }) => {
   const size = combo.size;
   const type = combo.type;
   const W = 460;
@@ -4348,7 +4619,7 @@ const modal: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
   heading.appendChild(desc);
   header.appendChild(heading);
   fillGrow(heading);
-  const close = glyph(fonts.bold, '✕', vars, 'color.fg.muted', 15);
+  const close = iconGlyph(icons, 'close', 16, vars, 'color.fg.muted');
   place(header, close);
   panel.appendChild(header);
   fillGrow(header);
@@ -4405,7 +4676,7 @@ const modal: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
 };
 
 /** Drawer — scrim + edge-anchored panel per side: title/close · body · footer. */
-const drawer: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
+const drawer: Recipe = ({ node, combo, vars, effects, placeholder, fonts, icons }) => {
   const side = combo.side;
   const size = combo.size;
   const type = combo.type;
@@ -4470,7 +4741,7 @@ const drawer: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
   const title = labelText(fonts.semibold, 'Panel', vars, 'color.fg.default', 'font.size.lg', 18);
   header.appendChild(title);
   fillGrow(title);
-  const close = glyph(fonts.bold, '✕', vars, 'color.fg.muted', 15);
+  const close = iconGlyph(icons, 'close', 16, vars, 'color.fg.muted');
   place(header, close);
   panel.appendChild(header);
   fillGrow(header);
@@ -5177,7 +5448,7 @@ const sidebar: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => 
 };
 
 /** Alert — tone icon + title/body + optional close/action; subtle/solid/outline; A/B/C. */
-const alert: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
+const alert: Recipe = ({ node, combo, vars, placeholder, fonts, icons }) => {
   const tone = combo.tone || 'info';
   const variant = combo.variant;
   const type = combo.type;
@@ -5207,12 +5478,13 @@ const alert: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   bindRadius(node, vars, banner ? 'radius.none' : 'radius.lg');
   node.clipsContent = true;
 
-  // Prominent Type C — left accent bar.
+  // Prominent Type C — left accent bar. An ABSOLUTE child rejects layoutSizingVertical FILL, and a
+  // STRETCH constraint on a short bar only preserves margins (leaves a 10px stub). Instead make the
+  // bar taller than any alert and let the node's clipsContent (set above) crop it to full height.
   if (prominent) {
-    const barWrap = box(4, 10);
+    const barWrap = box(4, 400);
     applyFill(barWrap, vars, t.solid);
     absChild(node, barWrap, 0, 0);
-    (barWrap as FrameNode & { layoutSizingVertical: 'FILL' }).layoutSizingVertical = 'FILL';
   }
 
   // Leading tone icon (BOOLEAN showIcon).
@@ -5268,7 +5540,7 @@ const alert: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
   fillGrow(content);
 
   // Close (BOOLEAN closable).
-  const close = glyph(fonts.bold, '✕', vars, textId, 13);
+  const close = iconGlyph(icons, 'close', 14, vars, textId);
   close.opacity = 0.7;
   close.visible = false;
   place(node, close);
@@ -5282,7 +5554,7 @@ const alert: Recipe = ({ node, combo, vars, placeholder, fonts }) => {
 };
 
 /** Toast — surface card + tone left accent + shadow; tone icon + title/description + close. */
-const toast: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
+const toast: Recipe = ({ node, combo, vars, effects, placeholder, fonts, icons }) => {
   const tone = combo.tone || 'neutral';
   const type = combo.type;
   const t = toneVars(tone);
@@ -5307,11 +5579,12 @@ const toast: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
   const sid = effects.get('shadow.lg');
   if (sid) void node.setEffectStyleIdAsync(sid);
 
-  // Left tone accent bar (3px).
-  const accent = box(3, 10);
+  // Left tone accent bar (3px). ABSOLUTE children can't use FILL sizing, and a STRETCH constraint on
+  // a short bar only preserves margins (a stub) — make the bar taller than any toast and let the
+  // node's clipsContent (set above) crop it to a flush, full-height accent.
+  const accent = box(3, 400);
   applyFill(accent, vars, t.solid);
   absChild(node, accent, 0, 0);
-  (accent as FrameNode & { layoutSizingVertical: 'FILL' }).layoutSizingVertical = 'FILL';
 
   // Tone icon.
   const iconWrap = box(18, 18);
@@ -5363,14 +5636,14 @@ const toast: Recipe = ({ node, combo, vars, effects, placeholder, fonts }) => {
   place(node, actionSlot);
 
   // Close (BOOLEAN closable).
-  const close = glyph(fonts.bold, '✕', vars, 'color.fg.muted', 13);
+  const close = iconGlyph(icons, 'close', 14, vars, 'color.fg.muted');
   place(node, close);
 
   return { node, label: title, swaps: { action: actionSlot }, bools: { closable: close } };
 };
 
 /** Table — bordered surface: header row (subtle fill) + 3 body rows with cell text + dividers. */
-const table: Recipe = ({ node, combo, vars, fonts }) => {
+const table: Recipe = ({ node, combo, vars, fonts, icons }) => {
   const variant = combo.variant;
   const size = combo.size;
   const compact = combo.type === 'B';
@@ -5441,7 +5714,7 @@ const table: Recipe = ({ node, combo, vars, fonts }) => {
       chk.layoutMode = 'HORIZONTAL';
       chk.primaryAxisAlignItems = 'CENTER';
       chk.counterAxisAlignItems = 'CENTER';
-      chk.appendChild(labelText(fonts.bold, '✓', vars, 'color.brand.fg', undefined, 11));
+      chk.appendChild(iconGlyph(icons, 'check', 12, vars, 'color.brand.fg'));
     }
     selCell.appendChild(chk);
     selCell.visible = false;

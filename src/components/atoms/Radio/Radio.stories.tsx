@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Radio } from './Radio';
 import { radioMeta } from './Radio.meta';
@@ -16,6 +17,34 @@ export default meta;
 type Story = StoryObj<typeof Radio>;
 
 export const Playground: Story = {};
+
+/** Controlled single-choice group — clicking a Radio updates the selected value (ON/OFF per option). */
+export const Interactive: Story = {
+  render: (a) => {
+    const [value, setValue] = useState('starter');
+    const options: [string, string][] = [
+      ['starter', 'Starter'],
+      ['pro', 'Pro'],
+      ['enterprise', 'Enterprise'],
+    ];
+    return (
+      <div role="radiogroup" style={{ display: 'grid', gap: 'var(--tds-space-2)' }}>
+        {options.map(([v, label]) => (
+          <Radio
+            {...a}
+            key={v}
+            name="plan-interactive"
+            value={v}
+            checked={value === v}
+            onChange={() => setValue(v)}
+          >
+            {label}
+          </Radio>
+        ))}
+      </div>
+    );
+  },
+};
 
 export const Group: Story = {
   render: (a) => (
