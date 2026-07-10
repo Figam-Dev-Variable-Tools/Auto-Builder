@@ -24,7 +24,7 @@ export const presets: Record<StylePreset, DesignTokens> = {
   "bootstrap": {
     "$preset": "bootstrap",
     "color": {
-      "primary": "#0D6EFD",
+      "primary": "#7952B3",
       "secondary": "#6C757D",
       "error": "#DC3545",
       "success": "#198754",
@@ -69,7 +69,7 @@ export const presets: Record<StylePreset, DesignTokens> = {
   "tailwind": {
     "$preset": "tailwind",
     "color": {
-      "primary": "#2563EB",
+      "primary": "#06B6D4",
       "secondary": "#64748B",
       "error": "#EF4444",
       "success": "#22C55E",

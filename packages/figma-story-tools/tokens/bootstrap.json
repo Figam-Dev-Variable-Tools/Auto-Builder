@@ -1,7 +1,7 @@
 {
   "$preset": "bootstrap",
   "color": {
-    "primary": "#0D6EFD",
+    "primary": "#7952B3",
     "secondary": "#6C757D",
     "error": "#DC3545",
     "success": "#198754",
