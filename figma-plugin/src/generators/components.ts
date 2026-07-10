@@ -49,7 +49,7 @@ export const COMPONENT_MANIFEST: ComponentManifest = {
       text: [
         { name: 'label', default: 'Email' },
         { name: 'placeholder', default: 'name@example.com' },
-        { name: 'description', default: 'Description' },
+        { name: 'description', default: '업무용 이메일을 입력하세요.' },
       ],
       booleans: [{ name: 'showDescription', default: false }],
       swaps: [],

@@ -41,6 +41,15 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
 5. 소셜 로그인 근사 SVG 로고는 각 사 브랜드 리소스의 원본 에셋으로 교체해야 한다.
 6. 프리셋 폰트(Pretendard/Inter)는 Figma에 설치되어 있어야 하며, 없으면 Inter로 폴백된다.
 
+## figma-story-tools (Stage C — 자체 story.to.design 경로)
+
+`pnpm build:manifest`가 `src/ds` 소스에서 §3 매핑 정보 + 토큰 3프리셋을
+[packages/figma-story-tools/manifest.json](packages/figma-story-tools/manifest.json)으로
+직렬화한다(플러그인 내장 매니페스트와 동일성 검증 포함). npm 발행(오너 계정, 사람 단계)
+후에는 플러그인 [원격에서 가져오기(URL)]에
+`https://unpkg.com/figma-story-tools@latest/manifest.json`을 넣어 SaaS 없이 동일한
+컴포넌트 생성이 가능하다. 절차: [docs/figma-integration-guide.md](docs/figma-integration-guide.md) §9.
+
 ## 스타일 격리
 
 모든 프레임워크 CSS는 `?inline`으로 문자열 import 후

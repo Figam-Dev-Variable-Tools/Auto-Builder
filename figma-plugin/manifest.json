@@ -5,5 +5,11 @@
   "main": "dist/code.js",
   "ui": "dist/ui.html",
   "editorType": ["figma"],
-  "networkAccess": { "allowedDomains": ["https://raw.githubusercontent.com"] }
+  "networkAccess": {
+    "allowedDomains": [
+      "https://raw.githubusercontent.com",
+      "https://unpkg.com",
+      "https://cdn.jsdelivr.net"
+    ]
+  }
 }

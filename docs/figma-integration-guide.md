@@ -87,13 +87,30 @@
    Inter로 폴백된다. 조직 폰트 설치가 선행 조건이다.
 6. 플러그인은 "생성·갱신"만 하고 "삭제"는 하지 않는다(§0-15). 정리는 사람이 한다.
 
-## 9. 문서 페이지 픽셀 미러링 (대안 경로 — 구현 안 함)
+## 9. figma-story-tools — SaaS 없이 동일 목적을 달성하는 자체 옵션 (Stage C)
+
+story.to.design(3-3, SaaS)과 병행 가능한 자체 경로다. 빌드 타임에 컴포넌트 매핑
+정보를 추출·배포하고, DS Generator 플러그인이 URL로 소비한다.
+
+1. `pnpm build:manifest` — `src/ds` 소스에서 §3 매핑 정보 + tokens 3프리셋을
+   [packages/figma-story-tools/manifest.json](../packages/figma-story-tools/manifest.json)으로
+   직렬화한다(플러그인 내장 매니페스트와의 동일성을 빌드가 검증).
+2. `pnpm --dir packages/figma-story-tools pack`으로 내용 확인 후 **오너 npm 계정으로
+   `npm publish`** (사람 단계).
+3. Figma → DS Generator → **[원격에서 가져오기(URL)]** →
+   `https://unpkg.com/figma-story-tools@latest/manifest.json`
+   (unpkg/jsdelivr는 CORS `*`라 플러그인에서 fetch 가능 — manifest.json
+   networkAccess에 허용됨).
+4. [디자인시스템 생성] 실행 — 로드된 매니페스트로 P3 생성 로직이 그대로 동작한다.
+   컴포넌트 정의를 바꾸려면 코드(D1 props/args) 수정 → 재빌드·재발행이 유일 경로다.
+
+## 10. 문서 페이지 픽셀 미러링 (대안 경로 — 구현 안 함)
 
 픽셀 동일 미러링이 필요하면 서드파티 **html.to.design** 플러그인으로 Storybook 문서 URL을
 직접 import할 수 있다(별도 유료 플러그인). 본 프로젝트의 표준 경로는 DS Generator의
 docs-content.json 미러링(P4)이다.
 
-## 10. 트러블슈팅
+## 11. 트러블슈팅
 
 - **"Failed to fetch dynamically imported module"**: 플러그인 팝업을 닫고 재시도한다.
 - Design 탭이 비어 있으면 `design.url`의 `node-id`가 실제 프레임을 가리키는지 확인한다.

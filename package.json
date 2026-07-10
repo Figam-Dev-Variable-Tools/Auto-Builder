@@ -10,6 +10,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "pnpm build:tokens && pnpm build:tw && storybook build",
     "build:tokens": "node scripts/build-tokens.mjs",
+    "build:manifest": "node scripts/build-story-manifest.mjs",
     "build:tw": "tailwindcss -i src/frameworks/tailwind/tailwind.source.css -o src/frameworks/tailwind/tailwind.generated.css --minify",
     "chromatic": "chromatic --exit-zero-on-changes"
   },

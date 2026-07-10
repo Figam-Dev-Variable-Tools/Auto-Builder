@@ -165,8 +165,8 @@
 
   $('btn-import-remote').onclick = () => {
     const url = prompt(
-      '원격 JSON URL (raw.githubusercontent.com)',
-      'https://raw.githubusercontent.com/<owner>/<repo>/main/tokens/toss.json',
+      '원격 JSON URL — tokens 또는 컴포넌트 매니페스트\n(raw.githubusercontent.com / unpkg.com / cdn.jsdelivr.net)',
+      'https://unpkg.com/figma-story-tools@latest/manifest.json',
     )
     if (url) parent.postMessage({ pluginMessage: { type: 'import-remote', url } }, '*')
   }
