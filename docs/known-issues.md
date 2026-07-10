@@ -40,3 +40,11 @@ Heroicons는 정상.
 
 **검증**: `@font-face` 추출/글리프 보존을 실제 CSS로 단위 검증, `pnpm build-storybook`
 통과, 산출 청크에 주입 코드 포함 확인. 브라우저 시각 확인은 오너 검수 항목.
+
+**후속 반영 (Phase 3 — I1)**: 위 표에서 권장한 **인라인 SVG 방식**으로 요구사항 §11의
+나머지 아이콘 세트를 추가했다. Lucide/Tabler는 Heroicons와 동일한 React 인라인 SVG
+컴포넌트(`currentColor` stroke), Material Symbols는 React 컴포넌트 패키지가 없어
+SocialLoginButton과 동일한 `?raw` SVG 인라인(`@material-symbols/svg-400`, CSS 모듈에서
+`fill: currentColor` 지정)으로 구현했다. 세 세트 모두 외부 폰트·`@font-face`가 없어
+Shadow DOM 등 격리 구조에서 KI-1 같은 폰트 등록 제약이 원천적으로 발생하지 않는다.
+(src/icons/{Lucide,Tabler,MaterialSymbols}.stories.tsx — `pnpm build-storybook` 인덱스 등록 확인.)

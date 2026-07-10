@@ -38,7 +38,9 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
    DS 컴포넌트·문서 페이지가 생성된다.
 4. 양방향 동기화: [현재 Variables 내보내기] → 받은 JSON을 `tokens/`에 덮어쓰고 커밋 →
    `pnpm build:tokens` → Storybook 자동 반영. 이것이 디자이너 수정의 유일한 코드 반영 경로다.
-5. 소셜 로그인 근사 SVG 로고는 각 사 브랜드 리소스의 원본 에셋으로 교체해야 한다.
+5. 웹 컴포넌트의 소셜 로그인 로고는 각 사 공식 geometry SVG로 반영됨(Google 4색 G·
+   Facebook f·네이버 N·카카오 심볼). 단, Figma 플러그인이 생성하는 Figma 컴포넌트의
+   로고는 첫 글자 텍스트 플레이스홀더이므로 Figma 안에서 공식 에셋으로 교체가 필요하다.
 6. 프리셋 폰트(Pretendard/Inter)는 Figma에 설치되어 있어야 하며, 없으면 Inter로 폴백된다.
 
 ## figma-story-tools (Stage C — 자체 story.to.design 경로)
@@ -55,6 +57,19 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
 모든 프레임워크 CSS는 `?inline`으로 문자열 import 후
 [src/shared/FrameworkScope.tsx](src/shared/FrameworkScope.tsx)가 Shadow DOM 안에만
 주입한다. 전역(document head)에 프레임워크 CSS를 주입하지 않는다.
+
+## 아이콘 시스템 (요구사항 §11)
+
+Storybook `Icons/` 하위에 5개 세트를 제공한다. 세 가지 통합 방식을 의도적으로 병렬
+비교한다 — 모두 Shadow DOM 격리와 호환된다.
+
+| 세트 | 방식 | 근거 |
+|---|---|---|
+| Heroicons / Lucide / Tabler | React **인라인 SVG 컴포넌트** (`currentColor`) | 외부 폰트·에셋 없음 — 어떤 격리 구조에서도 동작 |
+| Material Symbols | **`?raw` SVG 인라인** (`@material-symbols/svg-400`) | React 컴포넌트 패키지 부재 — SocialLoginButton과 동일 방식, CSS 모듈에서 `fill: currentColor` |
+| Bootstrap Icons | **아이콘 폰트** (`@font-face`) | KI-1 제약 회피를 위해 `@font-face`만 document 레벨 1회 주입 ([docs/known-issues.md](docs/known-issues.md)) |
+
+인라인 SVG 3종은 KI-1이 권장한 방식으로, `@font-face` 등록 제약이 원천적으로 없다.
 
 ## Figma 연동
 
@@ -76,7 +91,7 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
 
 ## 남은 단계 (메모 — 사람 수행 필요)
 
-개발(Phase 1·2, Stage C)은 완료·검증됨. 아래는 계정/수동 확인이 필요해 자동화하지 않은 단계다.
+개발(Phase 1·2, Stage C, Phase 3 아이콘 세트)은 완료·검증됨. 아래는 계정/수동 확인이 필요해 자동화하지 않은 단계다.
 
 - [ ] **오너 검수**: `pnpm storybook` → 툴바 Preset(bootstrap/tailwind/toss) 전환 시 DS 컴포넌트
       색 변화, Controls 패널 조작, 쇼케이스 인터랙션(토글/dismiss/active) 확인
@@ -92,8 +107,9 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
 - [ ] **figma-story-tools npm publish** — 오너 npm 계정으로 `packages/figma-story-tools` 발행
       (`pnpm build:manifest` → `pnpm --dir packages/figma-story-tools pack`으로 사전 확인)
 - [ ] **다음 개발 범위 승인**: TDS 요구사항 신규 범위(§6 전체 컴포넌트·§7 State 15종·
-      §9 한국형 KR·§11 아이콘 3세트·Versioning/Playground/QA) —
+      §9 한국형 KR·Versioning/Playground/QA) —
       [docs/spec/TDS_REQUIREMENTS.md 부록 R](docs/spec/TDS_REQUIREMENTS.md)에서 우선순위 결정
+      (§11 아이콘 3세트는 Phase 3 — I1로 완료: 아래 "아이콘 시스템" 참조)
 
 ## 버전 고정 및 보정 근거
 
