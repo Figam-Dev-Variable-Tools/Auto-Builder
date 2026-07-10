@@ -32,7 +32,7 @@ export function KrSignaturePad({
   // 그릴 때 현재 프리셋의 --ds-color-text를 읽어 프리셋 전환에 맞춘다
   function strokeColor(canvas: HTMLCanvasElement): string {
     const v = getComputedStyle(canvas).getPropertyValue('--ds-color-text').trim()
-    return v || '#000000'
+    return v || 'rgb(0, 0, 0)'
   }
 
   function drawStroke(ctx: CanvasRenderingContext2D, points: Point[]) {

@@ -1,0 +1,151 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-1);
+  font-family: var(--ds-font-family);
+  max-width: 320px;
+}
+
+.label {
+  font-size: var(--ds-font-size-sm);
+  font-weight: var(--ds-font-weight-medium);
+  color: var(--ds-color-text);
+}
+
+.required {
+  color: var(--ds-color-error);
+  margin-left: 2px;
+}
+
+.inputWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-2);
+  background: var(--ds-color-bg);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  padding: 0 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inputWrap:hover:not(.disabled):not(.readOnly) {
+  border-color: var(--ds-color-primary);
+}
+
+.inputWrap:focus-within {
+  border-color: var(--ds-color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-color-primary) 15%, transparent);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text);
+  background: transparent;
+  border: none;
+  padding: 10px 0;
+}
+
+.input:focus {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--ds-color-secondary);
+  opacity: 0.6;
+}
+
+.disabled {
+  background: var(--ds-color-bgSubtle);
+  pointer-events: none;
+}
+
+.disabled .input {
+  color: var(--ds-color-secondary);
+}
+
+.readOnly {
+  background: var(--ds-color-bgSubtle);
+}
+
+.readOnly:focus-within {
+  border-color: var(--ds-color-border);
+  box-shadow: none;
+}
+
+.error .inputWrap,
+.error .inputWrap:focus-within {
+  border-color: var(--ds-color-error);
+}
+
+.error .inputWrap:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-color-error) 15%, transparent);
+}
+
+.success .inputWrap,
+.success .inputWrap:focus-within {
+  border-color: var(--ds-color-success);
+}
+
+.success .inputWrap:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-color-success) 15%, transparent);
+}
+
+.leading,
+.trailing {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ds-color-secondary);
+  flex-shrink: 0;
+}
+
+/* 하단 메타 행 — 좌측 헬퍼, 우측 카운터 */
+.meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ds-spacing-2);
+  font-size: var(--ds-font-size-xs);
+  color: var(--ds-color-secondary);
+}
+
+.error .helper {
+  color: var(--ds-color-error);
+}
+
+.success .helper {
+  color: var(--ds-color-success);
+}
+
+.counter {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 인풋 내부 아이콘 버튼 (눈/지우기/스텝퍼) */
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-color-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.iconButton:hover {
+  background: var(--ds-color-bgSubtle);
+  color: var(--ds-color-text);
+}
+
+.iconButton:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}

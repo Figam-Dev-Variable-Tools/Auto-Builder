@@ -97,6 +97,8 @@ Auto-Builder/
   전역(document head)에 프레임워크 CSS를 주입하지 않아 7종이 한 화면에서 충돌하지 않는다.
 - **토큰 SSOT** — `tokens/*.json`이 유일한 출처. `pnpm build:tokens`가 CSS 변수(`--ds-color-*`)와
   TS 타입을 생성하고, DS 컴포넌트는 하드코딩 색 없이 `var(--ds-color-*)` + `color-mix`만 사용한다.
+  hex 리터럴 허용 예외는 두 곳뿐: `SocialLoginButton/brand.css`와 `SocialLoginButton/logos/*.svg`
+  (각 사 브랜드 규정색 — 부록 E, 값 변경 금지). SSOT 검증 grep도 이 두 경로만 제외한다.
 - **매니페스트 왕복 동일성** — `src/ds` 소스가 Figma 컴포넌트 스펙의 SSOT다.
   `pnpm build:manifest`가 소스에서 매니페스트를 파생해 플러그인 내장본과 deep-equal 검증하므로,
   DS props를 바꾸면 플러그인 매니페스트도 함께 갱신해야 통과한다.
