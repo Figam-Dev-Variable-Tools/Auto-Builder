@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "build:tw": "tailwindcss -i src/frameworks/tailwind/tailwind.source.css -o src/frameworks/tailwind/tailwind.generated.css --minify",
     "chromatic": "chromatic --exit-zero-on-changes"
   },
   "dependencies": {
