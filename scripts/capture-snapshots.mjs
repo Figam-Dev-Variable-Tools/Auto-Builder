@@ -56,7 +56,8 @@ function slug(s) {
   return (s || '').replace(/[^a-z0-9\-]+/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
 }
 function fileNameFor(idx, e) {
-  const s = slug(e.component).slice(0, 32)
+  // component는 title에서 파생(원본 엔트리엔 없음). 영문 컴포넌트는 읽기 쉬운 접미, 한글은 인덱스만.
+  const s = slug(componentOf(e.title)).slice(0, 32)
   return `${String(idx).padStart(3, '0')}${s ? '-' + s : ''}.png`
 }
 
