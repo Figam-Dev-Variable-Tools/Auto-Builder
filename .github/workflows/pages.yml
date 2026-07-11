@@ -14,7 +14,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # false: 연속 push 시 중간 배포가 취소되지 않고 순차 배포 → 항상 최신 커밋이 라이브에 반영.
+  # (true면 재배포 취소로 라이브가 옛 커밋에 머물러 스토리 청크 해시 불일치 404가 남는다)
+  cancel-in-progress: false
 
 jobs:
   build:
