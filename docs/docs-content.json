@@ -123,6 +123,44 @@
       ]
     },
     {
+      "id": "states",
+      "order": 7,
+      "title": "상태 & 검증",
+      "figmaPage": "7. 상태 & 검증",
+      "storybookTitle": "7. 상태 & 검증",
+      "blocks": [
+        { "type": "heading", "text": "상태 & 검증" },
+        {
+          "type": "paragraph",
+          "text": "요구사항 §7의 공통 State 15종과 §8의 Validation 13종을 전수 매트릭스로 정리합니다. 각 상태의 라이브 데모는 해당 컴포넌트의 States 스토리에서 확인할 수 있습니다."
+        },
+        { "type": "table", "id": "state-matrix" },
+        {
+          "type": "paragraph",
+          "text": "Validation은 표준 메시지와 처리 패턴을 고정합니다. 서버 연동이 필요한 항목(중복·잠금 등)은 연동 지점만 정의하고 데모는 mock으로 제공합니다."
+        },
+        { "type": "table", "id": "validation-matrix" },
+        {
+          "type": "callout",
+          "text": "코어 5종(Button·TextField·Card·Alert·Badge)의 props는 Figma 매니페스트와 왕복 동일성이 검증되므로, 상태 추가 시 매니페스트도 함께 갱신해야 합니다."
+        }
+      ]
+    },
+    {
+      "id": "playground",
+      "order": 8,
+      "title": "Playground",
+      "figmaPage": "8. Playground",
+      "storybookTitle": "8. Playground",
+      "blocks": [
+        { "type": "heading", "text": "Playground" },
+        {
+          "type": "paragraph",
+          "text": "DS 컴포넌트를 실제 서비스 플로우로 조합한 통합 데모입니다. 입력 → 검증 → 확인 다이얼로그 → 완료 알림까지 하나의 폼으로 동작하며, 우측 상단 프리셋 전환에도 반응합니다."
+        }
+      ]
+    },
+    {
       "id": "figma",
       "order": 9,
       "title": "Figma 연동",
@@ -138,6 +176,44 @@
     }
   ],
   "tables": {
+    "state-matrix": {
+      "columns": ["상태", "정의", "대표 지원 컴포넌트"],
+      "rows": [
+        ["Default", "기본 표시 상태", "전 컴포넌트"],
+        ["Hover", "포인터 오버 시각 피드백 (CSS :hover)", "Button · 입력 계열 · List · Chip · 메뉴 항목"],
+        ["Focus", "키보드/클릭 포커스 링 (color-mix 15% 링)", "입력 계열 · Button · Select/Dropdown 트리거"],
+        ["Pressed", "클릭(active) 눌림 피드백", "Button(scale) · SocialLoginButton"],
+        ["Selected", "선택 항목 강조 (primary 틴트)", "Select · List · Sidebar · Chip · Calendar · Tab"],
+        ["Checked", "체크됨", "Checkbox · Radio · Toggle · MultiSelect 옵션"],
+        ["Loading", "진행 중 표시", "Loading(spinner/dots/overlay) · Snackbar 플로우"],
+        ["Disabled", "비활성 (opacity .45 + 포인터 차단)", "전 인터랙티브 컴포넌트"],
+        ["Readonly", "읽기 전용 (bgSubtle 배경, 포커스 링 없음)", "TextField · InputBase 파생 · Textarea · NumberField"],
+        ["Required", "필수 표시 (라벨 * 마커)", "InputBase 파생 · Textarea · Dialog(prompt)"],
+        ["Success", "성공 상태 (success 토큰)", "TextField · EmailField · Alert · Badge · Timeline · Snackbar"],
+        ["Warning", "경고 상태 (warning 토큰)", "Statistics(중립 delta) · 토큰 문서 스와치"],
+        ["Error", "오류 상태 (error 토큰)", "입력 계열 · Alert · Dialog(danger) · Badge · Snackbar"],
+        ["Invalid", "형식 검증 실패 (aria-invalid + error 표시)", "EmailField · KrPhoneField · KrRrnField · KrCardNoField"],
+        ["Empty", "빈 상태 안내 문구", "Table(emptyText) · Autocomplete(결과 없음) · Upload(파일 없음)"]
+      ]
+    },
+    "validation-matrix": {
+      "columns": ["검증", "표준 처리 · 메시지", "구현 위치"],
+      "rows": [
+        ["정상", "success 보더 + 확인 헬퍼", "EmailField · KR 필드(validate)"],
+        ["필수값", "'필수 항목입니다.' + required 마커", "InputBase(required) · Select(error)"],
+        ["최대길이", "maxLength 입력 차단 + 카운터(현재/최대)", "TextField · Textarea · InputBase"],
+        ["최소길이", "'N자 이상 입력하세요.' 헬퍼", "PasswordField"],
+        ["중복", "'이미 사용 중입니다.' — 서버 응답 후 error 표시", "서버 연동 지점 (데모 mock)"],
+        ["형식오류", "'형식이 올바르지 않습니다.' + Invalid 상태", "EmailField · KrPhoneField · KrRrnField · KrBizNoField · KrCardNoField(Luhn)"],
+        ["네트워크오류", "Snackbar(error) '네트워크 연결을 확인해주세요.'", "Snackbar"],
+        ["서버오류", "Dialog(alert) '일시적인 오류가 발생했습니다.'", "Dialog"],
+        ["인증실패", "'인증번호가 일치하지 않습니다.' + error 셀", "OtpField · KrPhoneAuth"],
+        ["인증만료", "카운트다운 만료 → 재전송 버튼 활성", "KrPhoneAuth"],
+        ["재시도", "재전송/다시 시도 액션 노출", "KrPhoneAuth · Snackbar 액션"],
+        ["잠금", "N회 실패 시 입력 disabled + 잠금 안내", "정책 연동 지점 (데모 mock)"],
+        ["시간초과", "타임아웃 안내 + 재시도 유도", "KrPhoneAuth 타이머"]
+      ]
+    },
     "oauth-scopes": {
       "columns": ["프로바이더", "기본 스코프", "버튼 기본 문구"],
       "rows": [

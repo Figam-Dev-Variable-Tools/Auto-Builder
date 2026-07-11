@@ -102,6 +102,8 @@ const preview: Preview = {
           '4. 차트',
           '5. 소셜 로그인',
           '6. KR 컴포넌트',
+          '7. 상태 & 검증',
+          '8. Playground',
           '9. Figma 연동',
           'Frameworks',
           ['Compare'],
