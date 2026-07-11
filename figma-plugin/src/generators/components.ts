@@ -3,7 +3,7 @@
 // 또는 원격 URL로 받은 동일 스키마 매니페스트를 입력으로 같은 생성 로직을 실행한다.
 import { firstFontFamily, hexToRgb, type PresetName, PRESETS } from '../presets'
 import { ICON_PATHS } from '../icons-data'
-import { svgToFigmaPath } from '../svg-path'
+import { strokeIcon } from './icon-vec'
 
 export type VariantAxis = { name: string; values: string[] }
 export type TextProp = { name: string; default: string }
@@ -267,31 +267,20 @@ function makeSlotPlaceholder(ctx: Ctx): ComponentNode {
 
 function makeIconComponents(ctx: Ctx) {
   const textVar = getVar(ctx, 'color/text')
-  // 아이콘 페이지에서 겹치지 않도록 10열 그리드로 배치(슬롯 자리 아래).
-  Object.entries(ICON_PATHS).forEach(([name, path], i) => {
-    // bootstrap-icons 원본 path에는 Figma가 거부하는 arc(A)·축약(H/V/S/T)·팩킹 숫자가 있어
-    // 반드시 절대 M/L/C/Z로 정규화한다(§set_vectorPaths 실패 방지). 각 <path d>를 독립 변환 후
-    // 합친다(합쳐 변환하면 두 번째 path의 첫 상대 moveto가 오역됨). 실패 시 그 아이콘만 건너뜀.
-    let data: string
-    try {
-      data = path.map(svgToFigmaPath).join(' ')
-    } catch (e) {
-      ctx.warnings.push(`아이콘 '${name}' path 변환 실패 — 생략 (${e instanceof Error ? e.message : e})`)
+  // Lucide 라인아트를 stroke 벡터로. 아이콘 페이지에서 겹치지 않도록 10열 그리드로 배치.
+  Object.keys(ICON_PATHS).forEach((name, i) => {
+    const icon = strokeIcon(name, 24, boundPaint(textVar))
+    if (!icon) {
+      ctx.warnings.push(`아이콘 '${name}' 생성 실패 — 생략`)
       return
     }
     const c = figma.createComponent()
     c.name = name
-    // 16그리드 소스를 24 아이콘으로 등비 스케일
     c.resize(24, 24)
     c.fills = []
-    const v = figma.createVector()
-    v.vectorPaths = [{ windingRule: 'NONZERO', data }]
-    bindFill(v, textVar)
-    v.strokes = []
-    c.appendChild(v)
-    v.x = 0
-    v.y = 0
-    v.resize(24, 24)
+    icon.x = 0
+    icon.y = 0
+    c.appendChild(icon)
     ctx.page.appendChild(c)
     c.x = (i % 10) * 44 + 24
     c.y = Math.floor(i / 10) * 44 + 120

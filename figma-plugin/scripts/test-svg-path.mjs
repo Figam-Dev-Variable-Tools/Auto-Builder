@@ -110,11 +110,12 @@ for (const [name, raw] of Object.entries(ICON_PATHS)) {
   }
   const bbox = validateFigmaPath(name, out)
   if (!bbox) continue
-  // 16그리드 아이콘: 끝점이 상식 범위(여유 포함) 안이고 면적이 있어야 함
-  if (bbox.minX < -2 || bbox.maxX > 18 || bbox.minY < -2 || bbox.maxY > 18) {
+  // Lucide 24그리드 stroke 아이콘: 끝점이 상식 범위(여유 포함) 안. 선 아이콘(Minus 등)은
+  // 한 축 span이 0이므로 span 합으로만 비퇴화 확인.
+  if (bbox.minX < -3 || bbox.maxX > 27 || bbox.minY < -3 || bbox.maxY > 27) {
     fail(name, `끝점 범위 이상: [${bbox.minX},${bbox.minY} → ${bbox.maxX},${bbox.maxY}]`)
   }
-  if (bbox.spanX < 0.5 || bbox.spanY < 0.5) {
+  if (bbox.spanX + bbox.spanY < 2) {
     fail(name, `면적 없음: span [${bbox.spanX}, ${bbox.spanY}]`)
   }
 }

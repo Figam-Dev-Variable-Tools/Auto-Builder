@@ -8,7 +8,7 @@ import {
 import { generateDocs, type DocsContent } from './generators/docs'
 import { generateSnapshots } from './generators/snapshots'
 import { generateFoundations } from './generators/foundations'
-import { generateInputCategory } from './generators/categories'
+import { generateCategories } from './generators/categories'
 import { resetGenerated } from './generators/reset'
 import { DOCS_CONTENT } from './docs-content-data'
 import { importTokens, validateTokens } from './generators/sync'
@@ -32,7 +32,7 @@ type GenerateMsg = {
     tokens: boolean
     designSystem: boolean
     icons: boolean
-    inputCategory: boolean
+    categories: boolean
     components: boolean
     snapshots: boolean
     docs?: boolean
@@ -97,14 +97,14 @@ async function handleGenerate(msg: GenerateMsg) {
     }
   }
 
-  if (msg.scope.inputCategory) {
+  if (msg.scope.categories) {
     try {
-      status('info', 'Input 카테고리 — 네이티브 컴포넌트 세트 + 문서 생성 중…')
-      const warnings = await generateInputCategory(msg.typography.fontFamily)
+      status('info', '컴포넌트 카테고리 — 네이티브 컴포넌트 세트(베리언트) + 문서 생성 중…')
+      const warnings = await generateCategories(msg.typography.fontFamily)
       warnings.forEach((w) => status('warn', w))
-      status('info', "'Input' 카테고리 페이지 + 컴포넌트 소스 생성 완료.")
+      status('info', '카테고리 페이지 생성 완료 (Input · Selection · Action).')
     } catch (e) {
-      status('error', `Input 카테고리 실패: ${e instanceof Error ? e.message : String(e)}`)
+      status('error', `카테고리 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 

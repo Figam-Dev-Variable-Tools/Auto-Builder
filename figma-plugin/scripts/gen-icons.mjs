@@ -1,82 +1,169 @@
-// bootstrap-icons(16그리드 filled) → figma-plugin/src/icons-data.ts 의 ICON_PATHS 생성.
-// 플러그인이 Figma에 만드는 _Icon/* 컴포넌트(인스턴스 스왑 대상)의 벡터 path 소스.
-// 재생성: pnpm --dir figma-plugin gen:icons
+// lucide-react(스토리북 Icons/Lucide에서 쓰는 라이브러리) → figma-plugin/src/icons-data.ts
+// 오너 규칙: 스토리북 아이콘을 그대로. Lucide는 24그리드 stroke 아이콘(fill:none)이라
+// 플러그인은 이 path들을 "선(stroke)"으로 렌더한다(Figma fill 와인딩 문제 회피).
+// 값은 아이콘별 subpath d 문자열 배열(24그리드). 재생성: pnpm --dir figma-plugin gen:icons
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..', '..')
-const iconsDir = resolve(root, 'node_modules', 'bootstrap-icons', 'icons')
+const iconsDir = resolve(root, 'node_modules', 'lucide-react', 'dist', 'esm', 'icons')
 
-// [Figma 이름(_Icon/<Name>), bootstrap 파일 후보(존재하는 첫 번째 사용)]
-// 오너 규칙: 아이콘은 "라인아트 위주" → 아웃라인(비-fill) 우선, fill은 폴백.
-// Star/Heart/Bell 이름은 매니페스트 swap default·preferred가 참조하므로 유지.
+// [Figma 이름(_Icon/<Name>), lucide 파일 후보(존재하는 첫 번째)]
+// Search/Eye/Close/Minus/Plus/Check는 컴포넌트 어포던스가 참조. Star/Heart/Bell은 매니페스트 swap 참조.
 const MAP = [
-  ['Star', ['star', 'star-fill']],
-  ['Heart', ['heart', 'heart-fill']],
-  ['Bell', ['bell', 'bell-fill']],
-  ['House', ['house', 'house-door', 'house-fill']],
-  ['Person', ['person', 'person-fill']],
-  ['Envelope', ['envelope', 'envelope-fill']],
-  ['Phone', ['telephone', 'telephone-fill']],
-  ['Settings', ['gear', 'gear-fill']],
-  ['Calendar', ['calendar', 'calendar3', 'calendar-fill']],
-  ['Clock', ['clock', 'clock-fill']],
+  ['Star', ['star']],
+  ['Heart', ['heart']],
+  ['Bell', ['bell']],
+  ['House', ['house', 'home']],
+  ['Person', ['user']],
+  ['Envelope', ['mail']],
+  ['Phone', ['phone']],
+  ['Settings', ['settings']],
+  ['Calendar', ['calendar']],
+  ['Clock', ['clock']],
   ['Search', ['search']],
-  ['Trash', ['trash', 'trash3', 'trash-fill']],
-  ['Edit', ['pencil', 'pencil-square', 'pencil-fill']],
-  ['Plus', ['plus-circle', 'plus-circle-fill']],
-  ['Minus', ['dash-circle', 'dash-circle-fill']],
-  ['Close', ['x-circle', 'x-circle-fill']],
-  ['Check', ['check-circle', 'check-circle-fill']],
-  ['Info', ['info-circle', 'info-circle-fill']],
-  ['Warning', ['exclamation-triangle', 'exclamation-triangle-fill']],
-  ['Help', ['question-circle', 'question-circle-fill']],
-  ['Camera', ['camera', 'camera-fill']],
-  ['Cart', ['cart', 'cart-fill']],
-  ['Chat', ['chat', 'chat-fill']],
-  ['Cloud', ['cloud', 'cloud-fill']],
-  ['Image', ['image', 'image-fill']],
-  ['Lock', ['lock', 'lock-fill']],
-  ['Eye', ['eye', 'eye-fill']],
-  ['Folder', ['folder', 'folder2', 'folder-fill']],
-  ['Bookmark', ['bookmark', 'bookmark-fill']],
-  ['Tag', ['tag', 'tag-fill']],
-  ['Flag', ['flag', 'flag-fill']],
-  ['Gift', ['gift', 'gift-fill']],
+  ['Trash', ['trash-2', 'trash']],
+  ['Edit', ['pencil', 'pencil-line']],
+  ['Plus', ['plus']],
+  ['Minus', ['minus']],
+  ['Close', ['x']],
+  ['Check', ['check']],
+  ['Info', ['info']],
+  ['Warning', ['triangle-alert', 'alert-triangle']],
+  ['Help', ['circle-help', 'help-circle']],
+  ['AlertCircle', ['circle-alert', 'alert-circle']],
+  ['Camera', ['camera']],
+  ['Cart', ['shopping-cart']],
+  ['Chat', ['message-circle']],
+  ['Cloud', ['cloud']],
+  ['Image', ['image']],
+  ['Lock', ['lock']],
+  ['Unlock', ['lock-open', 'unlock']],
+  ['Eye', ['eye']],
+  ['EyeOff', ['eye-off']],
+  ['Key', ['key']],
+  ['Folder', ['folder']],
+  ['File', ['file-text']],
+  ['Bookmark', ['bookmark']],
+  ['Tag', ['tag']],
+  ['Flag', ['flag']],
+  ['Gift', ['gift']],
   ['Download', ['download']],
   ['Upload', ['upload']],
-  ['Link', ['link-45deg', 'link']],
+  ['Link', ['link']],
+  ['Share', ['share-2']],
+  ['Paperclip', ['paperclip']],
+  ['MapPin', ['map-pin']],
+  ['CreditCard', ['credit-card']],
+  ['Play', ['play']],
+  ['Pause', ['pause']],
+  ['Menu', ['menu']],
+  ['ChevronDown', ['chevron-down']],
+  ['ChevronUp', ['chevron-up']],
+  ['ChevronLeft', ['chevron-left']],
+  ['ChevronRight', ['chevron-right']],
+  ['ArrowLeft', ['arrow-left']],
+  ['ArrowRight', ['arrow-right']],
+  ['Refresh', ['refresh-cw']],
+  ['Filter', ['filter', 'funnel']],
+  ['List', ['list']],
+  ['Globe', ['globe']],
+  ['Sun', ['sun']],
+  ['Moon', ['moon']],
+  ['BookOpen', ['book-open']],
 ]
+
+// SVG 원시 도형 → path d (stroke용). 원/선/사각형/폴리라인을 path로 통일.
+const K = 0.5522847498307936
+function circleD(cx, cy, r) {
+  const k = K * r
+  return (
+    `M${cx - r} ${cy}` +
+    `C${cx - r} ${cy - k} ${cx - k} ${cy - r} ${cx} ${cy - r}` +
+    `C${cx + k} ${cy - r} ${cx + r} ${cy - k} ${cx + r} ${cy}` +
+    `C${cx + r} ${cy + k} ${cx + k} ${cy + r} ${cx} ${cy + r}` +
+    `C${cx - k} ${cy + r} ${cx - r} ${cy + k} ${cx - r} ${cy}Z`
+  )
+}
+function ellipseD(cx, cy, rx, ry) {
+  const kx = K * rx
+  const ky = K * ry
+  return (
+    `M${cx - rx} ${cy}` +
+    `C${cx - rx} ${cy - ky} ${cx - kx} ${cy - ry} ${cx} ${cy - ry}` +
+    `C${cx + kx} ${cy - ry} ${cx + rx} ${cy - ky} ${cx + rx} ${cy}` +
+    `C${cx + rx} ${cy + ky} ${cx + kx} ${cy + ry} ${cx} ${cy + ry}` +
+    `C${cx - kx} ${cy + ry} ${cx - rx} ${cy + ky} ${cx - rx} ${cy}Z`
+  )
+}
+function rectD(x, y, w, h, rx, ry) {
+  const r = rx || ry || 0
+  if (!r) return `M${x} ${y}H${x + w}V${y + h}H${x}Z`
+  const k = K * r
+  return (
+    `M${x + r} ${y}H${x + w - r}` +
+    `C${x + w - r + k} ${y} ${x + w} ${y + r - k} ${x + w} ${y + r}V${y + h - r}` +
+    `C${x + w} ${y + h - r + k} ${x + w - r + k} ${y + h} ${x + w - r} ${y + h}H${x + r}` +
+    `C${x + r - k} ${y + h} ${x} ${y + h - r + k} ${x} ${y + h - r}V${y + r}` +
+    `C${x} ${y + r - k} ${x + r - k} ${y} ${x + r} ${y}Z`
+  )
+}
+function pointsD(points, close) {
+  const p = points.trim().split(/[\s,]+/).map(Number)
+  let d = `M${p[0]} ${p[1]}`
+  for (let i = 2; i < p.length; i += 2) d += `L${p[i]} ${p[i + 1]}`
+  return d + (close ? 'Z' : '')
+}
+function elToD(tag, a) {
+  if (tag === 'path') return a.d
+  if (tag === 'circle') return circleD(+a.cx, +a.cy, +a.r)
+  if (tag === 'ellipse') return ellipseD(+a.cx, +a.cy, +a.rx, +a.ry)
+  if (tag === 'line') return `M${a.x1} ${a.y1}L${a.x2} ${a.y2}`
+  if (tag === 'rect') return rectD(+a.x, +a.y, +a.width, +a.height, +(a.rx || 0), +(a.ry || 0))
+  if (tag === 'polyline') return pointsD(a.points, false)
+  if (tag === 'polygon') return pointsD(a.points, true)
+  return null
+}
+
+function iconNodeOf(file) {
+  const src = readFileSync(resolve(iconsDir, `${file}.mjs`), 'utf8')
+  const m = src.match(/const __iconNode\s*=\s*(\[[\s\S]*?\]);/)
+  if (!m) return null
+  // [tag, {attrs}] 배열 — 패키지 산출물이라 안전하게 eval
+  // eslint-disable-next-line no-eval
+  return eval(m[1])
+}
 
 const out = {}
 const skipped = []
 for (const [name, candidates] of MAP) {
-  const file = candidates.find((c) => existsSync(resolve(iconsDir, `${c}.svg`)))
+  const file = candidates.find((c) => existsSync(resolve(iconsDir, `${c}.mjs`)))
   if (!file) {
-    skipped.push(name)
+    skipped.push(name + '(no file)')
     continue
   }
-  const svg = readFileSync(resolve(iconsDir, `${file}.svg`), 'utf8')
-  const ds = [...svg.matchAll(/\sd="([^"]+)"/g)].map((m) => m[1])
-  if (ds.length === 0) {
-    skipped.push(name)
+  const node = iconNodeOf(file)
+  if (!node) {
+    skipped.push(name + '(no node)')
     continue
   }
-  // 각 <path d>를 독립 문자열로 보존한다(합치지 않음). SVG 규약상 path의 첫 moveto는
-  // 소문자 m이라도 절대 좌표다 — 공백으로 이어붙이면 두 번째 path가 상대 이동으로 오역된다.
-  // 런타임(components.ts)에서 svgToFigmaPath로 각각 변환 후 합친다.
+  const ds = node.map(([tag, attrs]) => elToD(tag, attrs)).filter(Boolean)
+  if (!ds.length) {
+    skipped.push(name + '(empty)')
+    continue
+  }
   out[`_Icon/${name}`] = ds
 }
 
 const ts =
-  '// AUTO-GENERATED by scripts/gen-icons.mjs — bootstrap-icons 16그리드 filled path.\n' +
+  '// AUTO-GENERATED by scripts/gen-icons.mjs — lucide-react(스토리북 Icons/Lucide) 24그리드 stroke path.\n' +
   '// DO NOT EDIT. 재생성: pnpm --dir figma-plugin gen:icons\n' +
-  '// 값은 아이콘별 <path d> 문자열 배열(원본 그대로) — 런타임에서 Figma-safe로 변환됨.\n' +
+  '// 값 = 아이콘별 subpath d 배열(24그리드). 플러그인은 "선(stroke)"으로 렌더한다.\n' +
   `export const ICON_PATHS: Record<string, string[]> = ${JSON.stringify(out, null, 2)}\n`
 writeFileSync(resolve(here, '..', 'src', 'icons-data.ts'), ts)
 console.log(
-  `gen-icons OK — ${Object.keys(out).length} icons → figma-plugin/src/icons-data.ts` +
+  `gen-icons OK — ${Object.keys(out).length} lucide icons → figma-plugin/src/icons-data.ts` +
     (skipped.length ? ` (skipped: ${skipped.join(', ')})` : ''),
 )

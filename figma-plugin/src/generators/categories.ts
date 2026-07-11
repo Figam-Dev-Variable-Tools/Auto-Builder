@@ -1,7 +1,6 @@
-// 컴포넌트 카테고리 문서 — 네이티브 편집형 컴포넌트(베리언트 포함)를 TDS 문서로 배치.
-// 오너: "완벽한 문서 + 피그마 디자인 컴포넌트 베리언트". 스펙: docs/spec/input-category-spec.md,
-// figma-tds-doc-style.md, figma-category-layout.md.
-// Input 계열(단순 TextField-family 8종)을 1차 구현 — 이후 같은 machinery로 카테고리 확장.
+// 컴포넌트 카테고리 문서 — 네이티브 편집형 컴포넌트(베리언트) + TDS 문서.
+// 오너: "완벽한 문서 + 피그마 디자인 컴포넌트 베리언트". 스펙: docs/spec/*.
+// 카테고리: Input(8) · Selection(4) · Action(2). 같은 machinery로 이후 확장.
 import {
   type Ctx,
   solid,
@@ -17,18 +16,29 @@ import {
   SUB,
   MUTED,
   BORDER,
+  SURFACE,
   ACCENT,
   WHITE,
 } from './foundations'
-import { ICON_PATHS } from '../icons-data'
-import { svgToFigmaPath } from '../svg-path'
+import { strokeIcon } from './icon-vec'
 
-const SOURCE_PAGE = 'DS · 컴포넌트 소스'
 const FIELD_W = 300
+const DIVIDER_PAGE = '✂ ─────────  컴포넌트  ─────────'
+const PAGE_INPUT = '1. Molecule - Input'
+const PAGE_SELECTION = '2. Atom - Selection'
+const PAGE_ACTION = '3. Atom - Action'
+// 오너: 'DS · 컴포넌트 소스' 페이지는 만들지 않는다(세트를 카테고리 페이지에 함께 둠).
+// 'DS · 컴포넌트 소스'는 레거시 정리용으로만 reset 대상에 남긴다.
+export const CATEGORY_PAGE_NAMES = [DIVIDER_PAGE, PAGE_INPUT, PAGE_SELECTION, PAGE_ACTION, 'DS · 컴포넌트 소스']
 
-export const CATEGORY_PAGE_NAMES = ['Input', SOURCE_PAGE]
+const VARIANT_HEX: Record<string, string> = {
+  primary: ACCENT,
+  secondary: SUB,
+  error: '#F04452',
+  success: '#00C471',
+}
 
-// ── 색 바인딩 텍스트(프리셋 재색) ─────────────────────────────────────
+// ── 색 바인딩 헬퍼 ────────────────────────────────────────────────────
 function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: string, bold = false): TextNode {
   const t = txt(ctx, chars, size, hex, bold)
   const v = ctx.vars.get(varName)
@@ -43,33 +53,62 @@ function bindStrokeVar(ctx: Ctx, node: MinimalStrokesMixin, varName: string, hex
   const v = ctx.vars.get(varName)
   node.strokes = [v ? boundPaint(v) : solid(hex)]
 }
-
-// 작은 라인아트 아이콘(24그리드 → size)
-function iconNode(ctx: Ctx, key: string, size: number, hex: string): FrameNode {
-  const wrap = figma.createFrame()
-  wrap.name = 'icon'
-  wrap.resize(size, size)
-  wrap.fills = []
-  wrap.clipsContent = false
-  const paths = ICON_PATHS[key]
-  if (paths) {
-    const v = figma.createVector()
-    try {
-      v.vectorPaths = [{ windingRule: 'NONZERO', data: paths.map(svgToFigmaPath).join(' ') }]
-    } catch {
-      /* skip */
-    }
-    v.fills = [solid(hex)]
-    v.strokes = []
-    wrap.appendChild(v)
-    v.x = 0
-    v.y = 0
-    v.resize(size, size)
-  }
-  return wrap
+function iconNode(_ctx: Ctx, key: string, size: number, hex: string): FrameNode {
+  const ic = strokeIcon(key, size, solid(hex))
+  if (ic) return ic
+  const f = figma.createFrame()
+  f.name = 'icon'
+  f.resize(size, size)
+  f.fills = []
+  return f
+}
+function fixedFrame(name: string, dir: 'HORIZONTAL' | 'VERTICAL', w: number, h: number): FrameNode {
+  const f = figma.createFrame()
+  f.name = name
+  f.layoutMode = dir
+  f.primaryAxisSizingMode = 'FIXED'
+  f.counterAxisSizingMode = 'FIXED'
+  f.resize(w, h)
+  f.fills = []
+  return f
 }
 
-// ── Input 정의 ────────────────────────────────────────────────────────
+// ── 제네릭 베리언트 세트 빌더 ────────────────────────────────────────
+type Axis = { name: string; values: string[] }
+type State = { caption: string; props: Record<string, string> }
+
+function buildSet(
+  ctx: Ctx,
+  page: PageNode,
+  setName: string,
+  axes: Axis[],
+  render: (combo: Record<string, string>) => ComponentNode,
+  srcFill = '#FBFCFE',
+): ComponentSetNode {
+  let combos: Record<string, string>[] = [{}]
+  for (const axis of axes) {
+    const next: Record<string, string>[] = []
+    for (const c of combos) for (const v of axis.values) next.push({ ...c, [axis.name]: v })
+    combos = next
+  }
+  const variants = combos.map((combo) => {
+    const comp = render(combo)
+    comp.name = axes.map((a) => `${a.name}=${combo[a.name]}`).join(', ')
+    page.appendChild(comp)
+    return comp
+  })
+  const set = figma.combineAsVariants(variants, page)
+  set.name = setName
+  set.layoutMode = 'HORIZONTAL'
+  set.layoutWrap = 'WRAP'
+  set.itemSpacing = 20
+  set.counterAxisSpacing = 20
+  set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
+  set.fills = [solid(srcFill)]
+  return set
+}
+
+// ══ INPUT 계열 ═══════════════════════════════════════════════════════
 type Affordance = {
   leading?: 'search'
   trailing?: 'eye' | 'clear' | 'unit' | 'stepper'
@@ -77,7 +116,6 @@ type Affordance = {
   otp?: number
   textarea?: boolean
 }
-type State = { caption: string; props: Record<string, string> }
 type InputDef = {
   key: string
   setName: string
@@ -90,148 +128,25 @@ type InputDef = {
   axes: string[]
   states: State[]
 }
-
-const D = 'false'
 const INPUTS: InputDef[] = [
-  {
-    key: 'TextField',
-    setName: 'DS/TextField',
-    label: '이메일',
-    placeholder: 'name@example.com',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '라벨·설명·헬퍼텍스트를 지원하는 기본 한 줄 텍스트 입력.',
-    helper: '업무용 이메일을 입력하세요.',
-    affordance: {},
-    axes: ['error', 'success', 'disabled', 'readOnly'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'Success', props: { success: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-      { caption: 'ReadOnly', props: { readOnly: 'true' } },
-    ],
-  },
-  {
-    key: 'EmailField',
-    setName: 'DS/EmailField',
-    label: '이메일',
-    placeholder: 'name@example.com',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '블러 시 이메일 형식을 검증해 에러/성공을 표시하는 입력.',
-    helper: '가입에 사용할 이메일이에요.',
-    affordance: {},
-    axes: ['error', 'success', 'disabled', 'required'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Required', props: { required: 'true' } },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'Success', props: { success: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-    ],
-  },
-  {
-    key: 'PasswordField',
-    setName: 'DS/PasswordField',
-    label: '비밀번호',
-    placeholder: '8자 이상 입력',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '표시/숨김 눈 아이콘 토글이 붙은 비밀번호 입력.',
-    helper: '영문·숫자·기호를 조합하세요.',
-    affordance: { trailing: 'eye' },
-    axes: ['error', 'success', 'disabled', 'required'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'Success', props: { success: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-      { caption: 'Required', props: { required: 'true' } },
-    ],
-  },
-  {
-    key: 'SearchField',
-    setName: 'DS/SearchField',
-    label: '검색',
-    placeholder: '검색어를 입력하세요',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '검색 아이콘과 지우기 버튼을 가진 검색창.',
-    helper: '',
-    affordance: { leading: 'search', trailing: 'clear' },
-    axes: ['disabled'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-    ],
-  },
-  {
-    key: 'NumberField',
-    setName: 'DS/NumberField',
-    label: '수량',
-    placeholder: '0',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '단위 표기 + 증감(−/+) 스테퍼가 붙은 숫자 입력.',
-    helper: '',
-    affordance: { trailing: 'stepper', unit: '개' },
-    axes: ['disabled', 'readOnly'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'ReadOnly', props: { readOnly: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-    ],
-  },
-  {
-    key: 'CurrencyField',
-    setName: 'DS/CurrencyField',
-    label: '금액',
-    placeholder: '0',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '천단위 콤마 + 통화 단위 표기가 붙은 금액 입력.',
-    helper: '최대 50,000원까지 입력할 수 있어요.',
-    affordance: { trailing: 'unit', unit: '원' },
-    axes: ['error', 'disabled', 'readOnly'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'ReadOnly', props: { readOnly: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-    ],
-  },
-  {
-    key: 'OtpField',
-    setName: 'DS/OtpField',
-    label: '인증번호',
-    placeholder: '',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '자릿수만큼 분리된 셀에 입력하는 인증번호(OTP) 필드.',
-    helper: '문자로 받은 6자리를 입력하세요.',
-    affordance: { otp: 6 },
-    axes: ['error', 'disabled'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-    ],
-  },
-  {
-    key: 'Textarea',
-    setName: 'DS/Textarea',
-    label: '내용',
-    placeholder: '내용을 입력하세요',
-    eyebrow: 'MOLECULE · INPUT',
-    desc: '자동 높이 조절 + 글자수 카운터가 붙은 여러 줄 텍스트 입력.',
-    helper: '10자 이상 입력하세요.',
-    affordance: { textarea: true },
-    axes: ['error', 'disabled', 'readOnly', 'required'],
-    states: [
-      { caption: 'Default', props: {} },
-      { caption: 'Error', props: { error: 'true' } },
-      { caption: 'ReadOnly', props: { readOnly: 'true' } },
-      { caption: 'Disabled', props: { disabled: 'true' } },
-      { caption: 'Required', props: { required: 'true' } },
-    ],
-  },
+  { key: 'TextField', setName: 'DS/TextField', label: '이메일', placeholder: 'name@example.com', eyebrow: 'MOLECULE · INPUT', desc: '라벨·설명·헬퍼텍스트를 지원하는 기본 한 줄 텍스트 입력.', helper: '업무용 이메일을 입력하세요.', affordance: {}, axes: ['error', 'success', 'disabled', 'readOnly'], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Success', props: { success: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'ReadOnly', props: { readOnly: 'true' } }] },
+  { key: 'EmailField', setName: 'DS/EmailField', label: '이메일', placeholder: 'name@example.com', eyebrow: 'MOLECULE · INPUT', desc: '블러 시 이메일 형식을 검증해 에러/성공을 표시하는 입력.', helper: '가입에 사용할 이메일이에요.', affordance: {}, axes: ['error', 'success', 'disabled', 'required'], states: [{ caption: 'Default', props: {} }, { caption: 'Required', props: { required: 'true' } }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Success', props: { success: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }] },
+  { key: 'PasswordField', setName: 'DS/PasswordField', label: '비밀번호', placeholder: '8자 이상 입력', eyebrow: 'MOLECULE · INPUT', desc: '표시/숨김 눈 아이콘 토글이 붙은 비밀번호 입력.', helper: '영문·숫자·기호를 조합하세요.', affordance: { trailing: 'eye' }, axes: ['error', 'success', 'disabled', 'required'], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Success', props: { success: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'Required', props: { required: 'true' } }] },
+  { key: 'SearchField', setName: 'DS/SearchField', label: '검색', placeholder: '검색어를 입력하세요', eyebrow: 'MOLECULE · INPUT', desc: '검색 아이콘과 지우기 버튼을 가진 검색창.', helper: '', affordance: { leading: 'search', trailing: 'clear' }, axes: ['disabled'], states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { disabled: 'true' } }] },
+  { key: 'NumberField', setName: 'DS/NumberField', label: '수량', placeholder: '0', eyebrow: 'MOLECULE · INPUT', desc: '단위 표기 + 증감(−/+) 스테퍼가 붙은 숫자 입력.', helper: '', affordance: { trailing: 'stepper', unit: '개' }, axes: ['disabled', 'readOnly'], states: [{ caption: 'Default', props: {} }, { caption: 'ReadOnly', props: { readOnly: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }] },
+  { key: 'CurrencyField', setName: 'DS/CurrencyField', label: '금액', placeholder: '0', eyebrow: 'MOLECULE · INPUT', desc: '천단위 콤마 + 통화 단위 표기가 붙은 금액 입력.', helper: '최대 50,000원까지 입력할 수 있어요.', affordance: { trailing: 'unit', unit: '원' }, axes: ['error', 'disabled', 'readOnly'], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'ReadOnly', props: { readOnly: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }] },
+  { key: 'OtpField', setName: 'DS/OtpField', label: '인증번호', placeholder: '', eyebrow: 'MOLECULE · INPUT', desc: '자릿수만큼 분리된 셀에 입력하는 인증번호(OTP) 필드.', helper: '문자로 받은 6자리를 입력하세요.', affordance: { otp: 6 }, axes: ['error', 'disabled'], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }] },
+  { key: 'Textarea', setName: 'DS/Textarea', label: '내용', placeholder: '내용을 입력하세요', eyebrow: 'MOLECULE · INPUT', desc: '자동 높이 조절 + 글자수 카운터가 붙은 여러 줄 텍스트 입력.', helper: '10자 이상 입력하세요.', affordance: { textarea: true }, axes: ['error', 'disabled', 'readOnly', 'required'], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'ReadOnly', props: { readOnly: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'Required', props: { required: 'true' } }] },
 ]
 
-// ── 한 베리언트 컴포넌트 렌더 ────────────────────────────────────────
+function errorMsg(key: string): string {
+  if (key === 'EmailField' || key === 'TextField') return '올바른 이메일 형식이 아닙니다.'
+  if (key === 'PasswordField') return '비밀번호가 너무 짧습니다.'
+  if (key === 'CurrencyField') return '잔액이 부족합니다.'
+  if (key === 'OtpField') return '인증번호가 일치하지 않습니다.'
+  return '입력값을 확인하세요.'
+}
+
 function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): ComponentNode {
   const error = combo.error === 'true'
   const success = combo.success === 'true'
@@ -242,7 +157,6 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   const toneHex = error ? '#F04452' : success ? '#00C471' : null
 
   const c = figma.createComponent()
-  c.name = def.axes.map((a) => `${a}=${combo[a]}`).join(', ')
   c.layoutMode = 'VERTICAL'
   c.counterAxisSizingMode = 'FIXED'
   c.resize(FIELD_W, c.height)
@@ -251,18 +165,13 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   c.fills = []
   if (disabled) c.opacity = 0.45
 
-  // 라벨(+필수 *)
   const labelRow = autoFrame('label-row', 'HORIZONTAL')
   labelRow.itemSpacing = 2
   labelRow.appendChild(boundText(ctx, def.label, 13, 'color/text', INK, true))
-  if (required) {
-    const star = txt(ctx, '*', 13, '#F04452', true)
-    labelRow.appendChild(star)
-  }
+  if (required) labelRow.appendChild(txt(ctx, '*', 13, '#F04452', true))
   c.appendChild(labelRow)
 
   if (def.affordance.otp) {
-    // OTP: N개 셀
     const cells = autoFrame('cells', 'HORIZONTAL')
     cells.layoutAlign = 'STRETCH'
     cells.primaryAxisSizingMode = 'FIXED'
@@ -279,55 +188,40 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
       bindStrokeVar(ctx, cell, toneVar ?? 'color/border', toneHex ?? BORDER)
       cell.strokeWeight = 1
       cell.strokeAlign = 'INSIDE'
-      const digit = i < 3 ? String(i + 1) : ''
-      cell.appendChild(boundText(ctx, digit, 16, 'color/text', INK, true))
+      cell.appendChild(boundText(ctx, i < 3 ? String(i + 1) : '', 16, 'color/text', INK, true))
       cells.appendChild(cell)
     }
     c.appendChild(cells)
   } else {
-    // 입력 행
     const input = autoFrame('input', 'HORIZONTAL')
-    input.counterAxisAlignItems = 'CENTER'
+    input.counterAxisAlignItems = def.affordance.textarea ? 'MIN' : 'CENTER'
     input.layoutAlign = 'STRETCH'
     input.primaryAxisSizingMode = 'FIXED'
     input.itemSpacing = 8
     input.paddingTop = input.paddingBottom = def.affordance.textarea ? 12 : 10
     input.paddingLeft = input.paddingRight = 12
-    if (def.affordance.textarea) {
-      input.counterAxisAlignItems = 'MIN'
-      input.minHeight = 76
-    }
+    if (def.affordance.textarea) input.minHeight = 76
     input.cornerRadius = 8
     bindFillVar(ctx, input, disabled || readOnly ? 'color/bgSubtle' : 'color/bg', disabled || readOnly ? '#F5F7FA' : WHITE)
     bindStrokeVar(ctx, input, toneVar ?? 'color/border', toneHex ?? BORDER)
     input.strokeWeight = 1
     input.strokeAlign = 'INSIDE'
-
     if (def.affordance.leading === 'search') input.appendChild(iconNode(ctx, '_Icon/Search', 16, MUTED))
-
     const val = boundText(ctx, def.placeholder, 15, 'color/secondary', MUTED)
     val.layoutGrow = 1
     val.textAutoResize = 'HEIGHT'
     input.appendChild(val)
-
     if (def.affordance.unit) input.appendChild(txt(ctx, def.affordance.unit, 14, SUB))
     if (def.affordance.trailing === 'eye') input.appendChild(iconNode(ctx, '_Icon/Eye', 16, MUTED))
     if (def.affordance.trailing === 'clear') input.appendChild(iconNode(ctx, '_Icon/Close', 15, MUTED))
     if (def.affordance.trailing === 'stepper') {
-      const minus = iconNode(ctx, '_Icon/Minus', 18, SUB)
-      const plus = iconNode(ctx, '_Icon/Plus', 18, SUB)
-      input.appendChild(minus)
-      input.appendChild(plus)
+      input.appendChild(iconNode(ctx, '_Icon/Minus', 18, SUB))
+      input.appendChild(iconNode(ctx, '_Icon/Plus', 18, SUB))
     }
     c.appendChild(input)
   }
 
-  // 헬퍼 텍스트(상태별)
-  const helperMsg = error
-    ? errorMsg(def.key)
-    : success
-      ? '사용 가능합니다.'
-      : def.helper
+  const helperMsg = error ? errorMsg(def.key) : success ? '사용 가능합니다.' : def.helper
   if (helperMsg) {
     const helper = boundText(ctx, helperMsg, 12, toneVar ?? 'color/secondary', toneHex ?? SUB)
     helper.layoutAlign = 'STRETCH'
@@ -336,41 +230,249 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   }
   return c
 }
-
-function errorMsg(key: string): string {
-  if (key === 'EmailField' || key === 'TextField') return '올바른 이메일 형식이 아닙니다.'
-  if (key === 'PasswordField') return '비밀번호가 너무 짧습니다.'
-  if (key === 'CurrencyField') return '잔액이 부족합니다.'
-  if (key === 'OtpField') return '인증번호가 일치하지 않습니다.'
-  return '입력값을 확인하세요.'
-}
-
 function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode {
-  // 축의 카르테시안 곱으로 베리언트 전개
-  let combos: Record<string, string>[] = [{}]
-  for (const axis of def.axes) {
-    const next: Record<string, string>[] = []
-    for (const combo of combos) for (const v of ['false', 'true']) next.push({ ...combo, [axis]: v })
-    combos = next
-  }
-  const variants: ComponentNode[] = []
-  for (const combo of combos) {
-    const filled: Record<string, string> = {}
-    for (const a of def.axes) filled[a] = combo[a] ?? D
-    const comp = renderInput(ctx, def, filled)
-    page.appendChild(comp)
-    variants.push(comp)
-  }
-  const set = figma.combineAsVariants(variants, page)
-  set.name = def.setName
-  set.layoutMode = 'HORIZONTAL'
-  set.layoutWrap = 'WRAP'
-  set.itemSpacing = 20
-  set.counterAxisSpacing = 20
-  set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid('#FBFCFE')]
-  return set
+  return buildSet(ctx, page, def.setName, def.axes.map((a) => ({ name: a, values: ['false', 'true'] })), (combo) => renderInput(ctx, def, combo))
 }
+
+// ══ SELECTION 계열 ════════════════════════════════════════════════════
+function renderToggle(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const checked = combo.checked === 'true'
+  const disabled = combo.disabled === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 10
+  c.fills = []
+  if (disabled) c.opacity = 0.45
+  const track = fixedFrame('track', 'HORIZONTAL', 44, 26)
+  track.primaryAxisAlignItems = checked ? 'MAX' : 'MIN'
+  track.counterAxisAlignItems = 'CENTER'
+  track.paddingLeft = track.paddingRight = 3
+  track.cornerRadius = 13
+  bindFillVar(ctx, track, checked ? 'color/primary' : 'color/border', checked ? ACCENT : BORDER)
+  const knob = figma.createEllipse()
+  knob.resize(20, 20)
+  knob.fills = [solid(WHITE)]
+  track.appendChild(knob)
+  c.appendChild(track)
+  c.appendChild(boundText(ctx, '알림 받기', 14, 'color/text', INK))
+  return c
+}
+function renderCheckbox(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const checked = combo.checked === 'true'
+  const indet = combo.indeterminate === 'true'
+  const disabled = combo.disabled === 'true'
+  const on = checked || indet
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 8
+  c.fills = []
+  if (disabled) c.opacity = 0.45
+  const box = fixedFrame('box', 'HORIZONTAL', 20, 20)
+  box.primaryAxisAlignItems = 'CENTER'
+  box.counterAxisAlignItems = 'CENTER'
+  box.cornerRadius = 6
+  bindFillVar(ctx, box, on ? 'color/primary' : 'color/bg', on ? ACCENT : WHITE)
+  bindStrokeVar(ctx, box, on ? 'color/primary' : 'color/border', on ? ACCENT : BORDER)
+  box.strokeWeight = 1
+  box.strokeAlign = 'INSIDE'
+  if (checked) box.appendChild(iconNode(ctx, '_Icon/Check', 14, WHITE))
+  else if (indet) {
+    const dash = figma.createRectangle()
+    dash.resize(10, 2)
+    dash.cornerRadius = 1
+    dash.fills = [solid(WHITE)]
+    box.appendChild(dash)
+  }
+  c.appendChild(box)
+  c.appendChild(boundText(ctx, '약관에 동의합니다', 14, 'color/text', INK))
+  return c
+}
+function renderRadio(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const selected = combo.selected === 'true'
+  const disabled = combo.disabled === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 8
+  c.fills = []
+  if (disabled) c.opacity = 0.45
+  const outer = fixedFrame('radio', 'HORIZONTAL', 20, 20)
+  outer.primaryAxisAlignItems = 'CENTER'
+  outer.counterAxisAlignItems = 'CENTER'
+  outer.cornerRadius = 10
+  bindFillVar(ctx, outer, 'color/bg', WHITE)
+  bindStrokeVar(ctx, outer, selected ? 'color/primary' : 'color/border', selected ? ACCENT : BORDER)
+  outer.strokeWeight = selected ? 2 : 1
+  outer.strokeAlign = 'INSIDE'
+  if (selected) {
+    const dot = figma.createEllipse()
+    dot.resize(9, 9)
+    bindFillVar(ctx, dot, 'color/primary', ACCENT)
+    outer.appendChild(dot)
+  }
+  c.appendChild(outer)
+  c.appendChild(boundText(ctx, '선택 옵션', 14, 'color/text', INK))
+  return c
+}
+function renderChip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const selected = combo.selected === 'true'
+  const disabled = combo.disabled === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 6
+  c.paddingTop = c.paddingBottom = 7
+  c.paddingLeft = c.paddingRight = 14
+  c.cornerRadius = 999
+  bindFillVar(ctx, c, selected ? 'color/primary' : 'color/bgSubtle', selected ? ACCENT : SURFACE)
+  if (!selected) {
+    bindStrokeVar(ctx, c, 'color/border', BORDER)
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  }
+  if (disabled) c.opacity = 0.45
+  c.appendChild(boundText(ctx, '필터', 13, selected ? 'color/bg' : 'color/text', selected ? WHITE : INK, true))
+  return c
+}
+
+// ══ ACTION 계열 (Button / Badge) ═════════════════════════════════════
+function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const variant = combo.variant || 'primary'
+  const size = combo.size || 'md'
+  const disabled = combo.disabled === 'true'
+  const pad: Record<string, { v: number; h: number; f: number }> = {
+    sm: { v: 7, h: 12, f: 13 },
+    md: { v: 10, h: 16, f: 15 },
+    lg: { v: 13, h: 20, f: 17 },
+  }
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 6
+  c.paddingTop = c.paddingBottom = pad[size].v
+  c.paddingLeft = c.paddingRight = pad[size].h
+  c.cornerRadius = 8
+  bindFillVar(ctx, c, `color/${variant}`, VARIANT_HEX[variant] ?? ACCENT)
+  if (disabled) c.opacity = 0.45
+  c.appendChild(boundText(ctx, '버튼', pad[size].f, 'color/bg', WHITE, true))
+  return c
+}
+function renderBadge(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const variant = combo.variant || 'primary'
+  const size = combo.size || 'md'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.paddingTop = c.paddingBottom = size === 'sm' ? 2 : 4
+  c.paddingLeft = c.paddingRight = size === 'sm' ? 7 : 9
+  c.cornerRadius = 6
+  bindFillVar(ctx, c, `color/${variant}`, VARIANT_HEX[variant] ?? ACCENT)
+  c.appendChild(boundText(ctx, 'Badge', size === 'sm' ? 11 : 13, 'color/bg', WHITE, true))
+  return c
+}
+
+// ── 카테고리 정의 ────────────────────────────────────────────────────
+type ComponentDoc = {
+  key: string
+  setName: string
+  eyebrow: string
+  desc: string
+  build: (ctx: Ctx, page: PageNode) => ComponentSetNode
+  states: State[]
+}
+type CategoryDef = { pageName: string; subtitle: string; docs: ComponentDoc[] }
+
+const INPUT_CATEGORY: CategoryDef = {
+  pageName: PAGE_INPUT,
+  subtitle:
+    '텍스트 입력 계열 — 라벨·입력·헬퍼 규약을 공유하는 폼 필드. 각 컴포넌트의 상태 변형을 편집 가능한 Figma 컴포넌트로 렌더합니다.',
+  docs: INPUTS.map((def) => ({
+    key: def.key,
+    setName: def.setName,
+    eyebrow: def.eyebrow,
+    desc: def.desc,
+    build: (ctx, page) => makeInputSet(ctx, def, page),
+    states: def.states,
+  })),
+}
+
+const SELECTION_CATEGORY: CategoryDef = {
+  pageName: PAGE_SELECTION,
+  subtitle: '선택 계열 — 켜고 끄거나 고르는 컨트롤. Toggle · Checkbox · Radio · Chip.',
+  docs: [
+    {
+      key: 'Toggle',
+      setName: 'DS/Toggle',
+      eyebrow: 'ATOM · SELECTION',
+      desc: '켜짐/꺼짐을 전환하는 스위치.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Toggle', [{ name: 'checked', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderToggle(ctx, c)),
+      states: [{ caption: 'Off', props: {} }, { caption: 'On', props: { checked: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'Checkbox',
+      setName: 'DS/Checkbox',
+      eyebrow: 'ATOM · SELECTION',
+      desc: '여러 항목을 독립적으로 선택하는 체크박스.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Checkbox', [{ name: 'checked', values: ['false', 'true'] }, { name: 'indeterminate', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderCheckbox(ctx, c)),
+      states: [{ caption: 'Unchecked', props: {} }, { caption: 'Checked', props: { checked: 'true' } }, { caption: 'Indeterminate', props: { indeterminate: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'Radio',
+      setName: 'DS/Radio',
+      eyebrow: 'ATOM · SELECTION',
+      desc: '한 그룹에서 하나만 고르는 라디오.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Radio', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderRadio(ctx, c)),
+      states: [{ caption: 'Unselected', props: {} }, { caption: 'Selected', props: { selected: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'Chip',
+      setName: 'DS/Chip',
+      eyebrow: 'MOLECULE · SELECTION',
+      desc: '선택 가능한 필터/태그 칩.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Chip', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderChip(ctx, c)),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Selected', props: { selected: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+  ],
+}
+
+const ACTION_CATEGORY: CategoryDef = {
+  pageName: PAGE_ACTION,
+  subtitle: '액션 계열 — 사용자 행동을 유발하거나 상태를 표시. Button · Badge.',
+  docs: [
+    {
+      key: 'Button',
+      setName: 'DS/Button',
+      eyebrow: 'ATOM · ACTION',
+      desc: '주요 액션을 실행하는 버튼. variant·size 축을 가집니다.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md', 'lg'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderButton(ctx, c)),
+      states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }, { caption: 'Disabled', props: { disabled: 'true', size: 'md' } }],
+    },
+    {
+      key: 'Badge',
+      setName: 'DS/Badge',
+      eyebrow: 'ATOM · ACTION',
+      desc: '상태·분류를 표시하는 배지. variant·size 축을 가집니다.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Badge', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md'] }], (c) => renderBadge(ctx, c)),
+      states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }],
+    },
+  ],
+}
+
+const ALL_CATEGORIES = [INPUT_CATEGORY, SELECTION_CATEGORY, ACTION_CATEGORY]
 
 // ── 변형 아이템(인스턴스 + 캡션) ────────────────────────────────────
 function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
@@ -390,60 +492,57 @@ function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
   return item
 }
 
-// ── Input 카테고리 페이지 ────────────────────────────────────────────
-export async function generateInputCategory(fontFamily: string): Promise<string[]> {
+// ── 카테고리 생성 ────────────────────────────────────────────────────
+export async function generateCategories(fontFamily: string): Promise<string[]> {
   const ctx = await setup(fontFamily)
   if (!ctx.vars.get('color/primary')) {
     ctx.warnings.push("Variables가 없습니다 — '토큰'을 먼저 생성하세요(색이 프리셋과 연결되지 않습니다).")
   }
-  if (figma.root.children.some((p) => p.name === 'Input')) {
-    ctx.warnings.push("페이지 'Input' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').")
-    return ctx.warnings
+
+  // 절취선(구분) 페이지 — 파운데이션과 컴포넌트 카테고리 사이. 페이지 목록에서 시각적 구분자.
+  if (!figma.root.children.some((p) => p.name === DIVIDER_PAGE)) {
+    const div = figma.createPage()
+    div.name = DIVIDER_PAGE
   }
 
-  // 1) 네이티브 컴포넌트 세트를 소스 페이지에 생성
-  const source =
-    figma.root.children.find((p) => p.name === SOURCE_PAGE) ??
-    (() => {
-      const p = figma.createPage()
-      p.name = SOURCE_PAGE
-      return p
-    })()
-  const sets = new Map<string, ComponentSetNode>()
-  let sy = 80
-  for (const def of INPUTS) {
-    const set = makeInputSet(ctx, def, source)
-    set.x = 80
-    set.y = sy
-    sy += set.height + 64
-    sets.set(def.setName, set)
-  }
-
-  // 2) Input 문서 페이지
-  const page = figma.createPage()
-  page.name = 'Input'
-  const root = makeRoot('Input')
-  placeRoot(root, page)
-  makeHeader(
-    ctx,
-    root,
-    'Input',
-    '텍스트 입력 계열 — 라벨·입력·헬퍼 규약을 공유하는 폼 필드. 각 컴포넌트의 상태 변형(정상·에러·성공·비활성·읽기전용)을 편집 가능한 Figma 컴포넌트로 렌더합니다.',
-  )
-  for (const def of INPUTS) {
-    const set = sets.get(def.setName)
-    const render = makeSection(ctx, root, {
-      eyebrow: def.eyebrow,
-      name: def.key,
-      desc: def.desc,
-      meta: [`Set: ${def.setName}`, `변형 ${def.states.length}개`, 'Platform: Web'],
-      renderDir: 'WRAP',
-    })
-    if (!set) {
-      ctx.warnings.push(`${def.setName} 세트 없음 — 문서 건너뜀`)
+  for (const cat of ALL_CATEGORIES) {
+    if (figma.root.children.some((p) => p.name === cat.pageName)) {
+      ctx.warnings.push(`페이지 '${cat.pageName}' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').`)
       continue
     }
-    for (const state of def.states) render.appendChild(variantItem(ctx, set, state))
+    const page = figma.createPage()
+    page.name = cat.pageName
+
+    // 컴포넌트 세트(편집 소스)를 이 카테고리 페이지에 함께 둔다(별도 소스 페이지 없음).
+    // 문서(x=0)와 겹치지 않도록 오른쪽(x≥1360)에 세로로 쌓는다.
+    const sets = new Map<string, ComponentSetNode>()
+    let sy = 200
+    for (const doc of cat.docs) {
+      const set = doc.build(ctx, page)
+      set.x = 1360
+      set.y = sy
+      sy += set.height + 48
+      sets.set(doc.setName, set)
+    }
+
+    const root = makeRoot(cat.pageName)
+    placeRoot(root, page)
+    makeHeader(ctx, root, cat.pageName, cat.subtitle)
+    for (const doc of cat.docs) {
+      const render = makeSection(ctx, root, {
+        eyebrow: doc.eyebrow,
+        name: doc.key,
+        desc: doc.desc,
+        meta: [`Set: ${doc.setName}`, `변형 ${doc.states.length}개`, 'Platform: Web'],
+        renderDir: 'WRAP',
+      })
+      const set = sets.get(doc.setName)
+      if (!set) {
+        ctx.warnings.push(`${doc.setName} 세트 없음 — 문서 건너뜀`)
+        continue
+      }
+      for (const st of doc.states) render.appendChild(variantItem(ctx, set, st))
+    }
   }
   return ctx.warnings
 }

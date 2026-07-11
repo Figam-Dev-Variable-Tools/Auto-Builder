@@ -4,7 +4,7 @@
 // TDS 문서 스타일(docs/spec/figma-tds-doc-style.md) + 겹침 방지 오토레이아웃(docs/spec/figma-category-layout.md).
 import { hexToRgb } from '../presets'
 import { ICON_PATHS } from '../icons-data'
-import { svgToFigmaPath } from '../svg-path'
+import { strokeIcon } from './icon-vec'
 
 export const FOUNDATION_PAGE_NAMES = ['Design System', 'Icon System']
 
@@ -65,28 +65,6 @@ function txtWrap(ctx: Ctx, chars: string, size: number, hex: string, maxW: numbe
   t.textAutoResize = 'HEIGHT'
   t.resize(maxW, t.height)
   return t
-}
-
-// ── 아이콘 벡터(라인아트) ─────────────────────────────────────────────
-function iconVec(ctx: Ctx, paths: string[], size: number, hex: string): FrameNode {
-  const wrap = figma.createFrame()
-  wrap.name = 'icon'
-  wrap.resize(size, size)
-  wrap.fills = []
-  wrap.clipsContent = false
-  const v = figma.createVector()
-  try {
-    v.vectorPaths = [{ windingRule: 'NONZERO', data: paths.map(svgToFigmaPath).join(' ') }]
-  } catch (e) {
-    ctx.warnings.push(`아이콘 path 변환 실패: ${e instanceof Error ? e.message : e}`)
-  }
-  v.fills = [solid(hex)]
-  v.strokes = []
-  wrap.appendChild(v)
-  v.x = 0
-  v.y = 0
-  v.resize(size, size)
-  return wrap
 }
 
 // ── 페이지 루트 + 헤더 + 문서 섹션 (레이아웃 스펙 §3) ──────────────────
@@ -268,15 +246,16 @@ function radiusItem(ctx: Ctx, name: string, r: number): FrameNode {
   return item
 }
 
-function iconItem(ctx: Ctx, key: string, paths: string[]): FrameNode {
-  const item = autoFrame('icon / ' + key, 'VERTICAL')
+function iconItem(ctx: Ctx, fullKey: string): FrameNode {
+  const name = fullKey.replace('_Icon/', '')
+  const item = autoFrame('icon / ' + name, 'VERTICAL')
   item.counterAxisAlignItems = 'CENTER'
   item.itemSpacing = 8
   item.paddingTop = item.paddingBottom = 16
   item.paddingLeft = item.paddingRight = 8
   item.counterAxisSizingMode = 'FIXED' // 폭 고정 먼저, 그다음 resize
   item.resize(112, item.height)
-  // 아이콘 자리(48px)를 일정하게 — 아이콘 벡터를 감싸는 고정 박스
+  // 아이콘 자리(48px)를 일정하게 — stroke 아이콘을 감싸는 고정 박스
   const box = figma.createFrame()
   box.name = 'box'
   box.layoutMode = 'HORIZONTAL'
@@ -286,9 +265,11 @@ function iconItem(ctx: Ctx, key: string, paths: string[]): FrameNode {
   box.counterAxisSizingMode = 'FIXED'
   box.resize(48, 48)
   box.fills = []
-  box.appendChild(iconVec(ctx, paths, 28, INK))
+  const tv = ctx.vars.get('color/text')
+  const ic = strokeIcon(fullKey, 28, tv ? boundPaint(tv) : solid(INK))
+  if (ic) box.appendChild(ic)
   item.appendChild(box)
-  item.appendChild(txt(ctx, key, 11, SUB))
+  item.appendChild(txt(ctx, name, 11, SUB))
   return item
 }
 
@@ -541,7 +522,7 @@ export async function generateIconSystemPage(fontFamily: string): Promise<string
     meta: [`Icons: ${keys.length}`, 'Style: Line', 'Grid: 24'],
     renderDir: 'WRAP',
   })
-  keys.forEach((key) => sec.appendChild(iconItem(ctx, key.replace('_Icon/', ''), ICON_PATHS[key])))
+  keys.forEach((key) => sec.appendChild(iconItem(ctx, key)))
 
   return ctx.warnings
 }
