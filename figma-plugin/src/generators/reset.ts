@@ -3,6 +3,7 @@
 // "이미 존재: DS Color …" 재실행 마찰을 오너 동의 하에 해소하는 유일한 경로.
 import { COLLECTION_NAMES } from './tokens'
 import { COMPONENT_PAGE_NAMES } from './components'
+import { FOUNDATION_PAGE_NAMES } from './foundations'
 import type { DocsContent } from './docs'
 
 export async function resetGenerated(docsContent: DocsContent): Promise<string[]> {
@@ -31,7 +32,7 @@ export async function resetGenerated(docsContent: DocsContent): Promise<string[]
   if (stN) notes.push(`Text Style ${stN}개 삭제`)
 
   // 3) 페이지(컴포넌트 + 문서). Figma는 최소 1페이지 필요 → 마지막 페이지는 남긴다.
-  const targets = new Set<string>(COMPONENT_PAGE_NAMES)
+  const targets = new Set<string>([...COMPONENT_PAGE_NAMES, ...FOUNDATION_PAGE_NAMES])
   for (const s of docsContent.sections) targets.add(`${s.order}. ${s.title}`)
   let pgN = 0
   for (const p of [...figma.root.children]) {

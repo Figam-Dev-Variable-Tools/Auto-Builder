@@ -151,12 +151,14 @@
   <div class="body">
     <div class="row" style="gap: 10px 14px; flex-wrap: wrap; margin-bottom: 8px">
       <label><input type="checkbox" id="scope-tokens" checked /> 토큰(Variables/Styles)</label>
-      <label><input type="checkbox" id="scope-components" checked /> 컴포넌트(편집 가능)</label>
-      <label><input type="checkbox" id="scope-snapshots" checked /> 스냅샷(스토리북 복사)</label>
+      <label><input type="checkbox" id="scope-designSystem" checked /> Design System 페이지</label>
+      <label><input type="checkbox" id="scope-icons" checked /> Icon System 페이지</label>
+      <label><input type="checkbox" id="scope-components" /> 컴포넌트(편집 가능)</label>
+      <label><input type="checkbox" id="scope-snapshots" /> 스냅샷(스토리북 복사)</label>
     </div>
     <p class="help" style="margin-bottom: 8px">
-      <b>스냅샷</b>은 스토리북 UI를 그대로 캡처한 이미지를 섹션별 페이지에 배치합니다(문서·용도별 컴포넌트).
-      <b>컴포넌트</b>는 variant·속성이 있는 편집 가능한 Figma 컴포넌트를 만듭니다.
+      <b>Design System</b>·<b>Icon System</b>은 컬러·타이포·간격·보더·아이콘(라인아트)을 TDS 문서 스타일 페이지로 만듭니다.
+      <b>컴포넌트</b>는 편집 가능한 Figma 컴포넌트, <b>스냅샷</b>은 스토리북 UI를 그대로 캡처한 이미지입니다.
     </p>
     <label style="color: #e03131"><input type="checkbox" id="opt-reset" /> 기존 DS 결과 삭제 후 재생성</label>
     <p class="help">이미 만든 DS 컬렉션·Text Style·페이지를 지우고 새로 만듭니다. “이미 존재” 오류로 막힐 때 사용하세요. <b>되돌릴 수 없습니다.</b></p>
@@ -258,6 +260,8 @@
           reset: $('opt-reset').checked,
           scope: {
             tokens: $('scope-tokens').checked,
+            designSystem: $('scope-designSystem').checked,
+            icons: $('scope-icons').checked,
             components: $('scope-components').checked,
             snapshots: $('scope-snapshots').checked,
           },

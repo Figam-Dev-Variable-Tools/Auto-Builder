@@ -7,6 +7,7 @@ import {
 } from './generators/components'
 import { generateDocs, type DocsContent } from './generators/docs'
 import { generateSnapshots } from './generators/snapshots'
+import { generateFoundations } from './generators/foundations'
 import { resetGenerated } from './generators/reset'
 import { DOCS_CONTENT } from './docs-content-data'
 import { importTokens, validateTokens } from './generators/sync'
@@ -26,7 +27,14 @@ type GenerateMsg = {
   social: string[]
   charts: boolean
   reset: boolean
-  scope: { tokens: boolean; components: boolean; docs?: boolean; snapshots: boolean }
+  scope: {
+    tokens: boolean
+    designSystem: boolean
+    icons: boolean
+    components: boolean
+    snapshots: boolean
+    docs?: boolean
+  }
 }
 
 type UiMsg = GenerateMsg | { type: 'import-remote'; url: string }
@@ -68,6 +76,23 @@ async function handleGenerate(msg: GenerateMsg) {
     const result = await generateTokens(payload)
     result.warnings.forEach((w) => status('warn', w))
     status('info', 'Variables 컬렉션 3개 + Text Styles 4종 생성 완료.')
+  }
+
+  if (msg.scope.designSystem || msg.scope.icons) {
+    try {
+      const warnings = await generateFoundations({
+        fontFamily: msg.typography.fontFamily,
+        designSystem: msg.scope.designSystem,
+        icons: msg.scope.icons,
+      })
+      warnings.forEach((w) => status('warn', w))
+      const made = [msg.scope.designSystem && 'Design System', msg.scope.icons && 'Icon System']
+        .filter(Boolean)
+        .join(' · ')
+      status('info', `파운데이션 페이지 생성 완료 (${made}).`)
+    } catch (e) {
+      status('error', `파운데이션 실패: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   if (msg.scope.components) {
