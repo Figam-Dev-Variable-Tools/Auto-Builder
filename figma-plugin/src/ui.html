@@ -3,28 +3,36 @@
 <style>
   * { box-sizing: border-box; }
   body { font: 12px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; margin: 0; padding: 16px; color: #191f28; }
-  h1 { font-size: 14px; margin: 0 0 12px; }
+  h1 { font-size: 15px; margin: 0 0 12px; letter-spacing: -0.01em; }
   fieldset { border: 1px solid #e5e8eb; border-radius: 8px; margin: 0 0 12px; padding: 10px 12px; }
   legend { font-weight: 600; padding: 0 4px; }
   label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 8px 2px 0; }
-  .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .colors label { display: flex; justify-content: space-between; }
-  input[type='text'], input[type='number'], select { width: 100%; padding: 4px 6px; border: 1px solid #e5e8eb; border-radius: 6px; }
+  input[type='text'], input[type='number'], select { width: 100%; padding: 5px 7px; border: 1px solid #e5e8eb; border-radius: 6px; font: inherit; }
   .row { display: flex; gap: 8px; margin-bottom: 6px; align-items: center; }
-  .row > span { flex: 0 0 88px; }
+  .row > span { flex: 0 0 78px; color: #4e5968; }
+  .row small { color: #8b95a1; flex: none; }
+  /* 컬러 — 한 줄에 하나: 라벨 + 색상 + Hex */
+  .colors { display: flex; flex-direction: column; gap: 6px; }
+  .color-row { display: flex; align-items: center; gap: 8px; }
+  .color-row > span { flex: 0 0 78px; color: #4e5968; }
+  .color-row input[type='color'] { width: 34px; height: 28px; padding: 0; border: 1px solid #e5e8eb; border-radius: 6px; flex: none; background: none; cursor: pointer; }
+  .color-row input[type='text'] { flex: 1; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .divider { border: none; border-top: 1px dashed #e5e8eb; margin: 8px 0 6px; }
+  .link-btn { background: none; border: none; color: #3182f6; cursor: pointer; font-size: 12px; padding: 4px 0; font-weight: 600; }
+  .link-btn:hover { text-decoration: underline; }
   details { margin-bottom: 12px; }
   summary { cursor: pointer; font-weight: 600; }
-  button { padding: 8px 12px; border: 1px solid #e5e8eb; border-radius: 8px; background: #fff; cursor: pointer; margin: 2px 4px 2px 0; }
-  button.primary { background: #3182f6; border-color: #3182f6; color: #fff; font-weight: 600; }
+  button { padding: 8px 12px; border: 1px solid #e5e8eb; border-radius: 8px; background: #fff; cursor: pointer; margin: 2px 4px 2px 0; font: inherit; }
+  button.primary { background: #3d6bff; border-color: #3d6bff; color: #fff; font-weight: 600; width: 100%; margin: 4px 0 0; padding: 10px; }
+  .help { font-size: 11px; color: #8b95a1; margin: 3px 0 0; line-height: 1.5; }
+  .note { font-size: 11px; color: #8b95a1; margin: 6px 0 0; line-height: 1.5; }
   #log { margin-top: 12px; max-height: 140px; overflow-y: auto; font-size: 11px; }
   #log .info { color: #00c471; }
   #log .warn { color: #b8860b; }
   #log .error { color: #f04452; }
-  #downloads a { display: block; margin: 2px 0; }
-  .note { font-size: 11px; color: #8b95a1; margin: 4px 0 0; line-height: 1.5; }
 </style>
 
-<h1>DS Generator</h1>
+<h1>Design-System-Hub-Tools</h1>
 
 <fieldset>
   <legend>1) 스타일 프리셋</legend>
@@ -36,13 +44,20 @@
 <fieldset>
   <legend>2) 컬러</legend>
   <div class="colors">
-    <label>메인 컬러 <input type="color" id="c-primary" /></label>
-    <label>서브 컬러 <input type="color" id="c-secondary" /></label>
-    <label>에러 <input type="color" id="c-error" /></label>
-    <label>성공 <input type="color" id="c-success" /></label>
-    <label>배경 <input type="color" id="c-bg" /></label>
-    <label>텍스트 <input type="color" id="c-text" /></label>
+    <div class="color-row"><span>메인 컬러</span><input type="color" id="c-primary" /><input type="text" id="h-primary" /></div>
+    <div class="color-row"><span>서브 컬러</span><input type="color" id="c-secondary" /><input type="text" id="h-secondary" /></div>
+    <div class="color-row"><span>에러</span><input type="color" id="c-error" /><input type="text" id="h-error" /></div>
+    <div class="color-row"><span>성공</span><input type="color" id="c-success" /><input type="text" id="h-success" /></div>
+    <div class="color-row"><span>배경 색상</span><input type="color" id="c-bg" /><input type="text" id="h-bg" /></div>
+    <div class="color-row"><span>폰트 색상</span><input type="color" id="c-text" /><input type="text" id="h-text" /></div>
+    <div id="extra-colors" style="display: none">
+      <hr class="divider" />
+      <div class="color-row"><span>경고</span><input type="color" id="c-warning" /><input type="text" id="h-warning" /></div>
+      <div class="color-row"><span>옅은 배경</span><input type="color" id="c-bgSubtle" /><input type="text" id="h-bgSubtle" /></div>
+      <div class="color-row"><span>보더</span><input type="color" id="c-border" /><input type="text" id="h-border" /></div>
+    </div>
   </div>
+  <button class="link-btn" id="btn-add-sub" type="button">+ 서브 컬러 추가 (경고 · 옅은 배경 · 보더)</button>
 </fieldset>
 
 <fieldset>
@@ -58,85 +73,95 @@
     </select>
   </div>
   <div class="row"><span>Font Family</span><input type="text" id="t-family" /></div>
-  <div class="row"><span>Base size</span><input type="number" id="t-base" value="16" /></div>
+  <div class="row"><span>기준 크기</span><input type="number" id="t-base" value="16" /><small>px</small></div>
+  <p class="help">본문(md) 글자 크기입니다. 나머지 단계(xs·sm·lg·xl·xxl)는 여기에 배수를 곱해 자동 계산됩니다.</p>
   <div class="row">
-    <span>Scale</span>
+    <span>크기 배수</span>
     <select id="t-scale">
-      <option value="1.2">1.2</option>
-      <option value="1.25" selected>1.25</option>
-      <option value="1.333">1.333</option>
+      <option value="1.2">1.2 — 완만</option>
+      <option value="1.25" selected>1.25 — 표준</option>
+      <option value="1.333">1.333 — 큰 대비</option>
     </select>
   </div>
-  <p class="note">
-    선택한 폰트가 <b>Figma에 설치돼 있어야</b> Text Style에 적용됩니다. 미설치 시 자동으로
-    Inter로 폴백되고 경고를 표시합니다. (웹 CDN 폰트는 Figma에 적용되지 않음)
-  </p>
+  <p class="help">단계 사이의 크기 비율입니다. 값이 클수록 제목과 본문의 크기 차이가 커집니다.</p>
+  <p class="note">선택한 폰트가 <b>Figma에 설치돼 있어야</b> Text Style에 적용됩니다. 미설치 시 자동으로 Inter로 폴백되고 경고를 표시합니다. (웹 CDN 폰트는 Figma에 적용되지 않음)</p>
 </fieldset>
 
 <details>
   <summary>▸ 세부 설정</summary>
   <fieldset>
-    <legend>4-1) 소셜 로그인</legend>
+    <legend>소셜 로그인</legend>
     <label><input type="checkbox" id="s-kakao" /> 카카오</label>
     <label><input type="checkbox" id="s-google" /> 구글</label>
     <label><input type="checkbox" id="s-facebook" /> 페이스북</label>
     <label><input type="checkbox" id="s-naver" /> 네이버</label>
   </fieldset>
   <fieldset>
-    <legend>4-2) 차트</legend>
+    <legend>차트</legend>
     <label><input type="checkbox" id="s-charts" /> 차트 컴포넌트 생성</label>
+  </fieldset>
+  <fieldset>
+    <legend>원격 선언 불러오기 (선택)</legend>
+    <div class="row"><input type="text" id="remote-url" /></div>
+    <button id="btn-import-remote" type="button">URL에서 불러오기</button>
+    <p class="help">매니페스트·tokens·docs-content JSON URL을 불러와 생성에 사용합니다. 비워두면 내장 기본값을 씁니다. (jsdelivr @gh / github.io 허용)</p>
   </fieldset>
 </details>
 
 <fieldset>
-  <legend>5) 생성 범위</legend>
+  <legend>4) 생성 범위</legend>
   <label><input type="checkbox" id="scope-tokens" checked /> 토큰(Variables/Styles)</label>
   <label><input type="checkbox" id="scope-components" checked /> 컴포넌트</label>
   <label><input type="checkbox" id="scope-docs" checked /> 문서 페이지</label>
 </fieldset>
 
-<div>
-  <button class="primary" id="btn-generate">디자인시스템 생성</button>
-  <button id="btn-import-file">tokens.json 가져오기(파일)</button>
-  <button id="btn-import-remote">원격에서 가져오기(URL)</button>
-  <button id="btn-export">현재 Variables 내보내기</button>
-</div>
-<input type="file" id="file-input" accept="application/json" style="display: none" />
-<div id="downloads"></div>
+<button class="primary" id="btn-generate">디자인시스템 생성</button>
 <div id="log"></div>
 
 <script>
-  // 부록 C 프리셋 기본값 (프리필용)
+  // 프리셋 기본값 (9색) — plugin presets.ts와 동일
   const PRESETS = {
     bootstrap: {
-      colors: { primary: '#0D6EFD', secondary: '#6C757D', error: '#DC3545', success: '#198754', bg: '#FFFFFF', text: '#212529' },
+      colors: { primary: '#7952B3', secondary: '#6C757D', error: '#DC3545', success: '#198754', warning: '#FFC107', bg: '#FFFFFF', bgSubtle: '#F8F9FA', text: '#212529', border: '#DEE2E6' },
       fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
       scale: '1.25',
     },
     tailwind: {
-      colors: { primary: '#2563EB', secondary: '#64748B', error: '#EF4444', success: '#22C55E', bg: '#FFFFFF', text: '#0F172A' },
+      colors: { primary: '#06B6D4', secondary: '#64748B', error: '#EF4444', success: '#22C55E', warning: '#F59E0B', bg: '#FFFFFF', bgSubtle: '#F9FAFB', text: '#0F172A', border: '#E5E7EB' },
       fontFamily: "'Inter', system-ui, sans-serif",
       scale: '1.25',
     },
     toss: {
-      colors: { primary: '#3182F6', secondary: '#4E5968', error: '#F04452', success: '#00C471', bg: '#FFFFFF', text: '#191F28' },
+      colors: { primary: '#3D6BFF', secondary: '#4E5968', error: '#F04452', success: '#00C471', warning: '#FF9F0A', bg: '#FFFFFF', bgSubtle: '#F5F7FA', text: '#191F28', border: '#E5E8EB' },
       fontFamily: "'Pretendard', -apple-system, sans-serif",
       scale: '1.2',
     },
   }
-  const COLOR_KEYS = ['primary', 'secondary', 'error', 'success', 'bg', 'text']
-  // 폰트 선언 → Font Family 스택. 첫 패밀리명이 Figma loadFontAsync 대상이 된다.
+  const COLOR_KEYS = ['primary', 'secondary', 'error', 'success', 'warning', 'bg', 'bgSubtle', 'text', 'border']
   const FONTS = {
     pretendard: "'Pretendard', -apple-system, sans-serif",
     nanumsquare: "'NanumSquare', sans-serif",
     twaynalda: "'TwayNalda', sans-serif",
     inter: "'Inter', system-ui, sans-serif",
   }
+  const HEX_RE = /^#[0-9a-fA-F]{6}$/
   const $ = (id) => document.getElementById(id)
+
+  // 색상 피커 ↔ Hex 텍스트 양방향 동기화
+  COLOR_KEYS.forEach((k) => {
+    $('c-' + k).addEventListener('input', () => ($('h-' + k).value = $('c-' + k).value.toUpperCase()))
+    $('h-' + k).addEventListener('input', () => {
+      const v = $('h-' + k).value.trim()
+      if (HEX_RE.test(v)) $('c-' + k).value = v
+    })
+  })
 
   function applyPreset(name) {
     const p = PRESETS[name]
-    COLOR_KEYS.forEach((k) => ($('c-' + k).value = p.colors[k]))
+    COLOR_KEYS.forEach((k) => {
+      $('c-' + k).value = p.colors[k]
+      $('h-' + k).value = p.colors[k].toUpperCase()
+    })
     $('t-family').value = p.fontFamily
     $('t-scale').value = p.scale
     $('t-font').value = 'preset'
@@ -144,7 +169,6 @@
   document.querySelectorAll('input[name=preset]').forEach((r) =>
     r.addEventListener('change', () => applyPreset(r.value)),
   )
-  // 폰트 선택 시 Font Family 스택을 선언한다. '프리셋 기본'은 현재 프리셋 폰트로 되돌린다.
   $('t-font').addEventListener('change', () => {
     const v = $('t-font').value
     if (v === 'preset') {
@@ -154,7 +178,12 @@
       $('t-family').value = FONTS[v]
     }
   })
+  $('btn-add-sub').onclick = () => {
+    $('extra-colors').style.display = 'block'
+    $('btn-add-sub').style.display = 'none'
+  }
   applyPreset('toss')
+  $('remote-url').value = 'https://cdn.jsdelivr.net/gh/Figam-Dev-Variable-Tools/Design-System-Hub-Tools@main/packages/figma-story-tools/manifest.json'
 
   $('btn-generate').onclick = () => {
     const preset = document.querySelector('input[name=preset]:checked').value
@@ -185,50 +214,19 @@
     )
   }
 
-  $('btn-import-file').onclick = () => $('file-input').click()
-  $('file-input').onchange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () =>
-      parent.postMessage({ pluginMessage: { type: 'import-tokens', json: String(reader.result) } }, '*')
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
   $('btn-import-remote').onclick = () => {
-    const url = prompt(
-      '원격 JSON URL — 컴포넌트 매니페스트 / tokens / docs-content\n' +
-        '자체 배포(공개 리포에서 즉시 동작, 퍼블리시 불필요):\n' +
-        '  jsdelivr @gh  또는  GitHub Pages(figam-dev-variable-tools.github.io/Design-System-Hub-Tools)',
-      'https://cdn.jsdelivr.net/gh/Figam-Dev-Variable-Tools/Design-System-Hub-Tools@main/packages/figma-story-tools/manifest.json',
-    )
-    if (url) parent.postMessage({ pluginMessage: { type: 'import-remote', url } }, '*')
+    const url = $('remote-url').value.trim()
+    if (!url) return
+    parent.postMessage({ pluginMessage: { type: 'import-remote', url } }, '*')
   }
-
-  $('btn-export').onclick = () =>
-    parent.postMessage({ pluginMessage: { type: 'export-tokens' } }, '*')
 
   const log = $('log')
   onmessage = (e) => {
     const msg = e.data.pluginMessage
-    if (!msg) return
-    if (msg.type === 'status') {
-      const div = document.createElement('div')
-      div.className = msg.level
-      div.textContent = msg.message
-      log.prepend(div)
-    }
-    if (msg.type === 'export-result') {
-      const wrap = $('downloads')
-      wrap.innerHTML = ''
-      msg.files.forEach((f) => {
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(new Blob([f.content], { type: 'application/json' }))
-        a.download = f.name
-        a.textContent = '⬇ ' + f.name
-        wrap.appendChild(a)
-      })
-    }
+    if (!msg || msg.type !== 'status') return
+    const div = document.createElement('div')
+    div.className = msg.level
+    div.textContent = msg.message
+    log.prepend(div)
   }
 </script>

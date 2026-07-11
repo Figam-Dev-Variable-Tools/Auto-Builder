@@ -133,7 +133,7 @@ export const PRESETS: Record<PresetName, TokensJson> = {
 export const PRESET_NAMES: PresetName[] = ['bootstrap', 'tailwind', 'toss']
 
 export function hexToRgb(hex: string): RGB {
-  const h = hex.replace('#', '')
+  const h = (hex || '#000000').replace('#', '')
   return {
     r: parseInt(h.slice(0, 2), 16) / 255,
     g: parseInt(h.slice(2, 4), 16) / 255,

@@ -61,8 +61,10 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
   for (const key of COLOR_KEYS) {
     const v = figma.variables.createVariable(`color/${key}`, colorCol, 'COLOR')
     for (const preset of PRESET_NAMES) {
-      // 선택 프리셋 mode에는 UI 입력값, 나머지는 부록 C 기본값
-      const hex = preset === payload.preset ? payload.colors[key] : PRESETS[preset].color[key]
+      // 선택 프리셋 mode에는 UI 입력값, 나머지는 부록 C 기본값.
+      // UI가 보내지 않은 색(warning/bgSubtle/border 등)은 프리셋 기본값으로 폴백.
+      const fromUi = preset === payload.preset ? payload.colors[key] : undefined
+      const hex = fromUi ?? PRESETS[preset].color[key]
       v.setValueForMode(modeIds[preset], hexToRgb(hex))
     }
     colorVariables[key] = v

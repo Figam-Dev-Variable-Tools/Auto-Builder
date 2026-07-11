@@ -1,4 +1,4 @@
-// DS Generator — 메인 스레드. UI 메시지 프로토콜(P1): generate / import-tokens / import-remote / export-tokens
+// Design-System-Hub-Tools — 메인 스레드. UI 메시지 프로토콜(P1): generate / import-remote
 import { guardExisting, generateTokens, type GenerateTokensPayload } from './generators/tokens'
 import {
   generateComponents,
@@ -6,7 +6,7 @@ import {
   type ComponentManifest,
 } from './generators/components'
 import { generateDocs, type DocsContent } from './generators/docs'
-import { exportTokens, importTokens, validateTokens } from './generators/sync'
+import { importTokens, validateTokens } from './generators/sync'
 import type { PresetName, TokensJson, ColorKey } from './presets'
 
 figma.showUI(__html__, { width: 420, height: 680 })
@@ -21,11 +21,7 @@ type GenerateMsg = {
   scope: { tokens: boolean; components: boolean; docs: boolean }
 }
 
-type UiMsg =
-  | GenerateMsg
-  | { type: 'import-tokens'; json: string }
-  | { type: 'import-remote'; url: string }
-  | { type: 'export-tokens' }
+type UiMsg = GenerateMsg | { type: 'import-remote'; url: string }
 
 // 원격/파일로 로드된 자산 (Stage C: 컴포넌트 매니페스트 URL 임포트 대비)
 let loadedDocsContent: DocsContent | null = null
@@ -117,17 +113,6 @@ figma.ui.onmessage = async (msg: UiMsg) => {
       case 'generate':
         await handleGenerate(msg)
         break
-      case 'import-tokens': {
-        let parsed: unknown
-        try {
-          parsed = JSON.parse(msg.json)
-        } catch {
-          status('error', '파일: JSON 파싱 실패')
-          return
-        }
-        handleLoadedJson(parsed, '파일')
-        break
-      }
       case 'import-remote': {
         try {
           const res = await fetch(msg.url)
@@ -139,18 +124,6 @@ figma.ui.onmessage = async (msg: UiMsg) => {
         } catch (e) {
           status('error', `원격 fetch 실패: ${e instanceof Error ? e.message : String(e)}`)
         }
-        break
-      }
-      case 'export-tokens': {
-        const jsons = await exportTokens()
-        figma.ui.postMessage({
-          type: 'export-result',
-          files: jsons.map((j) => ({
-            name: `${j.$preset}.json`,
-            content: JSON.stringify(j, null, 2),
-          })),
-        })
-        status('info', `Variables 내보내기 완료 — preset ${jsons.length}개 파일.`)
         break
       }
     }
