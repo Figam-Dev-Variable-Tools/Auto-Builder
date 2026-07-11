@@ -21,6 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Pages를 자동 활성화(Settings 수동 설정 없이도 동작). Source가 'Deploy from a branch'로
+      # 잘못 설정돼 있어도 이 단계가 'GitHub Actions' 빌드 타입으로 전환한다.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
