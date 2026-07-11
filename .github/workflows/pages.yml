@@ -1,0 +1,49 @@
+name: Deploy TDS docs to GitHub Pages
+# TDS 문서 사이트(Storybook) + 디자인시스템 선언(manifest/tokens/docs-content)을
+# GitHub Pages로 공개 배포한다. Figma 플러그인이 이 URL을 읽어 디자인시스템을 생성한다.
+# (자체 구축 story.to.design — 외부 SaaS 불필요)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:manifest
+      - run: pnpm build-storybook
+      - name: 선언 파일을 사이트에 동봉 (Figma 플러그인이 읽을 URL)
+        run: |
+          cp packages/figma-story-tools/manifest.json storybook-static/manifest.json
+          mkdir -p storybook-static/tokens
+          cp tokens/*.json storybook-static/tokens/
+          cp docs/docs-content.json storybook-static/docs-content.json
+          touch storybook-static/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: storybook-static }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

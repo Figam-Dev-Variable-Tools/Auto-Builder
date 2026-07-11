@@ -14,12 +14,12 @@
 1. 변경 후 검증 게이트 통과: `pnpm build-storybook` + `node scripts/verify-mapping.mjs`
    + `node scripts/validate-tokens.mjs` (Design QA 문서 참조)
 2. `package.json` version bump (semver) → 커밋 메시지에 변경 요약
-3. push → GitHub Actions(Chromatic)가 자동 배포 — 시각 회귀 리뷰 후 승인
-4. 컴포넌트 props가 바뀐 경우: `pnpm build:manifest` 재실행 →
-   `packages/figma-story-tools` version bump → **오너 npm 계정으로 publish**
-   (플러그인 원격 임포트가 `@latest`를 참조하므로 publish 즉시 전파)
+3. push → GitHub Actions(`pages.yml`)가 문서 사이트 + 선언을 GitHub Pages에 자동 배포
+4. 컴포넌트 props가 바뀐 경우: `pnpm build:manifest` 재실행 → 커밋·push하면 jsdelivr @gh /
+   Pages 매니페스트가 갱신되어 플러그인 원격 임포트에 즉시(캐시 지연 감안) 반영.
+   (npm 발행은 선택 — 공개 리포 호스팅으로 이미 배포됨)
 5. 토큰이 바뀐 경우: Figma에서 DS Generator [원격에서 가져오기]로 pull —
-   양방향 동기화 규약은 figma-integration-guide.md §9 참조
+   양방향 동기화 규약은 figma-integration-guide.md 참조
 
 ## 호환성 규칙
 

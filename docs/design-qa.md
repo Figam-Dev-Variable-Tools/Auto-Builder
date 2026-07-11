@@ -9,14 +9,16 @@
 | 매핑 규약 | `node scripts/verify-mapping.mjs` | DS props ↔ Figma 매니페스트 §3 왕복 동일성 |
 | 토큰 스키마 | `node scripts/validate-tokens.mjs` | 부록 C 스키마 (3프리셋 + export 산출물) |
 | SSOT 색상 | `grep -rEn '#[0-9a-fA-F]{6}' src/ds src/docs` | hex 0건 (예외: brand.css, SocialLoginButton/logos) |
-| 시각 회귀 | Chromatic (push 시 자동) | 스토리 단위 스냅샷 diff — 변경분 리뷰·승인 |
+| 문서 배포 | `pages.yml` (push 시 자동) | Storybook + 선언(manifest/tokens/docs-content)을 GitHub Pages에 배포 |
 
-## 시각 회귀 리뷰 절차 (Chromatic)
+## 문서 사이트 배포 (GitHub Pages)
 
-1. push → Actions의 Chromatic 잡이 배포 + 스냅샷 비교
-2. 변경 감지 시 Chromatic 대시보드에서 diff 확인 → 의도된 변경은 Accept,
-   의도치 않은 변경은 원인 커밋 수정
-3. 토큰 값 변경은 광범위한 diff를 만들므로, 토큰 커밋은 단독으로 분리해 리뷰
+1. push → Actions의 `Deploy TDS docs to GitHub Pages` 잡이 typecheck·build:manifest·
+   build-storybook 후 배포한다.
+2. 배포 URL: `https://figam-dev-variable-tools.github.io/Auto-Builder/`
+   (선언: `.../manifest.json`, `.../tokens/<preset>.json`, `.../docs-content.json`)
+3. 시각 회귀(스냅샷 diff)는 이 프로젝트 범위 밖 — 필요 시 Chromatic 등을 별도 도입.
+   토큰 값 변경은 영향이 넓으므로 커밋을 단독 분리해 리뷰한다.
 
 ## 수동 QA 체크리스트 (릴리스 전)
 
