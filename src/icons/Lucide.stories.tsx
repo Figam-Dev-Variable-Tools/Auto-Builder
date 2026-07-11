@@ -1,36 +1,137 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  Bookmark,
+  Calendar,
+  Camera,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock,
+  Cloud,
+  CreditCard,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  Filter,
+  Flag,
+  Folder,
+  Gift,
+  Globe,
+  Heart,
+  HelpCircle,
+  Home,
+  Image,
+  Info,
+  Key,
+  Link,
+  List,
+  Lock,
+  Mail,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Minus,
+  Moon,
+  Paperclip,
+  Pause,
+  Pencil,
+  Phone,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  Share2,
+  ShoppingCart,
+  Star,
+  Sun,
+  Tag,
+  Trash2,
+  Unlock,
+  Upload,
+  User,
+  X,
+} from 'lucide-react'
+import { FIGMA_FILE } from '../shared/figma'
+import { IconGallery } from './IconGallery'
+
+// Heroicons와 동일한 인라인 SVG 컴포넌트 방식(currentColor stroke) — 외부 폰트·에셋이
+// 없어 Shadow DOM 등 어떤 격리 구조에서도 동작한다(docs/known-issues.md KI-1 권장 방식).
+const RAW = {
   Bell,
   BookOpen,
   Calendar,
   Camera,
+  MessageCircle,
   Cloud,
+  Settings,
   Heart,
   Home,
-  MessageCircle,
-  Settings,
   ShoppingCart,
   Star,
   User,
-} from 'lucide-react'
-import { FIGMA_FILE } from '../shared/figma'
+  Search,
+  Trash2,
+  Pencil,
+  Plus,
+  Minus,
+  X,
+  Check,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  HelpCircle,
+  Mail,
+  Phone,
+  MapPin,
+  Clock,
+  Eye,
+  EyeOff,
+  Lock,
+  Unlock,
+  Key,
+  Link,
+  Share2,
+  Paperclip,
+  Folder,
+  FileText,
+  Image,
+  Play,
+  Pause,
+  CreditCard,
+  Gift,
+  Tag,
+  Bookmark,
+  Flag,
+  Menu,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
+  RefreshCw,
+  Download,
+  Upload,
+  Filter,
+  List,
+  Globe,
+  Sun,
+  Moon,
+}
 
-// Heroicons와 동일한 인라인 SVG 컴포넌트 방식(currentColor stroke) — 외부 폰트·에셋이
-// 없어 Shadow DOM 등 어떤 격리 구조에서도 동작한다(docs/known-issues.md KI-1 권장 방식).
-const ICONS = [
-  ['Bell', Bell],
-  ['BookOpen', BookOpen],
-  ['Calendar', Calendar],
-  ['Camera', Camera],
-  ['MessageCircle', MessageCircle],
-  ['Cloud', Cloud],
-  ['Settings', Settings],
-  ['Heart', Heart],
-  ['Home', Home],
-  ['ShoppingCart', ShoppingCart],
-  ['Star', Star],
-  ['User', User],
-] as const
+const ITEMS = Object.entries(RAW).map(
+  ([name, Icon]) => [name, <Icon key={name} size={24} />] as const,
+)
 
 const meta = {
   title: 'Icons/Lucide (SVG)',
@@ -43,21 +144,5 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: () => (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        textAlign: 'center',
-      }}
-    >
-      {ICONS.map(([name, Icon]) => (
-        <div key={name}>
-          <Icon size={24} style={{ margin: '0 auto' }} />
-          <div>{name}</div>
-        </div>
-      ))}
-    </div>
-  ),
+  render: () => <IconGallery items={ITEMS} />,
 }

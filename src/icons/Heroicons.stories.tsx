@@ -1,5 +1,58 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import {
+  ArrowPathIcon,
+  Bars3Icon,
+  BellIcon,
+  BookOpenIcon,
+  BookmarkIcon,
+  CalendarIcon,
+  CameraIcon,
+  ChatBubbleLeftIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  CloudIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  EnvelopeIcon,
+  ExclamationTriangleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  FlagIcon,
+  FolderIcon,
+  GiftIcon,
+  HeartIcon,
+  HomeIcon,
+  InformationCircleIcon,
+  KeyIcon,
+  LinkIcon,
+  LockClosedIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  MinusIcon,
+  PaperClipIcon,
+  PauseCircleIcon,
+  PencilIcon,
+  PhoneIcon,
+  PhotoIcon,
+  PlayCircleIcon,
+  PlusIcon,
+  QuestionMarkCircleIcon,
+  ShareIcon,
+  ShoppingCartIcon,
+  StarIcon,
+  TagIcon,
+  TrashIcon,
+  UserIcon,
+  XCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline'
+import { FIGMA_FILE } from '../shared/figma'
+import { IconGallery } from './IconGallery'
+
+const RAW = {
   BellIcon,
   BookOpenIcon,
   CalendarIcon,
@@ -12,23 +65,48 @@ import {
   ShoppingCartIcon,
   StarIcon,
   UserIcon,
-} from '@heroicons/react/24/outline'
-import { FIGMA_FILE } from '../shared/figma'
+  MagnifyingGlassIcon,
+  TrashIcon,
+  PencilIcon,
+  PlusIcon,
+  MinusIcon,
+  XMarkIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  QuestionMarkCircleIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  MapPinIcon,
+  ClockIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  KeyIcon,
+  LinkIcon,
+  ShareIcon,
+  PaperClipIcon,
+  FolderIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  PlayCircleIcon,
+  PauseCircleIcon,
+  CreditCardIcon,
+  GiftIcon,
+  TagIcon,
+  BookmarkIcon,
+  FlagIcon,
+  Bars3Icon,
+  ChevronDownIcon,
+  ArrowPathIcon,
+}
 
-const ICONS = [
-  ['BellIcon', BellIcon],
-  ['BookOpenIcon', BookOpenIcon],
-  ['CalendarIcon', CalendarIcon],
-  ['CameraIcon', CameraIcon],
-  ['ChatBubbleLeftIcon', ChatBubbleLeftIcon],
-  ['CloudIcon', CloudIcon],
-  ['Cog6ToothIcon', Cog6ToothIcon],
-  ['HeartIcon', HeartIcon],
-  ['HomeIcon', HomeIcon],
-  ['ShoppingCartIcon', ShoppingCartIcon],
-  ['StarIcon', StarIcon],
-  ['UserIcon', UserIcon],
-] as const
+const ITEMS = Object.entries(RAW).map(
+  ([name, Icon]) =>
+    [name, <Icon key={name} className="w-6 h-6" style={{ width: 24, height: 24 }} />] as const,
+)
 
 const meta = {
   title: 'Icons/Heroicons (Tailwind SVG)',
@@ -41,21 +119,5 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: () => (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        textAlign: 'center',
-      }}
-    >
-      {ICONS.map(([name, Icon]) => (
-        <div key={name}>
-          <Icon className="w-6 h-6" style={{ width: 24, height: 24, margin: '0 auto' }} />
-          <div>{name}</div>
-        </div>
-      ))}
-    </div>
-  ),
+  render: () => <IconGallery items={ITEMS} />,
 }

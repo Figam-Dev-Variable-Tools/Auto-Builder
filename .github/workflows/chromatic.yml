@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build:tokens
+      - run: pnpm typecheck
       - run: pnpm build:tw
       # CHROMATIC_PROJECT_TOKEN 시크릿 등록 전에는 빌드 검증만 수행 (README 체크리스트 참조)
       - name: Build Storybook (배포 생략 — 토큰 미등록)

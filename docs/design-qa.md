@@ -5,6 +5,7 @@
 | 게이트 | 명령 | 검증 내용 |
 |---|---|---|
 | 통합 빌드 | `pnpm build-storybook` | tokens→tailwind→storybook 체인 에러 0 |
+| 타입 게이트 | `pnpm typecheck` | tsc strict 0 에러 (src 전체 — CI에서 빌드 전 실행) |
 | 매핑 규약 | `node scripts/verify-mapping.mjs` | DS props ↔ Figma 매니페스트 §3 왕복 동일성 |
 | 토큰 스키마 | `node scripts/validate-tokens.mjs` | 부록 C 스키마 (3프리셋 + export 산출물) |
 | SSOT 색상 | `grep -rEn '#[0-9a-fA-F]{6}' src/ds src/docs` | hex 0건 (예외: brand.css, SocialLoginButton/logos) |

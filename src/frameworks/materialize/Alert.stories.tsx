@@ -97,7 +97,7 @@ const meta = {
 } satisfies Meta<Args>
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<Args>
 
 export const Default: Story = {
   render: (args) => (

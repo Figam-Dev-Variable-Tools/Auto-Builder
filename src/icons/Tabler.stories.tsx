@@ -1,35 +1,136 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconArrowRight,
+  IconBell,
+  IconBook,
+  IconBookmark,
+  IconCalendar,
+  IconCamera,
+  IconCheck,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronUp,
+  IconClock,
+  IconCloud,
+  IconCreditCard,
+  IconDownload,
+  IconEye,
+  IconEyeOff,
+  IconFileText,
+  IconFilter,
+  IconFlag,
+  IconFolder,
+  IconGift,
+  IconHeart,
+  IconHelp,
+  IconHome,
+  IconInfoCircle,
+  IconKey,
+  IconLink,
+  IconList,
+  IconLock,
+  IconLockOpen,
+  IconMail,
+  IconMapPin,
+  IconMenu2,
+  IconMessageCircle,
+  IconMinus,
+  IconMoon,
+  IconPaperclip,
+  IconPencil,
+  IconPhone,
+  IconPhoto,
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconPlus,
+  IconRefresh,
+  IconSearch,
+  IconSettings,
+  IconShare,
+  IconShoppingCart,
+  IconStar,
+  IconSun,
+  IconTag,
+  IconTrash,
+  IconUpload,
+  IconUser,
+  IconWorld,
+  IconX,
+} from '@tabler/icons-react'
+import { FIGMA_FILE } from '../shared/figma'
+import { IconGallery } from './IconGallery'
+
+// Heroicons/Lucide와 동일한 인라인 SVG 컴포넌트 방식(currentColor stroke).
+const RAW = {
   IconBell,
   IconBook,
   IconCalendar,
   IconCamera,
+  IconMessageCircle,
   IconCloud,
+  IconSettings,
   IconHeart,
   IconHome,
-  IconMessageCircle,
-  IconSettings,
   IconShoppingCart,
   IconStar,
   IconUser,
-} from '@tabler/icons-react'
-import { FIGMA_FILE } from '../shared/figma'
+  IconSearch,
+  IconTrash,
+  IconPencil,
+  IconPlus,
+  IconMinus,
+  IconX,
+  IconCheck,
+  IconAlertTriangle,
+  IconAlertCircle,
+  IconInfoCircle,
+  IconHelp,
+  IconMail,
+  IconPhone,
+  IconMapPin,
+  IconClock,
+  IconEye,
+  IconEyeOff,
+  IconLock,
+  IconLockOpen,
+  IconKey,
+  IconLink,
+  IconShare,
+  IconPaperclip,
+  IconFolder,
+  IconFileText,
+  IconPhoto,
+  IconPlayerPlay,
+  IconPlayerPause,
+  IconCreditCard,
+  IconGift,
+  IconTag,
+  IconBookmark,
+  IconFlag,
+  IconMenu2,
+  IconChevronDown,
+  IconChevronUp,
+  IconChevronLeft,
+  IconChevronRight,
+  IconArrowLeft,
+  IconArrowRight,
+  IconRefresh,
+  IconDownload,
+  IconUpload,
+  IconFilter,
+  IconList,
+  IconWorld,
+  IconSun,
+  IconMoon,
+}
 
-// Heroicons/Lucide와 동일한 인라인 SVG 컴포넌트 방식(currentColor stroke).
-const ICONS = [
-  ['IconBell', IconBell],
-  ['IconBook', IconBook],
-  ['IconCalendar', IconCalendar],
-  ['IconCamera', IconCamera],
-  ['IconMessageCircle', IconMessageCircle],
-  ['IconCloud', IconCloud],
-  ['IconSettings', IconSettings],
-  ['IconHeart', IconHeart],
-  ['IconHome', IconHome],
-  ['IconShoppingCart', IconShoppingCart],
-  ['IconStar', IconStar],
-  ['IconUser', IconUser],
-] as const
+const ITEMS = Object.entries(RAW).map(
+  ([name, Icon]) => [name, <Icon key={name} size={24} stroke={1.75} />] as const,
+)
 
 const meta = {
   title: 'Icons/Tabler (SVG)',
@@ -42,21 +143,5 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: () => (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        textAlign: 'center',
-      }}
-    >
-      {ICONS.map(([name, Icon]) => (
-        <div key={name}>
-          <Icon size={24} style={{ margin: '0 auto' }} />
-          <div>{name}</div>
-        </div>
-      ))}
-    </div>
-  ),
+  render: () => <IconGallery items={ITEMS} />,
 }

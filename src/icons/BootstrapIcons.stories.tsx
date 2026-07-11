@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { FrameworkScope } from '../shared/FrameworkScope'
 import { FIGMA_FILE } from '../shared/figma'
+import { IconGallery } from './IconGallery'
 import css from 'bootstrap-icons/font/bootstrap-icons.css?inline'
 
 // Known Issue KI-1: @font-face는 Shadow Root 내부 <style>에서 등록되지 않는 브라우저
@@ -30,7 +31,47 @@ const ICONS = [
   'heart',
   'house',
   'star',
+  'search',
+  'trash',
+  'pencil',
+  'plus',
+  'dash',
+  'x',
+  'check',
+  'check-circle',
+  'x-circle',
+  'exclamation-triangle',
+  'info-circle',
+  'question-circle',
+  'envelope',
+  'telephone',
+  'geo-alt',
+  'clock',
+  'eye',
+  'eye-slash',
+  'lock',
+  'unlock',
+  'key',
+  'link',
+  'share',
+  'paperclip',
+  'folder',
+  'file-text',
+  'image',
+  'play-circle',
+  'pause-circle',
+  'credit-card',
+  'gift',
+  'tag',
+  'bookmark',
+  'flag',
+  'list',
+  'chevron-down',
 ]
+
+const ITEMS = ICONS.map(
+  (name) => [name, <i key={name} className={`bi bi-${name}`} style={{ fontSize: 24 }} />] as const,
+)
 
 const meta = {
   title: 'Icons/Bootstrap Icons',
@@ -46,23 +87,10 @@ export const Default: Story = {
   render: () => {
     ensureIconFontRegistered()
     return (
-      <FrameworkScope styles={[GLYPHS]}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-            textAlign: 'center',
-          }}
-        >
-          {ICONS.map((name) => (
-            <div key={name}>
-              <i className={`bi bi-${name}`} style={{ fontSize: '24px' }} />
-              <div>{name}</div>
-            </div>
-          ))}
-        </div>
-      </FrameworkScope>
+      <IconGallery
+        items={ITEMS}
+        renderGrid={(children) => <FrameworkScope styles={[GLYPHS]}>{children}</FrameworkScope>}
+      />
     )
   },
 }

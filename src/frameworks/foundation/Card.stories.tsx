@@ -28,7 +28,7 @@ const meta = {
 } satisfies Meta<Args>
 
 export default meta
-type Story = StoryObj<typeof meta>
+type Story = StoryObj<Args>
 
 // SVG 플레이스홀더 이미지
 function PlaceholderImage({ height = 140 }: { height?: number }) {
