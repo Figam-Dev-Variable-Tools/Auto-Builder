@@ -6,6 +6,7 @@ import 'pretendard/dist/web/static/pretendard.css'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/500.css'
 import '@fontsource/inter/700.css'
+import '../src/foundation/webfonts.css'
 
 const withTheme: Decorator = (Story, context) => {
   if (context.parameters.noDsTheme) return <Story />

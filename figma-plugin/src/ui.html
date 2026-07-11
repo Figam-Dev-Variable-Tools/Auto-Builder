@@ -21,6 +21,7 @@
   #log .warn { color: #b8860b; }
   #log .error { color: #f04452; }
   #downloads a { display: block; margin: 2px 0; }
+  .note { font-size: 11px; color: #8b95a1; margin: 4px 0 0; line-height: 1.5; }
 </style>
 
 <h1>DS Generator</h1>
@@ -46,6 +47,16 @@
 
 <fieldset>
   <legend>3) 타이포그래피</legend>
+  <div class="row">
+    <span>폰트</span>
+    <select id="t-font">
+      <option value="preset">프리셋 기본</option>
+      <option value="pretendard">Pretendard</option>
+      <option value="nanumsquare">나눔스퀘어 (NanumSquare)</option>
+      <option value="twaynalda">Tway 날다체 (TwayNalda)</option>
+      <option value="inter">Inter</option>
+    </select>
+  </div>
   <div class="row"><span>Font Family</span><input type="text" id="t-family" /></div>
   <div class="row"><span>Base size</span><input type="number" id="t-base" value="16" /></div>
   <div class="row">
@@ -56,6 +67,10 @@
       <option value="1.333">1.333</option>
     </select>
   </div>
+  <p class="note">
+    선택한 폰트가 <b>Figma에 설치돼 있어야</b> Text Style에 적용됩니다. 미설치 시 자동으로
+    Inter로 폴백되고 경고를 표시합니다. (웹 CDN 폰트는 Figma에 적용되지 않음)
+  </p>
 </fieldset>
 
 <details>
@@ -110,6 +125,13 @@
     },
   }
   const COLOR_KEYS = ['primary', 'secondary', 'error', 'success', 'bg', 'text']
+  // 폰트 선언 → Font Family 스택. 첫 패밀리명이 Figma loadFontAsync 대상이 된다.
+  const FONTS = {
+    pretendard: "'Pretendard', -apple-system, sans-serif",
+    nanumsquare: "'NanumSquare', sans-serif",
+    twaynalda: "'TwayNalda', sans-serif",
+    inter: "'Inter', system-ui, sans-serif",
+  }
   const $ = (id) => document.getElementById(id)
 
   function applyPreset(name) {
@@ -117,10 +139,21 @@
     COLOR_KEYS.forEach((k) => ($('c-' + k).value = p.colors[k]))
     $('t-family').value = p.fontFamily
     $('t-scale').value = p.scale
+    $('t-font').value = 'preset'
   }
   document.querySelectorAll('input[name=preset]').forEach((r) =>
     r.addEventListener('change', () => applyPreset(r.value)),
   )
+  // 폰트 선택 시 Font Family 스택을 선언한다. '프리셋 기본'은 현재 프리셋 폰트로 되돌린다.
+  $('t-font').addEventListener('change', () => {
+    const v = $('t-font').value
+    if (v === 'preset') {
+      const preset = document.querySelector('input[name=preset]:checked').value
+      $('t-family').value = PRESETS[preset].fontFamily
+    } else {
+      $('t-family').value = FONTS[v]
+    }
+  })
   applyPreset('toss')
 
   $('btn-generate').onclick = () => {

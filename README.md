@@ -130,8 +130,11 @@ pnpm --dir figma-plugin build          # Figma 플러그인 번들
 1. `pnpm --dir figma-plugin build` 실행 (`figma-plugin/dist/` 생성).
 2. Figma → Plugins → Development → **Import plugin from manifest…** →
    `figma-plugin/manifest.json` 선택.
-3. 플러그인 UI에서 프리셋 선택 → [디자인시스템 생성] — Variables 3컬렉션·Text Styles·
-   DS 컴포넌트가 생성된다. **문서 페이지**는 사전에 [tokens.json 가져오기(파일)]로
+3. 플러그인 UI에서 프리셋 + **폰트**(프리셋 기본 / Pretendard / 나눔스퀘어 / Tway 날다체 /
+   Inter) + 컬러를 선언 → [디자인시스템 생성] — Variables 3컬렉션·Text Styles·
+   DS 컴포넌트가 생성된다. 선택 폰트는 **Figma에 설치돼 있어야** Text Style에 적용되며,
+   미설치 시 Inter로 폴백된다(웹 CDN 폰트는 Figma에 적용 안 됨). 폰트별 안내는 Storybook
+   `2. 타이포그래피/폰트별 안내` 참조. **문서 페이지**는 사전에 [tokens.json 가져오기(파일)]로
    `docs/docs-content.json`을 로드한 경우에만 함께 생성된다(미로드 시 문서 범위는
    경고 후 건너뜀). 컴포넌트는 토큰(Variables) 생성이 선행되어야 한다(§0-15).
 4. 양방향 동기화: [현재 Variables 내보내기] → 받은 JSON을 `tokens/`에 덮어쓰고 커밋 →
