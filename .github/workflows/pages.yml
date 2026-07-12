@@ -35,15 +35,22 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build:manifest
       - run: pnpm build-storybook
-      - name: 선언 파일을 사이트에 동봉 (Figma 플러그인이 읽을 URL)
+      - name: 사이트 조립 — 랜딩(/) + Storybook(/storybook/) + 선언 파일
         run: |
-          cp packages/figma-story-tools/manifest.json storybook-static/manifest.json
-          mkdir -p storybook-static/tokens
-          cp tokens/*.json storybook-static/tokens/
-          cp docs/docs-content.json storybook-static/docs-content.json
-          touch storybook-static/.nojekyll
+          mkdir -p _site/storybook
+          cp -r storybook-static/* _site/storybook/
+          cp site/index.html _site/index.html
+          # 선언 파일(Figma 플러그인/도구가 읽는 URL) — 루트와 /storybook/ 양쪽에 둔다(하위호환)
+          cp packages/figma-story-tools/manifest.json _site/manifest.json
+          cp packages/figma-story-tools/manifest.json _site/storybook/manifest.json
+          mkdir -p _site/tokens _site/storybook/tokens
+          cp tokens/*.json _site/tokens/
+          cp tokens/*.json _site/storybook/tokens/
+          cp docs/docs-content.json _site/docs-content.json
+          cp docs/docs-content.json _site/storybook/docs-content.json
+          touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
-        with: { path: storybook-static }
+        with: { path: _site }
 
   deploy:
     needs: build
