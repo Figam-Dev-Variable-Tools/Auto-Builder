@@ -4,7 +4,7 @@
 //  2) 변수명 패리티 — Storybook --ds-<group>-<key>  ⇔  Figma <group>/<key> 가 1:1.
 //  3) 이름 존재   — Figma 변수명 템플릿이 generators/tokens.ts 에 실제로 선언됨.
 // 사용: pnpm verify:parity  (드리프트 시 비정상 종료)
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -144,6 +144,55 @@ try {
   }
 } catch (e) {
   note(`로고 패리티 확인 실패: ${e.message}`)
+}
+
+// ── 6) 컴포넌트 커버리지: Storybook 컴포넌트 ↔ Figma 세트 (싱크율) ─────
+// 실패로 치지 않고 정보로 출력(일부 갭은 의도적).
+try {
+  const catSrc = readFileSync(join(root, 'figma-plugin', 'src', 'generators', 'categories.ts'), 'utf8')
+  const figmaSets = new Set()
+  // 모든 ComponentDoc의 setName 리터럴(INPUTS 포함) + buildSet 리터럴
+  for (const m of catSrc.matchAll(/setName: '(DS\/[^']+)'/g)) figmaSets.add(m[1])
+  for (const m of catSrc.matchAll(/buildSet\(ctx, page, '(DS\/[^']+)'/g)) figmaSets.add(m[1])
+  // KR·Templates는 setName을 'DS/'+key로 계산 → 헬퍼 인자에서 추출
+  for (const m of catSrc.matchAll(/kr(?:Field|Bespoke)Doc\('[^']*', '([^']+)'/g)) figmaSets.add('DS/' + m[1])
+  figmaSets.add('DS/SocialLoginButton')
+  figmaSets.add('DS/Chart')
+
+  // Storybook 리프 컴포넌트(섹션별)
+  const storyRoot = join(root, 'src')
+  const storyFiles = []
+  const walkS = (d) => {
+    for (const f of readdirSync(d)) {
+      const p = join(d, f)
+      if (statSync(p).isDirectory()) walkS(p)
+      else if (f.endsWith('.stories.tsx')) storyFiles.push(p)
+    }
+  }
+  walkS(join(storyRoot, 'ds'))
+  if (existsSync(join(storyRoot, 'templates'))) walkS(join(storyRoot, 'templates'))
+  const general = []
+  let krCount = 0
+  let tplCount = 0
+  for (const f of storyFiles) {
+    const t = (readFileSync(f, 'utf8').match(/title:\s*['"]([^'"]+)['"]/) || [])[1]
+    if (!t) continue
+    const leaf = t.split('/').pop()
+    if (t.startsWith('3. 컴포넌트/')) general.push(leaf)
+    else if (t.startsWith('6. KR')) krCount++
+    else if (t.startsWith('Templates') || t.startsWith('Admin')) tplCount++
+  }
+  const missing = general.filter((g) => !figmaSets.has('DS/' + g))
+  const covered = general.length - missing.length
+  const pct = general.length ? Math.round((covered / general.length) * 100) : 100
+  const krFigma = [...figmaSets].filter((s) => s.startsWith('DS/Kr')).length
+  console.log(
+    `\n── 컴포넌트 커버리지(Storybook→Figma) ──\n` +
+      `  일반 컴포넌트: ${covered}/${general.length} (${pct}%)  · Figma 세트 없음: ${missing.join(', ') || '없음'}\n` +
+      `  KR: Storybook ${krCount} · Figma ${krFigma} 세트   |   Templates: Storybook ${tplCount} · Figma ${[...figmaSets].filter((s) => ['DS/AdminShell', 'DS/Dashboard', 'DS/ListPage', 'DS/Settings', 'DS/Login', 'DS/EmptyState', 'DS/FilterBar'].includes(s)).length} 세트`,
+  )
+} catch (e) {
+  console.error('커버리지 계산 건너뜀: ' + e.message)
 }
 
 // ── 결과 ──────────────────────────────────────────────────────────────

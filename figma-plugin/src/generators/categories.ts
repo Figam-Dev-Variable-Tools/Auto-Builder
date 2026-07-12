@@ -3002,6 +3002,119 @@ function renderTplFilterBar(ctx: Ctx, _combo: Record<string, string>): Component
   return c
 }
 
+// ══ Storybook-only 백필: Autocomplete · FileUpload · ImageUpload ═════
+function renderAutocomplete(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const disabled = combo.state === 'disabled'
+  const { c, addField } = inputShell(ctx, '검색', disabled)
+  const row = fieldRow(ctx, null, null, disabled)
+  const val = boundText(ctx, '검색어를 입력하세요', 15, 'color/secondary', MUTED)
+  val.name = 'Value'
+  val.layoutGrow = 1
+  row.appendChild(val)
+  const si = iconInstance('_Icon/Search', 'Icon', 18)
+  recolorIcon(si, SUB)
+  row.appendChild(si)
+  addField(row)
+  if (!disabled) addField(optionPanel(ctx, [['서울특별시', false], ['서울대입구역', false], ['서울숲', false]], false))
+  return c
+}
+function dropzone(ctx: Ctx, prompt: string, hint: string, disabled: boolean): FrameNode {
+  const z = autoFrame('dropzone', 'VERTICAL')
+  z.layoutAlign = 'STRETCH'
+  z.primaryAxisSizingMode = 'FIXED'
+  z.counterAxisAlignItems = 'CENTER'
+  z.primaryAxisAlignItems = 'CENTER'
+  z.itemSpacing = 6
+  z.paddingTop = z.paddingBottom = 24
+  z.cornerRadius = 10
+  bindFillVar(ctx, z, 'color/bgSubtle', SURFACE)
+  bindStrokeVar(ctx, z, 'color/border', BORDER)
+  z.strokeWeight = 1
+  z.dashPattern = [6, 6]
+  if (disabled) z.opacity = 0.45
+  const ic = iconInstance('_Icon/Upload', 'Icon', 22)
+  recolorIcon(ic, SUB)
+  z.appendChild(ic)
+  const p = boundText(ctx, prompt, 14, 'color/text', INK, true)
+  p.name = 'Prompt'
+  z.appendChild(p)
+  const h = boundText(ctx, hint, 12, 'color/secondary', SUB)
+  h.name = 'Hint'
+  z.appendChild(h)
+  return z
+}
+function renderFileUpload(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const disabled = combo.state === 'disabled'
+  const { c, addField } = inputShell(ctx, '첨부 파일', disabled)
+  addField(dropzone(ctx, '파일을 끌어다 놓거나 클릭', 'PDF, PNG · 최대 10MB', disabled))
+  ;[['기획서.pdf', '1.2MB'], ['디자인.png', '820KB']].forEach(([name, size]) => {
+    const r = autoFrame('file', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 8
+    r.paddingTop = r.paddingBottom = 8
+    r.paddingLeft = r.paddingRight = 10
+    r.cornerRadius = 8
+    bindStrokeVar(ctx, r, 'color/border', BORDER)
+    r.strokeWeight = 1
+    r.strokeAlign = 'INSIDE'
+    const fi = iconInstance('_Icon/File', 'Icon', 16)
+    recolorIcon(fi, SUB)
+    r.appendChild(fi)
+    const t = boundText(ctx, name, 13, 'color/text', INK)
+    t.layoutGrow = 1
+    r.appendChild(t)
+    r.appendChild(boundText(ctx, size, 12, 'color/tertiary', MUTED))
+    const x = iconInstance('_Icon/Close', 'Remove', 14)
+    recolorIcon(x, SUB)
+    r.appendChild(x)
+    addField(r)
+  })
+  return c
+}
+function renderImageUpload(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const disabled = combo.state === 'disabled'
+  const { c, addField } = inputShell(ctx, '이미지', disabled)
+  const grid = figma.createFrame()
+  grid.name = 'grid'
+  grid.layoutMode = 'HORIZONTAL'
+  grid.layoutWrap = 'WRAP'
+  grid.primaryAxisSizingMode = 'FIXED'
+  grid.counterAxisSizingMode = 'AUTO'
+  grid.layoutAlign = 'STRETCH'
+  grid.itemSpacing = 8
+  grid.counterAxisSpacing = 8
+  grid.fills = []
+  grid.resize(FIELD_W, grid.height)
+  if (disabled) grid.opacity = 0.45
+  for (let i = 0; i < 3; i++) {
+    const th = figma.createFrame()
+    th.name = 'thumb'
+    th.resize(72, 72)
+    th.cornerRadius = 8
+    bindFillVar(ctx, th, 'color/bgSubtle', SURFACE)
+    grid.appendChild(th)
+  }
+  const add = autoFrame('add', 'VERTICAL')
+  add.primaryAxisSizingMode = 'FIXED'
+  add.counterAxisSizingMode = 'FIXED'
+  add.resize(72, 72)
+  add.primaryAxisAlignItems = 'CENTER'
+  add.counterAxisAlignItems = 'CENTER'
+  add.cornerRadius = 8
+  bindStrokeVar(ctx, add, 'color/border', BORDER)
+  add.strokeWeight = 1
+  add.dashPattern = [6, 6]
+  add.fills = []
+  const pl = iconInstance('_Icon/Plus', 'Icon', 20)
+  recolorIcon(pl, SUB)
+  add.appendChild(pl)
+  grid.appendChild(add)
+  addField(grid)
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -3058,6 +3171,30 @@ const INPUT_CATEGORY: CategoryDef = {
       desc: '클릭/드래그로 파일을 올리는 드롭존.',
       build: (ctx, page) => buildSet(ctx, page, 'DS/Upload', [{ name: 'disabled', values: ['false', 'true'] }], (c) => renderUpload(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '첨부 파일' }, { prop: 'Prompt', layer: 'Prompt', def: '파일을 끌어다 놓거나 클릭' }, { prop: 'Hint', layer: 'Hint', def: 'PDF, PNG · 최대 10MB' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/Upload' }] }),
       states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'Autocomplete',
+      setName: 'DS/Autocomplete',
+      eyebrow: 'MOLECULE · INPUT',
+      desc: '입력 + 필터 제안 목록 자동완성.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Autocomplete', [{ name: 'state', values: ['default', 'disabled'] }], (c) => renderAutocomplete(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '검색' }, { prop: 'Value', layer: 'Value', def: '검색어를 입력하세요' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/Search' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { state: 'disabled' } }],
+    },
+    {
+      key: 'FileUpload',
+      setName: 'DS/FileUpload',
+      eyebrow: 'ORGANISM · INPUT',
+      desc: '드롭존 + 첨부 파일 목록.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/FileUpload', [{ name: 'state', values: ['default', 'disabled'] }], (c) => renderFileUpload(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '첨부 파일' }, { prop: 'Prompt', layer: 'Prompt', def: '파일을 끌어다 놓거나 클릭' }, { prop: 'Hint', layer: 'Hint', def: 'PDF, PNG · 최대 10MB' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { state: 'disabled' } }],
+    },
+    {
+      key: 'ImageUpload',
+      setName: 'DS/ImageUpload',
+      eyebrow: 'ORGANISM · INPUT',
+      desc: '드롭존 + 썸네일 그리드(추가 타일).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/ImageUpload', [{ name: 'state', values: ['default', 'disabled'] }], (c) => renderImageUpload(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '이미지' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { state: 'disabled' } }],
     },
   ],
 }
