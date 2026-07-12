@@ -170,6 +170,10 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
   for (const w of [1, 2, 3]) {
     safeVar(`border/${w}`, rsCol, 'FLOAT')?.setValueForMode(rsMode, w)
   }
+  // 오너: 불투명도도 변수로 — 컴포넌트가 쓰는 opacity를 opacity/<pct> 변수로(45=비활성 등).
+  for (const pct of [30, 45, 50, 60, 90, 100]) {
+    safeVar(`opacity/${pct}`, rsCol, 'FLOAT')?.setValueForMode(rsMode, pct / 100)
+  }
 
   // 4. Text Styles — DS/Display·Title·Body·Caption (로드 실패 시 Inter 폴백)
   let familyName = firstFontFamily(payload.typography.fontFamily)

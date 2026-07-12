@@ -86,9 +86,32 @@ function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: 
   const t = txt(ctx, chars, size, ctx.userColors[varName] ?? hex, bold)
   const v = ctx.vars.get(varName)
   if (v) t.fills = [boundPaint(v)]
-  // 오너: 텍스트 크기도 변수로 — font/size/<px>가 있으면 fontSize 바인딩.
+  // 오너: 텍스트 크기·굵기·글씨체도 변수로.
+  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
   const sv = ctx.vars.get('font/size/' + size)
-  if (sv) t.setBoundVariable('fontSize', sv)
+  if (sv) {
+    try {
+      bind.setBoundVariable('fontSize', sv)
+    } catch {
+      /* skip */
+    }
+  }
+  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
+  if (wv) {
+    try {
+      bind.setBoundVariable('fontWeight', wv)
+    } catch {
+      /* skip */
+    }
+  }
+  const fv = ctx.vars.get('font/family')
+  if (fv) {
+    try {
+      bind.setBoundVariable('fontFamily', fv)
+    } catch {
+      /* skip */
+    }
+  }
   return t
 }
 function bindFillVar(ctx: Ctx, node: GeometryMixin, varName: string, hex: string) {
@@ -115,7 +138,18 @@ function bindTokens(ctx: Ctx, root: SceneNode) {
       paddingBottom?: number
       paddingLeft?: number
       itemSpacing?: number
+      opacity?: number
       setBoundVariable: (field: string, v: Variable) => void
+    }
+    // 불투명도
+    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
+      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
+      if (ov)
+        try {
+          a.setBoundVariable('opacity', ov)
+        } catch {
+          /* skip */
+        }
     }
     if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
       const rv = ctx.vars.get('radius/' + a.cornerRadius)
