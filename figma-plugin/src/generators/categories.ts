@@ -9,7 +9,7 @@ import {
   txt,
   makeRoot,
   makeHeader,
-  txtWrap,
+  makeSection,
   setup,
   placeRoot,
   INK,
@@ -169,11 +169,10 @@ type PropSpec = {
   swaps?: Array<{ prop: string; layer: string; defKey: string }>
 }
 
-// 오너: "문서 안 컴포넌트가 곧 부모(마스터)". 세트를 문서 섹션에 직접 배치하고,
-// 세트 자체를 render 컨테이너(흰 표면·보더·라운드·WRAP)로 스타일링한다. 인스턴스/우측 세트 없음.
+// 세트는 페이지에 만들고(소스), 문서에는 인스턴스를 배치한다(오토레이아웃 안 세트 직접배치는 Figma에서 오작동).
 function buildSet(
   ctx: Ctx,
-  parent: FrameNode,
+  page: PageNode,
   setName: string,
   axes: Axis[],
   render: (combo: Record<string, string>) => ComponentNode,
@@ -188,26 +187,17 @@ function buildSet(
   const variants = combos.map((combo) => {
     const comp = render(combo)
     comp.name = axes.map((a) => `${a.name}=${combo[a.name]}`).join(', ')
-    parent.appendChild(comp)
+    page.appendChild(comp)
     return comp
   })
-  const set = figma.combineAsVariants(variants, parent)
+  const set = figma.combineAsVariants(variants, page)
   set.name = setName
   set.layoutMode = 'HORIZONTAL'
   set.layoutWrap = 'WRAP'
-  set.primaryAxisSizingMode = 'FIXED'
-  set.counterAxisSizingMode = 'AUTO'
-  set.layoutAlign = 'STRETCH'
-  set.primaryAxisAlignItems = 'MIN'
-  set.counterAxisAlignItems = 'MIN'
-  set.itemSpacing = 24
-  set.counterAxisSpacing = 24
+  set.itemSpacing = 20
+  set.counterAxisSpacing = 20
   set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.cornerRadius = 12
-  set.fills = [solid(WHITE)]
-  set.strokes = [solid(BORDER)]
-  set.strokeWeight = 1
-  set.strokeAlign = 'INSIDE'
+  set.fills = [solid('#FBFCFE')]
 
   // 속성 만들기: 텍스트(+표시 on/off)·불리언·인스턴스 스왑
   if (props) {
@@ -355,7 +345,7 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   }
   return c
 }
-function makeInputSet(ctx: Ctx, def: InputDef, parent: FrameNode): ComponentSetNode {
+function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode {
   const props: PropSpec = { texts: [{ prop: 'Label', layer: 'Label', def: def.label }] }
   if (!def.affordance.otp) props.texts!.push({ prop: 'Value', layer: 'Value', def: def.placeholder })
   props.texts!.push({ prop: 'Helper', layer: 'Helper', def: def.helper })
@@ -363,11 +353,7 @@ function makeInputSet(ctx: Ctx, def: InputDef, parent: FrameNode): ComponentSetN
   if (def.affordance.leading === 'search') props.swaps.push({ prop: 'Leading Icon', layer: 'Leading Icon', defKey: '_Icon/Search' })
   if (def.affordance.trailing === 'eye' || def.affordance.trailing === 'clear')
     props.swaps.push({ prop: 'Trailing Icon', layer: 'Trailing Icon', defKey: def.affordance.trailing === 'eye' ? '_Icon/Eye' : '_Icon/Close' })
-  // 상태(States)를 단일 'State' 축의 베리언트로 — 문서에 곧바로 놓일 마스터 세트(과도한 카르테시안 없이).
-  const axes: Axis[] = [{ name: 'State', values: def.states.map((s) => s.caption) }]
-  const flagsOf: Record<string, Record<string, string>> = {}
-  def.states.forEach((s) => (flagsOf[s.caption] = s.props))
-  return buildSet(ctx, parent, def.setName, axes, (combo) => renderInput(ctx, def, flagsOf[combo.State] || {}), props)
+  return buildSet(ctx, page, def.setName, def.axes.map((a) => ({ name: a, values: ['false', 'true'] })), (combo) => renderInput(ctx, def, combo), props)
 }
 
 // ══ SELECTION 계열 ════════════════════════════════════════════════════
@@ -1007,7 +993,7 @@ type ComponentDoc = {
   setName: string
   eyebrow: string
   desc: string
-  build: (ctx: Ctx, parent: FrameNode) => ComponentSetNode
+  build: (ctx: Ctx, page: PageNode) => ComponentSetNode
   states: State[]
 }
 type CategoryDef = { pageName: string; title: string; subtitle: string; docs: ComponentDoc[] }
@@ -1077,8 +1063,8 @@ const ACTION_CATEGORY: CategoryDef = {
       setName: 'DS/Button',
       eyebrow: 'ATOM · ACTION',
       desc: '주요 액션을 실행하는 버튼. variant·size 축을 가집니다.',
-      build: (ctx, parent) =>
-        buildSet(ctx, parent, 'DS/Button', [{ name: 'State', values: ['Primary', 'Secondary', 'Error', 'Success', 'Disabled'] }], (c) => renderButton(ctx, ({ Primary: { variant: 'primary', size: 'md' }, Secondary: { variant: 'secondary', size: 'md' }, Error: { variant: 'error', size: 'md' }, Success: { variant: 'success', size: 'md' }, Disabled: { variant: 'primary', size: 'md', disabled: 'true' } } as Record<string, Record<string, string>>)[c.State] || {}), {
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderButton(ctx, { ...c, size: 'md' }), {
           texts: [{ prop: 'Label', layer: 'Label', def: '버튼' }],
           bools: [
             { prop: 'Show Left Icon', layer: 'Left Icon', def: false },
@@ -1089,15 +1075,15 @@ const ACTION_CATEGORY: CategoryDef = {
             { prop: 'Right Icon', layer: 'Right Icon', defKey: '_Icon/ChevronRight' },
           ],
         }),
-      states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }, { caption: 'Disabled', props: { disabled: 'true', size: 'md' } }],
+      states: [{ caption: 'Primary', props: { variant: 'primary' } }, { caption: 'Secondary', props: { variant: 'secondary' } }, { caption: 'Error', props: { variant: 'error' } }, { caption: 'Success', props: { variant: 'success' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
       key: 'Badge',
       setName: 'DS/Badge',
       eyebrow: 'ATOM · ACTION',
       desc: '상태·분류를 표시하는 배지. variant·size 축을 가집니다.',
-      build: (ctx, parent) => buildSet(ctx, parent, 'DS/Badge', [{ name: 'State', values: ['Primary', 'Secondary', 'Error', 'Success'] }], (c) => renderBadge(ctx, ({ Primary: { variant: 'primary' }, Secondary: { variant: 'secondary' }, Error: { variant: 'error' }, Success: { variant: 'success' } } as Record<string, Record<string, string>>)[c.State] || {}), { texts: [{ prop: 'Label', layer: 'Label', def: 'Badge' }] }),
-      states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Badge', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }], (c) => renderBadge(ctx, { ...c, size: 'md' }), { texts: [{ prop: 'Label', layer: 'Label', def: 'Badge' }] }),
+      states: [{ caption: 'Primary', props: { variant: 'primary' } }, { caption: 'Secondary', props: { variant: 'secondary' } }, { caption: 'Error', props: { variant: 'error' } }, { caption: 'Success', props: { variant: 'success' } }],
     },
   ],
 }
@@ -1285,67 +1271,55 @@ export async function generateCategories(fontFamily: string): Promise<string[]> 
     }
     const page = figma.createPage()
     page.name = cat.pageName
-    // createComponent가 이 페이지에 붙도록(그다음 combineAsVariants가 문서 섹션으로 이동).
-    await figma.setCurrentPageAsync(page)
+
+    // 컴포넌트 세트(편집 소스)를 페이지에 만든다(문서 오른쪽 x≥1360). 문서엔 인스턴스를 배치.
+    const sets = new Map<string, ComponentSetNode>()
+    let sy = 200
+    for (const doc of cat.docs) {
+      try {
+        const set = doc.build(ctx, page)
+        set.x = 1360
+        set.y = sy
+        sy += set.height + 48
+        sets.set(doc.setName, set)
+      } catch (e) {
+        ctx.warnings.push(`${doc.setName} 세트 생성 실패: ${e instanceof Error ? e.message : String(e)}`)
+      }
+    }
 
     const root = makeRoot(cat.title)
     placeRoot(root, page)
     makeHeader(ctx, root, cat.title, cat.subtitle)
-
-    // 각 컴포넌트: 문서 섹션(헤드) 아래에 마스터 세트를 직접 배치(= 문서 안의 컴포넌트가 부모).
     for (const doc of cat.docs) {
-      const section = makeDocSection(ctx, root, {
+      const render = makeSection(ctx, root, {
         eyebrow: doc.eyebrow,
         name: doc.key,
         desc: doc.desc,
-        meta: [`Set: ${doc.setName}`, 'Platform: Web'],
+        meta: [`Set: ${doc.setName}`, `상태 ${doc.states.length}개`, 'Platform: Web'],
+        renderDir: 'WRAP',
       })
-      try {
-        doc.build(ctx, section)
-      } catch (e) {
-        ctx.warnings.push(`${doc.setName} 생성 실패: ${e instanceof Error ? e.message : String(e)}`)
-      }
+      const set = sets.get(doc.setName)
+      if (!set) continue
+      for (const st of doc.states) render.appendChild(variantItem(ctx, set, st))
     }
   }
   return ctx.warnings
 }
 
-/** 문서 섹션(eyebrow·이름·설명·메타)만 만들어 섹션 프레임을 반환. 마스터 세트는 caller가 append. */
-function makeDocSection(ctx: Ctx, root: FrameNode, o: { eyebrow: string; name: string; desc: string; meta: string[] }): FrameNode {
-  const section = autoFrame('Doc / ' + o.name, 'VERTICAL')
-  section.layoutAlign = 'STRETCH'
-  section.itemSpacing = 16
-  root.appendChild(section)
-  const head = autoFrame('Doc Head', 'VERTICAL')
-  head.layoutAlign = 'STRETCH'
-  head.itemSpacing = 8
-  section.appendChild(head)
-  const ebRow = autoFrame('Eyebrow', 'HORIZONTAL')
-  ebRow.counterAxisAlignItems = 'CENTER'
-  ebRow.itemSpacing = 8
-  head.appendChild(ebRow)
-  const tag = autoFrame('tag', 'HORIZONTAL')
-  tag.counterAxisAlignItems = 'CENTER'
-  tag.paddingTop = tag.paddingBottom = 4
-  tag.paddingLeft = tag.paddingRight = 8
-  tag.cornerRadius = 6
-  tag.fills = [solid('#EDF2FF')]
-  tag.appendChild(txt(ctx, o.eyebrow, 12, ACCENT, true))
-  ebRow.appendChild(tag)
-  head.appendChild(txt(ctx, o.name, 28, INK, true))
-  head.appendChild(txtWrap(ctx, o.desc, 16, SUB, 640))
-  const meta = autoFrame('Meta', 'HORIZONTAL')
-  meta.counterAxisAlignItems = 'CENTER'
-  meta.itemSpacing = 8
-  head.appendChild(meta)
-  o.meta.forEach((m, i) => {
-    if (i > 0) {
-      const dot = figma.createEllipse()
-      dot.resize(3, 3)
-      dot.fills = [solid('#C5CCD3')]
-      meta.appendChild(dot)
-    }
-    meta.appendChild(txt(ctx, m, 13, MUTED))
-  })
-  return section
+// ── 문서 안 변형 아이템(인스턴스 + 캡션) ─────────────────────────────
+function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
+  const item = autoFrame('Variant / ' + state.caption, 'VERTICAL')
+  item.counterAxisAlignItems = 'MIN'
+  item.itemSpacing = 8
+  const inst = set.defaultVariant.createInstance()
+  inst.layoutAlign = 'INHERIT'
+  inst.layoutGrow = 0
+  try {
+    inst.setProperties(state.props)
+  } catch {
+    ctx.warnings.push(`${set.name} setProperties 실패: ${JSON.stringify(state.props)}`)
+  }
+  item.appendChild(inst)
+  item.appendChild(txt(ctx, state.caption, 12, SUB))
+  return item
 }
