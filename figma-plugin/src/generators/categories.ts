@@ -3316,6 +3316,152 @@ function renderForm(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
   return c
 }
 
+// ══ 신규 아톰 (Rating · Skeleton · AvatarGroup · Callout · Kbd) ══════
+function renderRating(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const value = parseInt(combo.value || '4', 10)
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 4
+  c.fills = []
+  for (let i = 0; i < 5; i++) {
+    const s = iconInstance('_Icon/Star', 'star', 22)
+    recolorIcon(s, i < value ? '#F59E0B' : BORDER)
+    c.appendChild(s)
+  }
+  return c
+}
+function renderSkeleton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const variant = combo.variant || 'text'
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(280, c.height)
+  c.itemSpacing = 10
+  c.fills = []
+  const bar = (w: number, h: number, round = 6) => {
+    const f = figma.createFrame()
+    f.name = 'sk'
+    f.resize(w, h)
+    f.cornerRadius = round
+    bindFillVar(ctx, f, 'color/bgSubtle', SURFACE)
+    return f
+  }
+  if (variant === 'circle') {
+    const cc = bar(56, 56, 999)
+    c.appendChild(cc)
+  } else if (variant === 'block') {
+    const b = bar(280, 120, 10)
+    b.layoutAlign = 'STRETCH'
+    c.appendChild(b)
+  } else {
+    ;[280, 280, 168].forEach((w) => {
+      const b = bar(w, 12)
+      if (w === 280) b.layoutAlign = 'STRETCH'
+      c.appendChild(b)
+    })
+  }
+  return c
+}
+function renderAvatarGroup(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = -10 // 겹침
+  c.fills = []
+  const chip = (text: string, muted: boolean) => {
+    const a = figma.createFrame()
+    a.name = 'avatar'
+    a.layoutMode = 'HORIZONTAL'
+    a.primaryAxisSizingMode = 'FIXED'
+    a.counterAxisSizingMode = 'FIXED'
+    a.resize(36, 36)
+    a.primaryAxisAlignItems = 'CENTER'
+    a.counterAxisAlignItems = 'CENTER'
+    a.cornerRadius = 999
+    bindFillVar(ctx, a, muted ? 'color/bgSubtle' : 'color/primary', muted ? SURFACE : ACCENT)
+    a.strokes = [solid(WHITE)]
+    a.strokeWeight = 2
+    a.appendChild(boundText(ctx, text, 13, muted ? 'color/secondary' : 'color/bg', muted ? SUB : WHITE, true))
+    return a
+  }
+  ;['김', '이', '박'].forEach((n) => c.appendChild(chip(n, false)))
+  c.appendChild(chip('+2', true))
+  return c
+}
+function renderCallout(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const tone = combo.tone || 'info'
+  const map: Record<string, [string, string, string, string]> = {
+    info: ['color/primary', ACCENT, '#EEF4FF', '_Icon/Info'],
+    success: ['color/success', '#00C471', '#E6F8F0', '_Icon/Check'],
+    warning: ['color/warning', '#F59E0B', '#FEF3E2', '_Icon/Warning'],
+    error: ['color/error', '#F04452', '#FEECEE', '_Icon/AlertCircle'],
+  }
+  const [tvar, thex, tint, icon] = map[tone] || map.info
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'AUTO'
+  c.resize(340, c.height)
+  c.counterAxisAlignItems = 'MIN'
+  c.itemSpacing = 10
+  c.paddingTop = c.paddingBottom = 14
+  c.paddingLeft = 14
+  c.paddingRight = 16
+  c.cornerRadius = 10
+  c.fills = [solid(tint)]
+  bindStrokeVar(ctx, c, tvar, thex)
+  c.strokeAlign = 'INSIDE'
+  c.strokeTopWeight = c.strokeRightWeight = c.strokeBottomWeight = 0
+  c.strokeLeftWeight = 3
+  const ic = iconInstance(icon, 'Icon', 18)
+  recolorIcon(ic, thex)
+  c.appendChild(ic)
+  const col = autoFrame('text', 'VERTICAL')
+  col.layoutGrow = 1
+  col.itemSpacing = 3
+  const t = boundText(ctx, '안내 제목', 14, 'color/text', INK, true)
+  t.name = 'Title'
+  col.appendChild(t)
+  const b = boundText(ctx, '강조해서 보여줄 안내 문구를 담습니다.', 13, 'color/secondary', SUB)
+  b.name = 'Body'
+  b.layoutAlign = 'STRETCH'
+  b.textAutoResize = 'HEIGHT'
+  col.appendChild(b)
+  c.appendChild(col)
+  return c
+}
+function renderKbd(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 5
+  c.fills = []
+  ;['⌘', 'K'].forEach((k) => {
+    const cap = autoFrame('key', 'HORIZONTAL')
+    cap.primaryAxisAlignItems = 'CENTER'
+    cap.counterAxisAlignItems = 'CENTER'
+    cap.paddingTop = cap.paddingBottom = 3
+    cap.paddingLeft = cap.paddingRight = 8
+    cap.cornerRadius = 6
+    bindFillVar(ctx, cap, 'color/bg', WHITE)
+    bindStrokeVar(ctx, cap, 'color/border', BORDER)
+    cap.strokeWeight = 1
+    cap.strokeAlign = 'INSIDE'
+    cap.effects = [{ type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.12 }, offset: { x: 0, y: 1 }, radius: 0, spread: 0, visible: true, blendMode: 'NORMAL' }]
+    cap.appendChild(boundText(ctx, k, 13, 'color/secondary', SUB, true))
+    c.appendChild(cap)
+  })
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -3550,6 +3696,22 @@ const FEEDBACK_CATEGORY: CategoryDef = {
         { caption: 'Large', props: { size: 'lg' } },
       ],
     },
+    {
+      key: 'Skeleton',
+      setName: 'DS/Skeleton',
+      eyebrow: 'ATOM · FEEDBACK',
+      desc: '로딩 자리표시 스켈레톤.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Skeleton', [{ name: 'variant', values: ['text', 'block', 'circle'] }], (c) => renderSkeleton(ctx, c)),
+      states: [{ caption: 'Text', props: {} }, { caption: 'Block', props: { variant: 'block' } }, { caption: 'Circle', props: { variant: 'circle' } }],
+    },
+    {
+      key: 'Callout',
+      setName: 'DS/Callout',
+      eyebrow: 'MOLECULE · FEEDBACK',
+      desc: '강조 안내 블록(톤별).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Callout', [{ name: 'tone', values: ['info', 'success', 'warning', 'error'] }], (c) => renderCallout(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '안내 제목' }, { prop: 'Body', layer: 'Body', def: '강조해서 보여줄 안내 문구를 담습니다.' }] }),
+      states: [{ caption: 'Info', props: {} }, { caption: 'Success', props: { tone: 'success' } }, { caption: 'Warning', props: { tone: 'warning' } }, { caption: 'Error', props: { tone: 'error' } }],
+    },
   ],
 }
 
@@ -3771,6 +3933,30 @@ const DATA_CATEGORY: CategoryDef = {
       desc: '슬라이드 + 좌우 이동 + 인디케이터 캐러셀.',
       build: (ctx, page) => buildSet(ctx, page, 'DS/Carousel', [{ name: 'showArrows', values: ['true', 'false'] }, { name: 'showDots', values: ['true', 'false'] }], (c) => renderCarousel(ctx, c), { texts: [{ prop: 'Slide', layer: 'Slide', def: '슬라이드 1 / 4' }], swaps: [{ prop: 'Prev', layer: 'Prev Icon', defKey: '_Icon/ChevronLeft' }, { prop: 'Next', layer: 'Next Icon', defKey: '_Icon/ChevronRight' }] }),
       states: [{ caption: 'Default', props: {} }, { caption: 'No Arrows', props: { showArrows: 'false' } }, { caption: 'No Dots', props: { showDots: 'false' } }],
+    },
+    {
+      key: 'Rating',
+      setName: 'DS/Rating',
+      eyebrow: 'ATOM · DATA',
+      desc: '별점(1~5).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Rating', [{ name: 'value', values: ['3', '4', '5'] }], (c) => renderRating(ctx, c)),
+      states: [{ caption: '3', props: { value: '3' } }, { caption: '4', props: {} }, { caption: '5', props: { value: '5' } }],
+    },
+    {
+      key: 'AvatarGroup',
+      setName: 'DS/AvatarGroup',
+      eyebrow: 'MOLECULE · DATA',
+      desc: '겹친 아바타 + 초과 수(+N).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/AvatarGroup', [{ name: 'state', values: ['default'] }], (c) => renderAvatarGroup(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'Kbd',
+      setName: 'DS/Kbd',
+      eyebrow: 'ATOM · DATA',
+      desc: '키보드 키 표시(⌘ K).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Kbd', [{ name: 'state', values: ['default'] }], (c) => renderKbd(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
     },
   ],
 }

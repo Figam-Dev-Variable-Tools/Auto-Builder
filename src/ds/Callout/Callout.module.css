@@ -1,0 +1,65 @@
+.callout {
+  display: flex;
+  gap: var(--ds-spacing-3);
+  font-family: var(--ds-font-family);
+  font-size: var(--ds-font-size-md);
+  color: var(--ds-color-text);
+  border-left: 3px solid;
+  border-radius: var(--ds-radius-md);
+  padding: var(--ds-spacing-3) var(--ds-spacing-4);
+  max-width: 480px;
+}
+
+/* tone → 옅은 틴트 배경 + 톤색 좌측 3px 보더 + 톤색 아이콘 */
+.info {
+  background: color-mix(in srgb, var(--ds-color-primary) 8%, transparent);
+  border-left-color: var(--ds-color-primary);
+}
+.info .icon {
+  color: var(--ds-color-primary);
+}
+
+.success {
+  background: color-mix(in srgb, var(--ds-color-success) 8%, transparent);
+  border-left-color: var(--ds-color-success);
+}
+.success .icon {
+  color: var(--ds-color-success);
+}
+
+.warning {
+  background: color-mix(in srgb, var(--ds-color-warning) 8%, transparent);
+  border-left-color: var(--ds-color-warning);
+}
+.warning .icon {
+  color: var(--ds-color-warning);
+}
+
+.error {
+  background: color-mix(in srgb, var(--ds-color-error) 8%, transparent);
+  border-left-color: var(--ds-color-error);
+}
+.error .icon {
+  color: var(--ds-color-error);
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-1);
+}
+
+.title {
+  font-weight: var(--ds-font-weight-bold);
+}
+
+.body {
+  color: var(--ds-color-text);
+  line-height: 1.5;
+}
