@@ -103,7 +103,7 @@ async function handleGenerate(msg: GenerateMsg) {
       status('info', '컴포넌트 카테고리 — 네이티브 컴포넌트 세트(베리언트) + 문서 생성 중…')
       const warnings = await generateCategories(msg.typography.fontFamily)
       warnings.forEach((w) => status('warn', w))
-      status('info', '카테고리 페이지 생성 완료 (Input · Selection · Action · Feedback · Navigation · Layout · Overlay · Data · Structure · Date & Time).')
+      status('info', '카테고리 페이지 생성 완료 (Input · Selection · Action · Feedback · Navigation · Layout · Overlay · Data · Structure · Date & Time · KR).')
     } catch (e) {
       status('error', `카테고리 실패: ${e instanceof Error ? e.message : String(e)}`)
     }

@@ -35,6 +35,7 @@ const PAGE_OVERLAY = '7. System - Overlay'
 const PAGE_DATA = '8. System - Data'
 const PAGE_STRUCTURE = '9. System - Structure'
 const PAGE_DATETIME = '10. System - Date & Time'
+const PAGE_KR = '11. System - KR'
 // 컴포넌트 세트는 별도 소스 페이지 없이 각 카테고리 페이지에 함께 둔다.
 // 레거시 이름들은 reset 정리용으로만 남긴다(생성하지 않음).
 export const CATEGORY_PAGE_NAMES = [
@@ -49,6 +50,7 @@ export const CATEGORY_PAGE_NAMES = [
   PAGE_DATA,
   PAGE_STRUCTURE,
   PAGE_DATETIME,
+  PAGE_KR,
   'DS · 컴포넌트 소스',
   'Input',
   'Selection',
@@ -2221,6 +2223,454 @@ function renderCarousel(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   return c
 }
 
+// ══ KR 컴포넌트 (한국 도메인 폼) — Storybook src/ds/kr 미러 ═══════════
+type KrSpec = { label: string; ph: string; helper?: string; errHelper?: string; trailing?: 'eye' | 'chevron' | string; narrow?: boolean }
+// 프레임형 필드(콤포지트 내부용) — 라벨 + 입력행 + (옵션)헬퍼
+function krSubField(ctx: Ctx, spec: KrSpec, filled = false): FrameNode {
+  const f = autoFrame('field/' + spec.label, 'VERTICAL')
+  f.layoutAlign = 'STRETCH'
+  f.itemSpacing = 6
+  const lbl = boundText(ctx, spec.label, 13, 'color/text', INK, true)
+  lbl.name = 'FieldLabel'
+  f.appendChild(lbl)
+  const row = fieldRow(ctx, null, null, false)
+  const val = boundText(ctx, spec.ph, 15, filled ? 'color/text' : 'color/secondary', filled ? INK : MUTED)
+  val.name = 'Value'
+  val.layoutGrow = 1
+  row.appendChild(val)
+  if (spec.trailing === 'eye' || spec.trailing === 'chevron') {
+    const ic = iconInstance(spec.trailing === 'eye' ? '_Icon/EyeOff' : '_Icon/ChevronDown', 'Icon', 18)
+    recolorIcon(ic, SUB)
+    row.appendChild(ic)
+  } else if (typeof spec.trailing === 'string') {
+    row.appendChild(krTrailingBtn(ctx, spec.trailing))
+  }
+  f.appendChild(row)
+  if (spec.helper) {
+    const h = boundText(ctx, spec.helper, 12, 'color/secondary', SUB)
+    h.name = 'Helper'
+    f.appendChild(h)
+  }
+  return f
+}
+function krTrailingBtn(ctx: Ctx, label: string): FrameNode {
+  const b = autoFrame('Button', 'HORIZONTAL')
+  b.counterAxisAlignItems = 'CENTER'
+  b.paddingTop = b.paddingBottom = 6
+  b.paddingLeft = b.paddingRight = 12
+  b.cornerRadius = 6
+  bindFillVar(ctx, b, 'color/bgSubtle', SURFACE)
+  bindStrokeVar(ctx, b, 'color/border', BORDER)
+  b.strokeWeight = 1
+  b.strokeAlign = 'INSIDE'
+  const t = boundText(ctx, label, 13, 'color/text', INK, true)
+  b.appendChild(t)
+  return b
+}
+// 컴포넌트형 단일 필드(상태 축)
+function krField(ctx: Ctx, spec: KrSpec, combo: Record<string, string>): ComponentNode {
+  const st = combo.state || 'default'
+  const error = st === 'error'
+  const filled = st === 'filled'
+  const disabled = st === 'disabled'
+  const { c, addField } = inputShell(ctx, spec.label, disabled)
+  if (spec.narrow) c.resize(200, c.height)
+  const row = fieldRow(ctx, error ? 'color/error' : filled ? 'color/success' : null, error ? '#F04452' : filled ? '#00C471' : null, disabled)
+  const val = boundText(ctx, spec.ph, 15, filled ? 'color/text' : 'color/secondary', filled ? INK : MUTED)
+  val.name = 'Value'
+  val.layoutGrow = 1
+  row.appendChild(val)
+  if (spec.trailing === 'eye' || spec.trailing === 'chevron') {
+    const ic = iconInstance(spec.trailing === 'eye' ? '_Icon/EyeOff' : '_Icon/ChevronDown', 'Icon', 18)
+    recolorIcon(ic, SUB)
+    row.appendChild(ic)
+  } else if (typeof spec.trailing === 'string') {
+    row.appendChild(krTrailingBtn(ctx, spec.trailing))
+  }
+  addField(row)
+  const ht = error ? spec.errHelper || '형식이 올바르지 않습니다' : spec.helper
+  if (ht) {
+    const h = boundText(ctx, ht, 12, error ? 'color/error' : 'color/secondary', error ? '#F04452' : SUB)
+    h.name = 'Helper'
+    h.layoutAlign = 'STRETCH'
+    addField(h)
+  }
+  return c
+}
+// 진행 단계 인디케이터
+function renderKrStep(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const steps = ['수단 선택', '인증', '완료']
+  const current = 1
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 8
+  c.fills = []
+  steps.forEach((s, i) => {
+    if (i > 0) {
+      const line = figma.createRectangle()
+      line.resize(24, 2)
+      bindFillVar(ctx, line, 'color/border', BORDER)
+      c.appendChild(line)
+    }
+    const item = autoFrame('step', 'HORIZONTAL')
+    item.counterAxisAlignItems = 'CENTER'
+    item.itemSpacing = 6
+    const done = i < current
+    const active = i === current
+    const marker = figma.createFrame()
+    marker.name = 'marker'
+    marker.layoutMode = 'HORIZONTAL'
+    marker.primaryAxisSizingMode = 'FIXED'
+    marker.counterAxisSizingMode = 'FIXED'
+    marker.resize(24, 24)
+    marker.primaryAxisAlignItems = 'CENTER'
+    marker.counterAxisAlignItems = 'CENTER'
+    marker.cornerRadius = 999
+    bindFillVar(ctx, marker, done || active ? 'color/primary' : 'color/bgSubtle', done || active ? ACCENT : SURFACE)
+    if (done) {
+      const ck = iconInstance('_Icon/Check', 'c', 14)
+      recolorIcon(ck, WHITE)
+      marker.appendChild(ck)
+    } else {
+      marker.appendChild(txt(ctx, String(i + 1), 12, active ? WHITE : MUTED, true))
+    }
+    item.appendChild(marker)
+    item.appendChild(boundText(ctx, s, 13, active ? 'color/text' : 'color/secondary', active ? INK : SUB, active))
+    c.appendChild(item)
+  })
+  return c
+}
+// 통신사 선택 — 필-버튼 라디오 그룹(wrap)
+function renderKrCarrier(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, c.height)
+  c.itemSpacing = 8
+  c.fills = []
+  const lbl = boundText(ctx, '통신사', 13, 'color/text', INK, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
+  const wrap = figma.createFrame()
+  wrap.name = 'pills'
+  wrap.layoutMode = 'HORIZONTAL'
+  wrap.layoutWrap = 'WRAP'
+  wrap.primaryAxisSizingMode = 'FIXED'
+  wrap.counterAxisSizingMode = 'AUTO'
+  wrap.layoutAlign = 'STRETCH'
+  wrap.itemSpacing = 8
+  wrap.counterAxisSpacing = 8
+  wrap.fills = []
+  wrap.resize(320, wrap.height)
+  ;['SKT', 'KT', 'LG U+', 'SKT 알뜰폰', 'KT 알뜰폰', 'LG U+ 알뜰폰'].forEach((n, i) => {
+    const sel = i === 0
+    const p = autoFrame('pill', 'HORIZONTAL')
+    p.counterAxisAlignItems = 'CENTER'
+    p.paddingTop = p.paddingBottom = 8
+    p.paddingLeft = p.paddingRight = 16
+    p.cornerRadius = 999
+    bindFillVar(ctx, p, sel ? 'color/primary' : 'color/bgSubtle', sel ? ACCENT : SURFACE)
+    if (!sel) {
+      bindStrokeVar(ctx, p, 'color/border', BORDER)
+      p.strokeWeight = 1
+      p.strokeAlign = 'INSIDE'
+    }
+    p.appendChild(boundText(ctx, n, 13, sel ? 'color/bg' : 'color/text', sel ? WHITE : INK, sel))
+    wrap.appendChild(p)
+  })
+  c.appendChild(wrap)
+  return c
+}
+// 본인인증 수단 선택 — 카드형 행 리스트
+function renderKrAuthMethod(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const methods: Array<[string, string, string]> = [
+    ['휴대폰(PASS)', '가장 빠르게 인증', '#3D6BFF'],
+    ['카카오 인증', '카카오톡으로 인증', '#FEE500'],
+    ['네이버 인증', '네이버 앱으로 인증', '#03C75A'],
+    ['공동인증서', '기존 공인인증서로 인증', '#8B95A1'],
+    ['금융인증서', '금융결제원 인증서로 인증', '#8B95A1'],
+  ]
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(340, c.height)
+  c.itemSpacing = 8
+  c.fills = []
+  const lbl = boundText(ctx, '본인인증 수단', 13, 'color/text', INK, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
+  methods.forEach(([title, desc, mark], i) => {
+    const sel = i === 0
+    const r = autoFrame('method', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 12
+    r.paddingTop = r.paddingBottom = 13
+    r.paddingLeft = r.paddingRight = 14
+    r.cornerRadius = 12
+    bindFillVar(ctx, r, sel ? 'color/bgSubtle' : 'color/bg', sel ? SURFACE : WHITE)
+    bindStrokeVar(ctx, r, sel ? 'color/primary' : 'color/border', sel ? ACCENT : BORDER)
+    r.strokeWeight = sel ? 1.5 : 1
+    r.strokeAlign = 'INSIDE'
+    const dot = figma.createFrame()
+    dot.name = 'mark'
+    dot.resize(28, 28)
+    dot.cornerRadius = 8
+    dot.fills = [solid(mark)]
+    r.appendChild(dot)
+    const col = autoFrame('text', 'VERTICAL')
+    col.itemSpacing = 2
+    col.layoutGrow = 1
+    const t = boundText(ctx, title, 14, 'color/text', INK, true)
+    t.name = 'Title'
+    col.appendChild(t)
+    col.appendChild(boundText(ctx, desc, 12, 'color/secondary', SUB))
+    r.appendChild(col)
+    if (sel) {
+      const ck = iconInstance('_Icon/Check', 'check', 18)
+      recolorIcon(ck, ACCENT)
+      r.appendChild(ck)
+    }
+    c.appendChild(r)
+  })
+  return c
+}
+// 전자서명 패드
+function renderKrSignature(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, c.height)
+  c.itemSpacing = 10
+  c.fills = []
+  const lbl = boundText(ctx, '전자서명', 13, 'color/text', INK, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
+  const canvas = figma.createFrame()
+  canvas.name = 'canvas'
+  canvas.layoutMode = 'HORIZONTAL'
+  canvas.primaryAxisSizingMode = 'FIXED'
+  canvas.counterAxisSizingMode = 'FIXED'
+  canvas.layoutAlign = 'STRETCH'
+  canvas.resize(320, 160)
+  canvas.primaryAxisAlignItems = 'CENTER'
+  canvas.counterAxisAlignItems = 'CENTER'
+  canvas.cornerRadius = 10
+  bindFillVar(ctx, canvas, 'color/bgSubtle', SURFACE)
+  bindStrokeVar(ctx, canvas, 'color/border', BORDER)
+  canvas.strokeWeight = 1
+  canvas.dashPattern = [6, 6]
+  canvas.appendChild(boundText(ctx, '여기에 서명해 주세요', 14, 'color/tertiary', MUTED))
+  c.appendChild(canvas)
+  const btns = autoFrame('actions', 'HORIZONTAL')
+  btns.layoutAlign = 'STRETCH'
+  btns.primaryAxisSizingMode = 'FIXED'
+  btns.primaryAxisAlignItems = 'MAX'
+  btns.itemSpacing = 8
+  ;['되돌리기', '지우기'].forEach((n) => btns.appendChild(krTrailingBtn(ctx, n)))
+  c.appendChild(btns)
+  return c
+}
+// 주소 자동완성 — 입력 + 제안 리스트
+function renderKrAutocomplete(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, addField } = inputShell(ctx, '주소', false)
+  const row = fieldRow(ctx, null, null, false)
+  const val = boundText(ctx, '도로명, 지번, 건물명으로 검색', 15, 'color/secondary', MUTED)
+  val.name = 'Value'
+  val.layoutGrow = 1
+  row.appendChild(val)
+  const si = iconInstance('_Icon/Search', 'Icon', 18)
+  recolorIcon(si, SUB)
+  row.appendChild(si)
+  addField(row)
+  const panel = figma.createFrame()
+  panel.name = 'panel'
+  panel.layoutMode = 'VERTICAL'
+  panel.primaryAxisSizingMode = 'AUTO'
+  panel.counterAxisSizingMode = 'FIXED'
+  panel.layoutAlign = 'STRETCH'
+  panel.resize(FIELD_W, panel.height)
+  panel.itemSpacing = 2
+  panel.paddingTop = panel.paddingBottom = 6
+  panel.cornerRadius = 10
+  bindFillVar(ctx, panel, 'color/bg', WHITE)
+  bindStrokeVar(ctx, panel, 'color/border', BORDER)
+  panel.strokeWeight = 1
+  panel.strokeAlign = 'INSIDE'
+  const addr: Array<[string, string]> = [
+    ['서울 강남구 테헤란로 152', '06236 · 지번 서울 강남구 역삼동 737'],
+    ['서울 강남구 테헤란로 427', '06159 · 지번 서울 강남구 삼성동 159'],
+  ]
+  addr.forEach(([road, meta], i) => {
+    const it = autoFrame('addr', 'VERTICAL')
+    it.layoutAlign = 'STRETCH'
+    it.primaryAxisSizingMode = 'FIXED'
+    it.itemSpacing = 2
+    it.paddingTop = it.paddingBottom = 9
+    it.paddingLeft = it.paddingRight = 12
+    if (i === 0) bindFillVar(ctx, it, 'color/bgSubtle', SURFACE)
+    it.appendChild(boundText(ctx, road, 14, 'color/text', INK, true))
+    it.appendChild(boundText(ctx, meta, 12, 'color/secondary', SUB))
+    panel.appendChild(it)
+  })
+  addField(panel)
+  return c
+}
+// 콤포지트 폼 공용 카드
+function krFormCard(ctx: Ctx, title: string): { c: ComponentNode; add: (n: SceneNode) => void } {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(360, c.height)
+  c.itemSpacing = 14
+  c.paddingTop = c.paddingBottom = 24
+  c.paddingLeft = c.paddingRight = 20
+  c.cornerRadius = 14
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  const t = boundText(ctx, title, 17, 'color/text', INK, true)
+  t.name = 'Title'
+  c.appendChild(t)
+  return { c, add: (n) => c.appendChild(n) }
+}
+function krPrimaryBtn(ctx: Ctx, label: string): FrameNode {
+  const b = autoFrame('submit', 'HORIZONTAL')
+  b.layoutAlign = 'STRETCH'
+  b.primaryAxisSizingMode = 'FIXED'
+  b.primaryAxisAlignItems = 'CENTER'
+  b.counterAxisAlignItems = 'CENTER'
+  b.paddingTop = b.paddingBottom = 12
+  b.cornerRadius = 8
+  bindFillVar(ctx, b, 'color/primary', ACCENT)
+  const t = boundText(ctx, label, 15, 'color/bg', WHITE, true)
+  t.name = 'Submit'
+  b.appendChild(t)
+  return b
+}
+function renderKrCardForm(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, add } = krFormCard(ctx, '카드 등록')
+  add(krSubField(ctx, { label: '카드번호', ph: '0000-0000-0000-0000' }))
+  const two = autoFrame('two', 'HORIZONTAL')
+  two.layoutAlign = 'STRETCH'
+  two.primaryAxisSizingMode = 'FIXED'
+  two.itemSpacing = 12
+  const exp = krSubField(ctx, { label: '유효기간', ph: 'MM/YY' })
+  exp.layoutGrow = 1
+  const cvc = krSubField(ctx, { label: 'CVC', ph: '●●●', trailing: 'eye' })
+  cvc.layoutGrow = 1
+  two.appendChild(exp)
+  two.appendChild(cvc)
+  add(two)
+  add(krSubField(ctx, { label: '소유자명', ph: '카드에 표기된 이름' }))
+  add(krPrimaryBtn(ctx, '카드 등록'))
+  return c
+}
+function renderKrAddressForm(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, add } = krFormCard(ctx, '배송지 주소')
+  add(krSubField(ctx, { label: '우편번호', ph: '00000', trailing: '우편번호 조회' }))
+  add(krSubField(ctx, { label: '도로명 주소', ph: '우편번호 조회 후 자동 입력됩니다' }))
+  add(krSubField(ctx, { label: '상세주소', ph: '동/호수 등 상세주소 입력' }))
+  add(krSubField(ctx, { label: '배송 요청사항', ph: '선택해주세요', trailing: 'chevron' }))
+  return c
+}
+function renderKrPhoneAuth(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, add } = krFormCard(ctx, '휴대폰 본인인증')
+  add(renderKrStepInline(ctx))
+  add(krSubField(ctx, { label: '이름', ph: '홍길동' }))
+  add(krSubField(ctx, { label: '휴대폰 번호', ph: '010-0000-0000' }))
+  add(krSubField(ctx, { label: '인증번호', ph: '6자리 숫자', trailing: '03:00' }))
+  add(krPrimaryBtn(ctx, '인증 확인'))
+  return c
+}
+function renderKrIdentity(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, add } = krFormCard(ctx, '본인인증')
+  add(renderKrStepInline(ctx))
+  const note = boundText(ctx, '본인인증 수단을 선택하세요.', 14, 'color/secondary', SUB)
+  note.layoutAlign = 'STRETCH'
+  add(note)
+  add(krSubField(ctx, { label: '인증 수단', ph: '휴대폰(PASS)', trailing: 'chevron' }))
+  add(krPrimaryBtn(ctx, '계속'))
+  return c
+}
+function renderKrCertAuth(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const { c, add } = krFormCard(ctx, '인증서 인증')
+  const certs: Array<[string, string, boolean]> = [
+    ['개인 · 홍길동', '2026-12-31', false],
+    ['금융 · 홍길동', '2025-01-01 (만료)', true],
+  ]
+  certs.forEach(([name, exp, expired], i) => {
+    const r = autoFrame('cert', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.primaryAxisAlignItems = 'SPACE_BETWEEN'
+    r.paddingTop = r.paddingBottom = 12
+    r.paddingLeft = r.paddingRight = 14
+    r.cornerRadius = 10
+    if (expired) r.opacity = 0.5
+    bindFillVar(ctx, r, i === 0 ? 'color/bgSubtle' : 'color/bg', i === 0 ? SURFACE : WHITE)
+    bindStrokeVar(ctx, r, i === 0 ? 'color/primary' : 'color/border', i === 0 ? ACCENT : BORDER)
+    r.strokeWeight = 1
+    r.strokeAlign = 'INSIDE'
+    const col = autoFrame('c', 'VERTICAL')
+    col.itemSpacing = 2
+    col.appendChild(boundText(ctx, name, 14, 'color/text', INK, true))
+    col.appendChild(boundText(ctx, '만료 ' + exp, 12, 'color/secondary', SUB))
+    r.appendChild(col)
+    add(r)
+  })
+  add(krPrimaryBtn(ctx, '다음'))
+  return c
+}
+// 콤포지트 내부용 스텝(프레임)
+function renderKrStepInline(ctx: Ctx): FrameNode {
+  const steps = ['정보 입력', '인증번호', '완료']
+  const current = 1
+  const wrap = autoFrame('steps', 'HORIZONTAL')
+  wrap.layoutAlign = 'STRETCH'
+  wrap.primaryAxisSizingMode = 'FIXED'
+  wrap.primaryAxisAlignItems = 'CENTER'
+  wrap.counterAxisAlignItems = 'CENTER'
+  wrap.itemSpacing = 6
+  steps.forEach((s, i) => {
+    if (i > 0) {
+      const line = figma.createRectangle()
+      line.resize(20, 2)
+      bindFillVar(ctx, line, 'color/border', BORDER)
+      wrap.appendChild(line)
+    }
+    const item = autoFrame('step', 'HORIZONTAL')
+    item.counterAxisAlignItems = 'CENTER'
+    item.itemSpacing = 5
+    const done = i < current
+    const active = i === current
+    const marker = figma.createFrame()
+    marker.layoutMode = 'HORIZONTAL'
+    marker.primaryAxisSizingMode = 'FIXED'
+    marker.counterAxisSizingMode = 'FIXED'
+    marker.resize(20, 20)
+    marker.primaryAxisAlignItems = 'CENTER'
+    marker.counterAxisAlignItems = 'CENTER'
+    marker.cornerRadius = 999
+    bindFillVar(ctx, marker, done || active ? 'color/primary' : 'color/bgSubtle', done || active ? ACCENT : SURFACE)
+    marker.appendChild(txt(ctx, String(i + 1), 11, done || active ? WHITE : MUTED, true))
+    item.appendChild(marker)
+    item.appendChild(boundText(ctx, s, 12, active ? 'color/text' : 'color/secondary', active ? INK : SUB, active))
+    wrap.appendChild(item)
+  })
+  return wrap
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -2726,6 +3176,63 @@ const DATETIME_CATEGORY: CategoryDef = {
   ],
 }
 
+// KR 필드형 문서(상태 축 공통)
+function krFieldDoc(han: string, key: string, spec: KrSpec): ComponentDoc {
+  return {
+    key: han,
+    setName: 'DS/' + key,
+    eyebrow: 'MOLECULE · KR',
+    desc: han + ' 입력 필드.',
+    build: (ctx, page) =>
+      buildSet(ctx, page, 'DS/' + key, [{ name: 'state', values: ['default', 'filled', 'error', 'disabled'] }], (c) => krField(ctx, spec, c), {
+        texts: [{ prop: 'Label', layer: 'Label', def: spec.label }, { prop: 'Value', layer: 'Value', def: spec.ph }],
+      }),
+    states: [
+      { caption: 'Default', props: {} },
+      { caption: 'Filled', props: { state: 'filled' } },
+      { caption: 'Error', props: { state: 'error' } },
+      { caption: 'Disabled', props: { state: 'disabled' } },
+    ],
+  }
+}
+function krBespokeDoc(han: string, key: string, desc: string, render: (ctx: Ctx, combo: Record<string, string>) => ComponentNode): ComponentDoc {
+  return {
+    key: han,
+    setName: 'DS/' + key,
+    eyebrow: 'ORGANISM · KR',
+    desc,
+    build: (ctx, page) => buildSet(ctx, page, 'DS/' + key, [{ name: 'state', values: ['default'] }], (c) => render(ctx, c)),
+    states: [{ caption: 'Default', props: {} }],
+  }
+}
+const KR_CATEGORY: CategoryDef = {
+  pageName: PAGE_KR,
+  title: 'KR 컴포넌트',
+  subtitle: '한국 도메인 폼 계열 — 계좌·카드·본인인증·주소 등. Storybook "6. KR 컴포넌트"와 1:1.',
+  docs: [
+    krFieldDoc('계좌번호', 'KrAccountField', { label: '계좌번호', ph: '계좌번호 입력', helper: '숫자만 입력하세요' }),
+    krFieldDoc('사업자등록번호', 'KrBizNoField', { label: '사업자등록번호', ph: '123-45-67890', helper: '숫자 10자리를 입력하세요', errHelper: '유효하지 않은 사업자등록번호입니다' }),
+    krFieldDoc('주민등록번호', 'KrRrnField', { label: '주민등록번호', ph: '900101-1●●●●●●', trailing: 'eye', errHelper: '주민등록번호 형식이 아닙니다' }),
+    krFieldDoc('차량번호', 'KrVehicleNoField', { label: '차량번호', ph: '12가3456', errHelper: '차량번호 형식이 아닙니다' }),
+    krFieldDoc('카드번호', 'KrCardNoField', { label: '카드번호', ph: '0000-0000-0000-0000', errHelper: '카드번호를 다시 확인해 주세요' }),
+    krFieldDoc('유효기간', 'KrExpiryField', { label: '유효기간', ph: 'MM/YY', narrow: true, errHelper: '유효기간이 올바르지 않습니다' }),
+    krFieldDoc('CVC', 'KrCvcField', { label: 'CVC', ph: '●●●', narrow: true, trailing: 'eye', helper: '카드 뒷면 3자리' }),
+    krFieldDoc('휴대폰 번호', 'KrPhoneField', { label: '휴대폰 번호', ph: '010-0000-0000', errHelper: '휴대폰 번호 형식이 아닙니다' }),
+    krFieldDoc('우편번호 조회', 'KrPostcodeSearch', { label: '우편번호', ph: '00000', trailing: '우편번호 조회' }),
+    krFieldDoc('은행 선택', 'KrBankSelect', { label: '은행', ph: '은행을 선택하세요', trailing: 'chevron' }),
+    krBespokeDoc('통신사 선택', 'KrCarrierSelect', '통신사 선택 필-버튼 라디오 그룹.', renderKrCarrier),
+    krBespokeDoc('본인인증 수단 선택', 'KrAuthMethodSelect', '본인인증 수단 카드 리스트.', renderKrAuthMethod),
+    krBespokeDoc('주소 자동완성', 'KrAddressAutocomplete', '주소 입력 + 제안 리스트.', renderKrAutocomplete),
+    krBespokeDoc('진행 단계', 'KrStepIndicator', '본인인증 진행 단계 인디케이터.', renderKrStep),
+    krBespokeDoc('전자서명', 'KrSignaturePad', '전자서명 캔버스 + 되돌리기/지우기.', renderKrSignature),
+    krBespokeDoc('카드 등록 폼', 'KrCardForm', '카드번호·유효기간·CVC·소유자명 등록 폼.', renderKrCardForm),
+    krBespokeDoc('배송지 주소', 'KrAddressForm', '우편번호 조회 + 도로명·상세·요청사항 주소 폼.', renderKrAddressForm),
+    krBespokeDoc('휴대폰 본인인증', 'KrPhoneAuth', '단계 + 이름·휴대폰·인증번호 위저드.', renderKrPhoneAuth),
+    krBespokeDoc('본인인증', 'KrIdentityVerification', '통합 본인인증(수단 선택 → 인증 → 완료).', renderKrIdentity),
+    krBespokeDoc('인증서 인증', 'KrCertAuth', '공동/금융 인증서 선택 + 다음.', renderKrCertAuth),
+  ],
+}
+
 const ALL_CATEGORIES = [
   INPUT_CATEGORY,
   SELECTION_CATEGORY,
@@ -2737,6 +3244,7 @@ const ALL_CATEGORIES = [
   DATA_CATEGORY,
   STRUCTURE_CATEGORY,
   DATETIME_CATEGORY,
+  KR_CATEGORY,
 ]
 
 // ── 카테고리 생성 ────────────────────────────────────────────────────
