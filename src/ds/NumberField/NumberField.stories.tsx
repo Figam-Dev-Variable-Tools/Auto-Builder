@@ -9,7 +9,7 @@ function Demo(props: NumberFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/NumberField',
+  title: '3. 컴포넌트/Input/NumberField',
   component: NumberField,
   tags: ['autodocs'],
   args: {

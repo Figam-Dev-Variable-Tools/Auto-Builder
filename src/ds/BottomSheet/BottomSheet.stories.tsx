@@ -16,7 +16,7 @@ function BottomSheetDemo(props: BottomSheetProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/BottomSheet',
+  title: '3. 컴포넌트/Overlay/BottomSheet',
   component: BottomSheet,
   tags: ['autodocs'],
   args: {

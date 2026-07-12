@@ -10,7 +10,7 @@ function TimePickerDemo(props: TimePickerProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/TimePicker',
+  title: '3. 컴포넌트/Date & Time/TimePicker',
   component: TimePicker,
   tags: ['autodocs'],
   args: {

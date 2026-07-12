@@ -10,7 +10,7 @@ function CalendarDemo(props: CalendarProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Calendar',
+  title: '3. 컴포넌트/Date & Time/Calendar',
   component: Calendar,
   tags: ['autodocs'],
   args: {

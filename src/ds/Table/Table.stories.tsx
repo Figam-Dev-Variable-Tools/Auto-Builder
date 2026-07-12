@@ -52,7 +52,7 @@ function TableDemo(props: TableProps<Person>) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Table',
+  title: '3. 컴포넌트/Data/Table',
   component: PersonTable,
   tags: ['autodocs'],
   args: {

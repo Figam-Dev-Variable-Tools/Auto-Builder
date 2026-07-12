@@ -9,7 +9,7 @@ const demoStats: StatItem[] = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/Statistics',
+  title: '3. 컴포넌트/Data/Statistics',
   component: Statistics,
   tags: ['autodocs'],
   args: {

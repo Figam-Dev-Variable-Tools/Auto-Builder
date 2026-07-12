@@ -16,7 +16,7 @@ function DrawerDemo(props: DrawerProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Drawer',
+  title: '3. 컴포넌트/Overlay/Drawer',
   component: Drawer,
   tags: ['autodocs'],
   args: {

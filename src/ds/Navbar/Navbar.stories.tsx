@@ -11,7 +11,7 @@ function NavbarDemo(props: NavbarProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Navbar',
+  title: '3. 컴포넌트/Structure/Navbar',
   component: Navbar,
   tags: ['autodocs'],
   args: {

@@ -33,7 +33,7 @@ const starIcon = (
 )
 
 const meta = {
-  title: '3. 컴포넌트/Chip',
+  title: '3. 컴포넌트/Selection/Chip',
   component: Chip,
   tags: ['autodocs'],
   args: {

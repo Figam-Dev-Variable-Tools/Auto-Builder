@@ -24,7 +24,7 @@ function Demo(props: AutocompleteProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Autocomplete',
+  title: '3. 컴포넌트/Input/Autocomplete',
   component: Autocomplete,
   tags: ['autodocs'],
   args: {

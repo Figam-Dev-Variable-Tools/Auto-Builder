@@ -52,7 +52,7 @@ function TreeDemo(props: TreeProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Tree',
+  title: '3. 컴포넌트/Data/Tree',
   component: Tree,
   tags: ['autodocs'],
   args: {

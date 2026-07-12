@@ -16,7 +16,7 @@ function SnackbarDemo(props: SnackbarProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Snackbar',
+  title: '3. 컴포넌트/Feedback/Snackbar',
   component: Snackbar,
   tags: ['autodocs'],
   args: {

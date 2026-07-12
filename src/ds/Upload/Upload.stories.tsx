@@ -10,7 +10,7 @@ function UploadDemo(props: UploadProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Upload',
+  title: '3. 컴포넌트/Input/Upload',
   component: Upload,
   tags: ['autodocs'],
   args: {

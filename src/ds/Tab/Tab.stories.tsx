@@ -16,7 +16,7 @@ function TabDemo({ items: demoItems = items, variant, size }: Partial<TabProps>)
 }
 
 const meta = {
-  title: '3. 컴포넌트/Tab',
+  title: '3. 컴포넌트/Navigation/Tab',
   component: Tab,
   tags: ['autodocs'],
   args: {

@@ -17,7 +17,7 @@ function Demo(props: SelectProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Select',
+  title: '3. 컴포넌트/Input/Select',
   component: Select,
   tags: ['autodocs'],
   args: {

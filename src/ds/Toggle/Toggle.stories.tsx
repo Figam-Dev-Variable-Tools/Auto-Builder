@@ -10,7 +10,7 @@ function ToggleDemo(props: ToggleProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Toggle',
+  title: '3. 컴포넌트/Selection/Toggle',
   component: Toggle,
   tags: ['autodocs'],
   args: {

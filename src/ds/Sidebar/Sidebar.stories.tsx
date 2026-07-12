@@ -33,7 +33,7 @@ function SidebarDemo(props: SidebarProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Sidebar',
+  title: '3. 컴포넌트/Structure/Sidebar',
   component: Sidebar,
   tags: ['autodocs'],
   args: {

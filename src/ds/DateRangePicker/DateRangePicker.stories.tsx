@@ -13,7 +13,7 @@ function DateRangePickerDemo(props: DateRangePickerProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/DateRangePicker',
+  title: '3. 컴포넌트/Date & Time/DateRangePicker',
   component: DateRangePicker,
   tags: ['autodocs'],
   args: {

@@ -21,7 +21,7 @@ function DialogDemo(props: DialogProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Dialog',
+  title: '3. 컴포넌트/Overlay/Dialog',
   component: Dialog,
   tags: ['autodocs'],
   args: {

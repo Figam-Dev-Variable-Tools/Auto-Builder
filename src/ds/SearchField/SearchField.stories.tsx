@@ -19,7 +19,7 @@ function Demo(props: SearchFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/SearchField',
+  title: '3. 컴포넌트/Input/SearchField',
   component: SearchField,
   tags: ['autodocs'],
   args: {

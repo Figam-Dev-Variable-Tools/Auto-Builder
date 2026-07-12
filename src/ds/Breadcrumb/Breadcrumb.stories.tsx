@@ -3,7 +3,7 @@ import { FIGMA_FILE } from '../../shared/figma'
 import { Breadcrumb } from './Breadcrumb'
 
 const meta = {
-  title: '3. 컴포넌트/Breadcrumb',
+  title: '3. 컴포넌트/Navigation/Breadcrumb',
   component: Breadcrumb,
   tags: ['autodocs'],
   args: {

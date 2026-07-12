@@ -19,7 +19,7 @@ function Demo(props: OtpFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/OtpField',
+  title: '3. 컴포넌트/Input/OtpField',
   component: OtpField,
   tags: ['autodocs'],
   args: {

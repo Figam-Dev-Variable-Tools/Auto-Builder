@@ -32,7 +32,7 @@ const orderItems: TimelineItem[] = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/Timeline',
+  title: '3. 컴포넌트/Data/Timeline',
   component: Timeline,
   tags: ['autodocs'],
   args: {

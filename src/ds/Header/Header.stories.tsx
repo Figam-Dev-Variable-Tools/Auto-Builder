@@ -4,7 +4,7 @@ import { Header } from './Header'
 import { Button } from '../Button/Button'
 
 const meta = {
-  title: '3. 컴포넌트/Header',
+  title: '3. 컴포넌트/Structure/Header',
   component: Header,
   tags: ['autodocs'],
   args: {

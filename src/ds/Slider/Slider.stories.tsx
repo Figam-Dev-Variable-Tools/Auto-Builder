@@ -10,7 +10,7 @@ function SliderDemo(props: SliderProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Slider',
+  title: '3. 컴포넌트/Input/Slider',
   component: Slider,
   tags: ['autodocs'],
   args: {

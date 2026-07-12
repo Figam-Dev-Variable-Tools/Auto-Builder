@@ -10,7 +10,7 @@ function DatePickerDemo(props: DatePickerProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/DatePicker',
+  title: '3. 컴포넌트/Date & Time/DatePicker',
   component: DatePicker,
   tags: ['autodocs'],
   args: {

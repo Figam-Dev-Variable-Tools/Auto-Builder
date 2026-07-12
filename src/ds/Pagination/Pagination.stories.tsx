@@ -19,7 +19,7 @@ function PaginationDemo({
 }
 
 const meta = {
-  title: '3. 컴포넌트/Pagination',
+  title: '3. 컴포넌트/Navigation/Pagination',
   component: Pagination,
   tags: ['autodocs'],
   args: {

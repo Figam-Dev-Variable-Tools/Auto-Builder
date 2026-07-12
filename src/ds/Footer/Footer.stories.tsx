@@ -3,7 +3,7 @@ import { FIGMA_FILE } from '../../shared/figma'
 import { Footer } from './Footer'
 
 const meta = {
-  title: '3. 컴포넌트/Footer',
+  title: '3. 컴포넌트/Structure/Footer',
   component: Footer,
   tags: ['autodocs'],
   args: {

@@ -9,7 +9,7 @@ function Demo(props: EmailFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/EmailField',
+  title: '3. 컴포넌트/Input/EmailField',
   component: EmailField,
   tags: ['autodocs'],
   args: {

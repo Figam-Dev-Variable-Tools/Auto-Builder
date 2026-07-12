@@ -30,7 +30,7 @@ const faqItems: AccordionItem[] = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/Accordion',
+  title: '3. 컴포넌트/Layout/Accordion',
   component: Accordion,
   tags: ['autodocs'],
   args: {

@@ -23,7 +23,7 @@ function DropdownDemo(props: DropdownProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Dropdown',
+  title: '3. 컴포넌트/Navigation/Dropdown',
   component: Dropdown,
   tags: ['autodocs'],
   args: {

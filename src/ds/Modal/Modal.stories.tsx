@@ -27,7 +27,7 @@ function ModalDemo(props: ModalProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Modal',
+  title: '3. 컴포넌트/Overlay/Modal',
   component: Modal,
   tags: ['autodocs'],
   args: {

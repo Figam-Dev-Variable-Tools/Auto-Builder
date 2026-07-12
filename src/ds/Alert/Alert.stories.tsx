@@ -3,7 +3,7 @@ import { FIGMA_FILE } from '../../shared/figma'
 import { Alert } from './Alert'
 
 const meta = {
-  title: '3. 컴포넌트/Alert',
+  title: '3. 컴포넌트/Feedback/Alert',
   component: Alert,
   tags: ['autodocs'],
   args: {

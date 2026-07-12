@@ -10,7 +10,7 @@ function CheckboxDemo(props: CheckboxProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Checkbox',
+  title: '3. 컴포넌트/Selection/Checkbox',
   component: Checkbox,
   tags: ['autodocs'],
   args: {

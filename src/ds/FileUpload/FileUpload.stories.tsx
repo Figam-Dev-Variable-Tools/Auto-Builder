@@ -18,7 +18,7 @@ const sampleFiles = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/FileUpload',
+  title: '3. 컴포넌트/Input/FileUpload',
   component: FileUpload,
   tags: ['autodocs'],
   args: {

@@ -27,7 +27,7 @@ const demoSlides = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/Carousel',
+  title: '3. 컴포넌트/Data/Carousel',
   component: Carousel,
   tags: ['autodocs'],
   args: {

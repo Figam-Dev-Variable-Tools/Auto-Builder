@@ -71,7 +71,7 @@ function ListDemo(props: ListProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/List',
+  title: '3. 컴포넌트/Layout/List',
   component: List,
   tags: ['autodocs'],
   args: {

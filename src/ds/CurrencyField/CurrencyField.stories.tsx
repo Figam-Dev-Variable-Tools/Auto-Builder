@@ -9,7 +9,7 @@ function Demo(props: CurrencyFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/CurrencyField',
+  title: '3. 컴포넌트/Input/CurrencyField',
   component: CurrencyField,
   tags: ['autodocs'],
   args: {

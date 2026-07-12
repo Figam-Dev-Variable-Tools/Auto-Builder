@@ -3,7 +3,7 @@ import { FIGMA_FILE } from '../../shared/figma'
 import { Badge } from './Badge'
 
 const meta = {
-  title: '3. 컴포넌트/Badge',
+  title: '3. 컴포넌트/Action/Badge',
   component: Badge,
   tags: ['autodocs'],
   args: {

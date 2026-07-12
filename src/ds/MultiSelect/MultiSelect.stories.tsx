@@ -17,7 +17,7 @@ function Demo(props: MultiSelectProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/MultiSelect',
+  title: '3. 컴포넌트/Input/MultiSelect',
   component: MultiSelect,
   tags: ['autodocs'],
   args: {

@@ -16,7 +16,7 @@ function ActionSheetDemo(props: ActionSheetProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/ActionSheet',
+  title: '3. 컴포넌트/Overlay/ActionSheet',
   component: ActionSheet,
   tags: ['autodocs'],
   args: {

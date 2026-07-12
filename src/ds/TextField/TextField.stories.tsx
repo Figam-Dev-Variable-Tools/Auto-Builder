@@ -4,7 +4,7 @@ import { TextField } from './TextField'
 import styles from './TextField.module.css'
 
 const meta = {
-  title: '3. 컴포넌트/TextField',
+  title: '3. 컴포넌트/Input/TextField',
   component: TextField,
   tags: ['autodocs'],
   args: {

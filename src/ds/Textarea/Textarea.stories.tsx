@@ -9,7 +9,7 @@ function Demo(props: TextareaProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Textarea',
+  title: '3. 컴포넌트/Input/Textarea',
   component: Textarea,
   tags: ['autodocs'],
   args: {

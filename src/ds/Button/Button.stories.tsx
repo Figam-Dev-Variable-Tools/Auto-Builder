@@ -11,7 +11,7 @@ function IconStar() {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Button',
+  title: '3. 컴포넌트/Action/Button',
   component: Button,
   tags: ['autodocs'],
   args: {

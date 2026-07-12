@@ -11,7 +11,7 @@ function PopoverDemo(props: PopoverProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Popover',
+  title: '3. 컴포넌트/Overlay/Popover',
   component: Popover,
   tags: ['autodocs'],
   args: {

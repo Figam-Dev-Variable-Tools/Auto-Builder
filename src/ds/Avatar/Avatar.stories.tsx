@@ -14,7 +14,7 @@ const demoImage =
   )
 
 const meta = {
-  title: '3. 컴포넌트/Avatar',
+  title: '3. 컴포넌트/Data/Avatar',
   component: Avatar,
   tags: ['autodocs'],
   args: {

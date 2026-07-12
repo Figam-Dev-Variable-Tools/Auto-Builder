@@ -18,7 +18,7 @@ function DismissibleDemo() {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Toast',
+  title: '3. 컴포넌트/Feedback/Toast',
   component: Toast,
   tags: ['autodocs'],
   args: {

@@ -3,7 +3,7 @@ import { FIGMA_FILE } from '../../shared/figma'
 import { Loading } from './Loading'
 
 const meta = {
-  title: '3. 컴포넌트/Loading',
+  title: '3. 컴포넌트/Feedback/Loading',
   component: Loading,
   tags: ['autodocs'],
   args: {

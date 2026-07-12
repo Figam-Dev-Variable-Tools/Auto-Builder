@@ -17,7 +17,7 @@ const sampleImages = [
 ]
 
 const meta = {
-  title: '3. 컴포넌트/ImageUpload',
+  title: '3. 컴포넌트/Input/ImageUpload',
   component: ImageUpload,
   tags: ['autodocs'],
   args: {

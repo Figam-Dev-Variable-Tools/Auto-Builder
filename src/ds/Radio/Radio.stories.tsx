@@ -10,7 +10,7 @@ function RadioDemo(props: RadioProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/Radio',
+  title: '3. 컴포넌트/Selection/Radio',
   component: Radio,
   tags: ['autodocs'],
   args: {

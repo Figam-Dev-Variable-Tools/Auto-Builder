@@ -9,7 +9,7 @@ function Demo(props: PasswordFieldProps) {
 }
 
 const meta = {
-  title: '3. 컴포넌트/PasswordField',
+  title: '3. 컴포넌트/Input/PasswordField',
   component: PasswordField,
   tags: ['autodocs'],
   args: {
