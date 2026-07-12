@@ -134,7 +134,7 @@ function bindTokens(ctx: Ctx, root: SceneNode) {
       for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
         const val = a[p]
         if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('spacing/' + val)
+          const sv = ctx.vars.get('space/' + val)
           if (sv)
             try {
               a.setBoundVariable(p, sv)

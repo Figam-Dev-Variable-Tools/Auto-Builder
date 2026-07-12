@@ -151,11 +151,12 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
     v.setValueForMode(rsMode, w)
   }
   // 오너: 보더·마진·라운드도 전부 변수로 — 컴포넌트가 쓰는 px 값을 변수로 등록해 후처리 바인딩.
+  // 마진/패딩은 별도 네임스페이스 space/<px> (semantic spacing/1..6과 이름 충돌 방지).
   for (const px of [2, 4, 5, 6, 7, 8, 10, 12, 13, 14, 16, 18, 20, 24, 999]) {
     figma.variables.createVariable(`radius/${px}`, rsCol, 'FLOAT').setValueForMode(rsMode, px)
   }
   for (const px of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 40]) {
-    figma.variables.createVariable(`spacing/${px}`, rsCol, 'FLOAT').setValueForMode(rsMode, px)
+    figma.variables.createVariable(`space/${px}`, rsCol, 'FLOAT').setValueForMode(rsMode, px)
   }
   for (const w of [1, 1.5, 2, 3]) {
     figma.variables.createVariable(`border/${w}`, rsCol, 'FLOAT').setValueForMode(rsMode, w)
