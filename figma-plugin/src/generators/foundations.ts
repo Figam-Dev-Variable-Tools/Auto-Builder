@@ -342,8 +342,8 @@ function paletteRow(ctx: Ctx, kr: string, varName: string, baseHex: string): Fra
     chip.name = 'chip'
     chip.resize(72, 56)
     chip.cornerRadius = 8
-    if (s.base) fillColor(ctx, chip, varName, baseHex)
-    else chip.fills = [solid(s.hex)]
+    // 각 셰이드를 color/<key>/<step> 변수에 바인딩(오너: 팔레트도 전부 변수).
+    fillColor(ctx, chip, `${varName}/${s.lbl}`, s.hex)
     chip.strokes = [solid(BORDER)]
     chip.strokeWeight = 1
     chip.strokeAlign = 'INSIDE'

@@ -77,7 +77,7 @@ async function handleGenerate(msg: GenerateMsg) {
     }
     const result = await generateTokens(payload)
     result.warnings.forEach((w) => status('warn', w))
-    status('info', 'Variables 컬렉션 3개 + Text Styles 4종 생성 완료.')
+    status('info', 'Variables 3컬렉션(색+팔레트 셰이드·타이포·간격/보더) + Text Styles(크기×굵기) 생성 완료.')
   }
 
   if (msg.scope.designSystem || msg.scope.icons) {

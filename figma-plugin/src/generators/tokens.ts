@@ -10,9 +10,25 @@ import {
   computeSizes,
   firstFontFamily,
   hexToRgb,
+  rgbToHex,
   type ColorKey,
   type PresetName,
 } from '../presets'
+
+// 팔레트 틴트/셰이드 계산(오너: 컬러팔레트 100~900도 전부 변수 등록).
+function mixHex(hex: string, target: string, amt: number): string {
+  const a = hexToRgb(hex)
+  const b = hexToRgb(target)
+  return rgbToHex({ r: a.r + (b.r - a.r) * amt, g: a.g + (b.g - a.g) * amt, b: a.b + (b.b - a.b) * amt })
+}
+const SHADE_STEPS: Array<[string, (h: string) => string]> = [
+  ['100', (h) => mixHex(h, '#FFFFFF', 0.74)],
+  ['300', (h) => mixHex(h, '#FFFFFF', 0.42)],
+  ['500', (h) => h],
+  ['700', (h) => mixHex(h, '#000000', 0.22)],
+  ['900', (h) => mixHex(h, '#000000', 0.44)],
+]
+const PALETTE_KEYS: ColorKey[] = ['primary', 'secondary', 'error', 'success', 'warning']
 
 export type GenerateTokensPayload = {
   preset: PresetName
@@ -70,6 +86,18 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
     colorVariables[key] = v
   }
 
+  // 1b. 컬러 팔레트 셰이드 — color/<key>/100·300·500·700·900 (모드별 base에서 계산)
+  for (const key of PALETTE_KEYS) {
+    for (const [step, fn] of SHADE_STEPS) {
+      const v = figma.variables.createVariable(`color/${key}/${step}`, colorCol, 'COLOR')
+      for (const preset of PRESET_NAMES) {
+        const fromUi = preset === payload.preset ? payload.colors[key] : undefined
+        const base = fromUi ?? PRESETS[preset].color[key]
+        v.setValueForMode(modeIds[preset], hexToRgb(fn(base)))
+      }
+    }
+  }
+
   // 2. "DS Typography" — 단일 mode
   const typoCol = figma.variables.createVariableCollection('DS Typography')
   const typoMode = typoCol.modes[0].modeId
@@ -124,18 +152,30 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
     await figma.loadFontAsync({ family: familyName, style: 'Bold' })
   }
 
-  const textStyles: Array<{ name: string; size: number; bold: boolean }> = [
-    { name: 'DS/Display', size: sizes.xxl, bold: true },
-    { name: 'DS/Title', size: sizes.xl, bold: true },
-    { name: 'DS/Body', size: sizes.md, bold: false },
-    { name: 'DS/Caption', size: sizes.sm, bold: false },
+  // 오너: 각 폰트 크기별·굵기별로 Text Style 등록.
+  const sizeStyles: Array<[string, number]> = [
+    ['Display', sizes.xxl],
+    ['Title', sizes.xl],
+    ['Heading', sizes.lg],
+    ['Body', sizes.md],
+    ['Caption', sizes.sm],
+    ['Small', sizes.xs],
   ]
-  for (const def of textStyles) {
-    const style = figma.createTextStyle()
-    style.name = def.name
-    style.fontName = { family: familyName, style: def.bold ? 'Bold' : 'Regular' }
-    style.fontSize = def.size
-    style.lineHeight = { value: 150, unit: 'PERCENT' }
+  const weightStyles: string[] = ['Regular', 'Bold']
+  try {
+    await figma.loadFontAsync({ family: familyName, style: 'Medium' })
+    weightStyles.splice(1, 0, 'Medium') // Regular · Medium · Bold
+  } catch {
+    /* Medium 미제공 폰트 — 건너뜀 */
+  }
+  for (const [sname, size] of sizeStyles) {
+    for (const wstyle of weightStyles) {
+      const style = figma.createTextStyle()
+      style.name = `DS/${sname}/${wstyle}`
+      style.fontName = { family: familyName, style: wstyle }
+      style.fontSize = size
+      style.lineHeight = { value: 150, unit: 'PERCENT' }
+    }
   }
 
   return {

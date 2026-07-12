@@ -1358,6 +1358,144 @@ function renderUpload(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   return c
 }
 
+// ══ OVERLAY 시트 (Drawer / BottomSheet / ActionSheet) ════════════════
+function renderDrawer(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(280, c.height)
+  c.itemSpacing = 0
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  c.effects = [{ type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.2 }, offset: { x: -8, y: 0 }, radius: 32, spread: 0, visible: true, blendMode: 'NORMAL' }]
+  const header = autoFrame('header', 'HORIZONTAL')
+  header.layoutAlign = 'STRETCH'
+  header.primaryAxisSizingMode = 'FIXED'
+  header.counterAxisAlignItems = 'CENTER'
+  header.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  header.paddingTop = header.paddingBottom = 18
+  header.paddingLeft = 20
+  header.paddingRight = 16
+  const title = boundText(ctx, '메뉴', 17, 'color/text', INK, true)
+  title.name = 'Title'
+  header.appendChild(title)
+  const close = iconInstance('_Icon/Close', 'Close Icon', 20)
+  recolorIcon(close, SUB)
+  header.appendChild(close)
+  c.appendChild(header)
+  const items: Array<[string, string]> = [
+    ['홈', '_Icon/House'],
+    ['프로필', '_Icon/Person'],
+    ['설정', '_Icon/Settings'],
+  ]
+  items.forEach(([label, icon], i) => {
+    const r = autoFrame('nav', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 12
+    r.paddingTop = r.paddingBottom = 12
+    r.paddingLeft = r.paddingRight = 20
+    if (i === 0) bindFillVar(ctx, r, 'color/bgSubtle', SURFACE)
+    const ic = iconInstance(icon, 'Icon ' + (i + 1), 18)
+    recolorIcon(ic, i === 0 ? ACCENT : SUB)
+    r.appendChild(ic)
+    const t = boundText(ctx, label, 14, i === 0 ? 'color/primary' : 'color/text', i === 0 ? ACCENT : INK, i === 0)
+    t.name = 'Item ' + (i + 1)
+    r.appendChild(t)
+    c.appendChild(r)
+  })
+  return c
+}
+function renderBottomSheet(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(360, c.height)
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 12
+  c.paddingTop = 10
+  c.paddingBottom = 24
+  c.paddingLeft = 20
+  c.paddingRight = 20
+  c.topLeftRadius = c.topRightRadius = 20
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  c.effects = [{ type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.2 }, offset: { x: 0, y: -8 }, radius: 32, spread: 0, visible: true, blendMode: 'NORMAL' }]
+  const handle = figma.createFrame()
+  handle.name = 'handle'
+  handle.resize(36, 4)
+  handle.cornerRadius = 999
+  bindFillVar(ctx, handle, 'color/border', BORDER)
+  c.appendChild(handle)
+  const title = boundText(ctx, '옵션 선택', 17, 'color/text', INK, true)
+  title.name = 'Title'
+  c.appendChild(title)
+  const body = boundText(ctx, '아래에서 원하는 항목을 선택하세요.', 14, 'color/secondary', SUB)
+  body.name = 'Body'
+  body.layoutAlign = 'STRETCH'
+  body.textAlignHorizontal = 'CENTER'
+  c.appendChild(body)
+  return c
+}
+function renderActionSheet(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, c.height)
+  c.itemSpacing = 8
+  c.fills = []
+  const group = figma.createFrame()
+  group.name = 'group'
+  group.layoutMode = 'VERTICAL'
+  group.primaryAxisSizingMode = 'AUTO'
+  group.counterAxisSizingMode = 'FIXED'
+  group.resize(320, group.height)
+  group.itemSpacing = 0
+  group.cornerRadius = 14
+  group.clipsContent = true
+  bindFillVar(ctx, group, 'color/bg', WHITE)
+  const actions: Array<[string, boolean]> = [
+    ['공유하기', false],
+    ['수정하기', false],
+    ['삭제하기', true],
+  ]
+  actions.forEach(([label, danger], i) => {
+    if (i > 0) {
+      const d = figma.createRectangle()
+      d.resize(320, 1)
+      d.layoutAlign = 'STRETCH'
+      bindFillVar(ctx, d, 'color/border', BORDER)
+      group.appendChild(d)
+    }
+    const r = autoFrame('action', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.primaryAxisAlignItems = 'CENTER'
+    r.counterAxisAlignItems = 'CENTER'
+    r.paddingTop = r.paddingBottom = 15
+    const t = boundText(ctx, label, 15, danger ? 'color/error' : 'color/text', danger ? '#F04452' : INK, false)
+    t.name = 'Action ' + (i + 1)
+    r.appendChild(t)
+    group.appendChild(r)
+  })
+  c.appendChild(group)
+  const cancel = autoFrame('cancel', 'HORIZONTAL')
+  cancel.layoutAlign = 'STRETCH'
+  cancel.primaryAxisSizingMode = 'FIXED'
+  cancel.primaryAxisAlignItems = 'CENTER'
+  cancel.counterAxisAlignItems = 'CENTER'
+  cancel.paddingTop = cancel.paddingBottom = 15
+  cancel.cornerRadius = 14
+  bindFillVar(ctx, cancel, 'color/bg', WHITE)
+  const ct = boundText(ctx, '취소', 15, 'color/primary', ACCENT, true)
+  ct.name = 'Cancel'
+  cancel.appendChild(ct)
+  c.appendChild(cancel)
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -1687,6 +1825,30 @@ const OVERLAY_CATEGORY: CategoryDef = {
       eyebrow: 'MOLECULE · OVERLAY',
       desc: '요소 옆에 붙는 작은 부가정보 팝오버.',
       build: (ctx, page) => buildSet(ctx, page, 'DS/Popover', [{ name: 'state', values: ['default'] }], (c) => renderPopover(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '팝오버 제목' }, { prop: 'Body', layer: 'Body', def: '간단한 부가 설명' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'Drawer',
+      setName: 'DS/Drawer',
+      eyebrow: 'ORGANISM · OVERLAY',
+      desc: '측면에서 밀려나오는 내비게이션 드로어.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Drawer', [{ name: 'state', values: ['default'] }], (c) => renderDrawer(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '메뉴' }, { prop: 'Item 1', layer: 'Item 1', def: '홈' }, { prop: 'Item 2', layer: 'Item 2', def: '프로필' }, { prop: 'Item 3', layer: 'Item 3', def: '설정' }], swaps: [{ prop: 'Icon 1', layer: 'Icon 1', defKey: '_Icon/House' }, { prop: 'Icon 2', layer: 'Icon 2', defKey: '_Icon/Person' }, { prop: 'Icon 3', layer: 'Icon 3', defKey: '_Icon/Settings' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'BottomSheet',
+      setName: 'DS/BottomSheet',
+      eyebrow: 'ORGANISM · OVERLAY',
+      desc: '하단에서 올라오는 시트(핸들 포함).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/BottomSheet', [{ name: 'state', values: ['default'] }], (c) => renderBottomSheet(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '옵션 선택' }, { prop: 'Body', layer: 'Body', def: '아래에서 원하는 항목을 선택하세요.' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'ActionSheet',
+      setName: 'DS/ActionSheet',
+      eyebrow: 'MOLECULE · OVERLAY',
+      desc: '하단 액션 목록 시트(취소 포함).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/ActionSheet', [{ name: 'state', values: ['default'] }], (c) => renderActionSheet(ctx, c), { texts: [{ prop: 'Action 1', layer: 'Action 1', def: '공유하기' }, { prop: 'Action 2', layer: 'Action 2', def: '수정하기' }, { prop: 'Action 3', layer: 'Action 3', def: '삭제하기' }, { prop: 'Cancel', layer: 'Cancel', def: '취소' }] }),
       states: [{ caption: 'Default', props: {} }],
     },
   ],
