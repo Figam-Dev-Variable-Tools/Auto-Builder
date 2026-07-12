@@ -51,6 +51,7 @@ function varLines(t) {
   for (const [k, v] of Object.entries(t.typography.sizes)) lines.push(`  --ds-font-size-${k}: ${px(v)};`)
   for (const [k, v] of Object.entries(t.typography.weights)) lines.push(`  --ds-font-weight-${k}: ${v};`)
   for (const [k, v] of Object.entries(t.radius)) lines.push(`  --ds-radius-${k}: ${px(v)};`)
+  lines.push(`  --ds-radius-full: 999px;`) // pill/원형(컴포넌트 fallback과 동일) — 오버라이드 가능하게 선언
   for (const [k, v] of Object.entries(t.spacing)) lines.push(`  --ds-spacing-${k}: ${px(v)};`)
   lines.push(`  --ds-border-width: 1px;`)
   lines.push(`  --ds-border-width-thick: 2px;`)

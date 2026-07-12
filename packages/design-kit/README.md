@@ -48,6 +48,31 @@ export function App() {
 import '@figam-dev-variable-tools/design-kit/tokens/toss.css'
 ```
 
+## 테마 커스터마이즈 — **선언된 변수만 덮어쓰면 끝**
+
+모든 컴포넌트는 `--ds-*` **디자인 변수 위에** 만들어져 있습니다. 그래서 서비스 브랜드에 맞추려면 CSS 컴포넌트를 건드릴 필요 없이 **이미 선언된 변수 몇 개만 오버라이드**하면 Button·Badge·Alert·입력·링크까지 전부 한 번에 따라옵니다.
+
+```css
+/* app.css — tokens.css 다음에 로드 */
+:root {
+  --ds-color-primary: #ff5a5f;      /* 주요 버튼·강조·포커스링 전부 이 색으로 */
+  --ds-color-success: #12b886;
+  --ds-radius-md: 12px;             /* 버튼·입력 모서리 */
+  --ds-font-family: 'Pretendard', system-ui, sans-serif;
+}
+```
+
+즉, **프론트엔드에서는 이미 선언된 변수(토큰)와 컴포넌트 변형(prop)만 조합**하면 됩니다 — 색·타이포·간격·모서리는 `--ds-*` 변수로, 컴포넌트 형태는 `variant`·`appearance`·`size` 같은 선언된 prop 조합으로.
+
+```tsx
+// 선언된 변형(prop)만 조합 — 새 CSS 작성 불필요
+<Button variant="primary"  appearance="solid"   size="lg" label="결제하기" />
+<Button variant="secondary" appearance="outline" size="md" label="취소" />
+<Badge  variant="warning"  appearance="soft"    size="sm" label="대기중" />
+```
+
+사용 가능한 변수 전체 목록은 배포된 `tokens.css`에, 컴포넌트별 변형 조합은 **[문서](https://figam-dev-variable-tools.github.io/Design-System-Hub-Tools/docs/)** 의 "변수 조합" 탭에서 실시간으로 확인할 수 있습니다.
+
 ## 컴포넌트
 
 Button · Badge · Alert · TextField · Card · Checkbox · Toggle · Chip · Toast · Select · Modal · Dialog · Tabs · Avatar · Tooltip · Table · Calendar · DatePicker · Carousel · Accordion · Drawer · Rating · Skeleton · Kbd · Callout … 외 다수(한국형 KR 컴포넌트 포함). 전체 목록과 실시간 예제는 **[컴포넌트 문서](https://figam-dev-variable-tools.github.io/Design-System-Hub-Tools/docs/)** 를 참고하세요.
