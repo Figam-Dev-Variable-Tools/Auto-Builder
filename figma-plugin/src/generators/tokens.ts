@@ -21,12 +21,18 @@ function mixHex(hex: string, target: string, amt: number): string {
   const b = hexToRgb(target)
   return rgbToHex({ r: a.r + (b.r - a.r) * amt, g: a.g + (b.g - a.g) * amt, b: a.b + (b.b - a.b) * amt })
 }
+// 10단 팔레트(오너: 컬러팔레트 더 많이) — 50·100·200·300·400·500·600·700·800·900.
 const SHADE_STEPS: Array<[string, (h: string) => string]> = [
-  ['100', (h) => mixHex(h, '#FFFFFF', 0.74)],
-  ['300', (h) => mixHex(h, '#FFFFFF', 0.42)],
+  ['50', (h) => mixHex(h, '#FFFFFF', 0.9)],
+  ['100', (h) => mixHex(h, '#FFFFFF', 0.8)],
+  ['200', (h) => mixHex(h, '#FFFFFF', 0.62)],
+  ['300', (h) => mixHex(h, '#FFFFFF', 0.44)],
+  ['400', (h) => mixHex(h, '#FFFFFF', 0.24)],
   ['500', (h) => h],
-  ['700', (h) => mixHex(h, '#000000', 0.22)],
-  ['900', (h) => mixHex(h, '#000000', 0.44)],
+  ['600', (h) => mixHex(h, '#000000', 0.12)],
+  ['700', (h) => mixHex(h, '#000000', 0.24)],
+  ['800', (h) => mixHex(h, '#000000', 0.36)],
+  ['900', (h) => mixHex(h, '#000000', 0.48)],
 ]
 const PALETTE_KEYS: ColorKey[] = ['primary', 'secondary', 'error', 'success', 'warning']
 
@@ -111,6 +117,11 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
     const v = figma.variables.createVariable(`font/size/${key}`, typoCol, 'FLOAT')
     v.setValueForMode(typoMode, sizes[key])
     sizeVars[key] = v
+  }
+  // 오너: Figma 내 텍스트를 전부 변수로 — 컴포넌트가 쓰는 픽셀 크기도 font/size/<px> 변수로.
+  for (const px of [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 26, 28, 30, 32, 36, 40]) {
+    const v = figma.variables.createVariable(`font/size/${px}`, typoCol, 'FLOAT')
+    v.setValueForMode(typoMode, px)
   }
   const weights = { regular: 400, medium: 500, bold: 700 }
   for (const key of WEIGHT_KEYS) {

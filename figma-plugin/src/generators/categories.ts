@@ -79,6 +79,9 @@ function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: 
   const t = txt(ctx, chars, size, ctx.userColors[varName] ?? hex, bold)
   const v = ctx.vars.get(varName)
   if (v) t.fills = [boundPaint(v)]
+  // 오너: 텍스트 크기도 변수로 — font/size/<px>가 있으면 fontSize 바인딩.
+  const sv = ctx.vars.get('font/size/' + size)
+  if (sv) t.setBoundVariable('fontSize', sv)
   return t
 }
 function bindFillVar(ctx: Ctx, node: GeometryMixin, varName: string, hex: string) {

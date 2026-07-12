@@ -333,11 +333,16 @@ function paletteRow(ctx: Ctx, kr: string, varName: string, baseHex: string): Fra
   const strip = autoFrame('strip', 'HORIZONTAL')
   strip.itemSpacing = 8
   const steps: Array<{ hex: string; lbl: string; base?: boolean }> = [
-    { hex: tint(baseHex, 0.74), lbl: '100' },
-    { hex: tint(baseHex, 0.42), lbl: '300' },
+    { hex: tint(baseHex, 0.9), lbl: '50' },
+    { hex: tint(baseHex, 0.8), lbl: '100' },
+    { hex: tint(baseHex, 0.62), lbl: '200' },
+    { hex: tint(baseHex, 0.44), lbl: '300' },
+    { hex: tint(baseHex, 0.24), lbl: '400' },
     { hex: baseHex, lbl: '500', base: true },
-    { hex: shade(baseHex, 0.22), lbl: '700' },
-    { hex: shade(baseHex, 0.44), lbl: '900' },
+    { hex: shade(baseHex, 0.12), lbl: '600' },
+    { hex: shade(baseHex, 0.24), lbl: '700' },
+    { hex: shade(baseHex, 0.36), lbl: '800' },
+    { hex: shade(baseHex, 0.48), lbl: '900' },
   ]
   for (const s of steps) {
     const cell = autoFrame('c', 'VERTICAL')
@@ -345,7 +350,7 @@ function paletteRow(ctx: Ctx, kr: string, varName: string, baseHex: string): Fra
     cell.itemSpacing = 5
     const chip = figma.createFrame()
     chip.name = 'chip'
-    chip.resize(72, 56)
+    chip.resize(52, 52)
     chip.cornerRadius = 8
     // 각 셰이드를 color/<key>/<step> 변수에 바인딩(오너: 팔레트도 전부 변수).
     fillColor(ctx, chip, `${varName}/${s.lbl}`, s.hex)
@@ -460,7 +465,7 @@ export async function generateDesignSystemPage(
     eyebrow: 'FOUNDATION · COLOR',
     name: '컬러 팔레트',
     desc: '선택한 의미색을 500(base)으로 100~900 팔레트를 만듭니다. 500은 color/* Variable에 바인딩되어 프리셋과 함께 바뀝니다.',
-    meta: [`Colors: ${palette.length}`, 'Steps: 100–900'],
+    meta: [`Colors: ${palette.length}`, 'Steps: 50–900 (10단)'],
     renderDir: 'VERTICAL',
   })
   palette.forEach(([kr, v, hex]) => cSec.appendChild(paletteRow(ctx, kr, v, hex)))

@@ -36,11 +36,16 @@ const mixHex = (hex, target, amt) => {
   return '#' + [0, 1, 2].map((i) => toHex(a[i] + (b[i] - a[i]) * amt)).join('')
 }
 const SHADE_STEPS = [
-  ['100', (h) => mixHex(h, '#FFFFFF', 0.74)],
-  ['300', (h) => mixHex(h, '#FFFFFF', 0.42)],
+  ['50', (h) => mixHex(h, '#FFFFFF', 0.9)],
+  ['100', (h) => mixHex(h, '#FFFFFF', 0.8)],
+  ['200', (h) => mixHex(h, '#FFFFFF', 0.62)],
+  ['300', (h) => mixHex(h, '#FFFFFF', 0.44)],
+  ['400', (h) => mixHex(h, '#FFFFFF', 0.24)],
   ['500', (h) => h.toUpperCase()],
-  ['700', (h) => mixHex(h, '#000000', 0.22)],
-  ['900', (h) => mixHex(h, '#000000', 0.44)],
+  ['600', (h) => mixHex(h, '#000000', 0.12)],
+  ['700', (h) => mixHex(h, '#000000', 0.24)],
+  ['800', (h) => mixHex(h, '#000000', 0.36)],
+  ['900', (h) => mixHex(h, '#000000', 0.48)],
 ]
 const PALETTE_KEYS = ['primary', 'secondary', 'error', 'success', 'warning']
 

@@ -13,7 +13,7 @@ const tokensDir = join(root, 'tokens')
 const genDir = join(root, 'src', 'tokens', 'generated')
 const PRESET_ORDER = ['bootstrap', 'tailwind', 'toss']
 const PALETTE_KEYS = ['primary', 'secondary', 'error', 'success', 'warning']
-const SHADE_STEPS = ['100', '300', '500', '700', '900']
+const SHADE_STEPS = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900']
 
 const fail = []
 const note = (m) => fail.push(m)
