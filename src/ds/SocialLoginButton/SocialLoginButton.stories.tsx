@@ -12,7 +12,7 @@ const meta = {
     showLogo: true,
   },
   argTypes: {
-    provider: { control: 'select', options: ['kakao', 'google', 'facebook', 'naver', 'apple'] },
+    provider: { control: 'select', options: ['kakao', 'google', 'facebook', 'naver', 'apple', 'microsoft', 'x'] },
     size: { control: 'inline-radio', options: ['md', 'lg'] },
     label: { control: 'text' },
   },
@@ -34,6 +34,8 @@ export const AllProviders: Story = {
       <SocialLoginButton provider="google" size="md" />
       <SocialLoginButton provider="facebook" size="md" />
       <SocialLoginButton provider="apple" size="md" />
+      <SocialLoginButton provider="microsoft" size="md" />
+      <SocialLoginButton provider="x" size="md" />
     </div>
   ),
 }

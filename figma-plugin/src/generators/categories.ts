@@ -22,6 +22,7 @@ import {
   WHITE,
 } from './foundations'
 import { iconInstance, ICON_COMPONENTS } from './icon-vec'
+import { brandLogo } from './brand-logos'
 import type { PresetName } from '../presets'
 
 const FIELD_W = 300
@@ -37,9 +38,10 @@ const PAGE_OVERLAY = '7. System - Overlay'
 const PAGE_DATA = '8. System - Data'
 const PAGE_STRUCTURE = '9. System - Structure'
 const PAGE_DATETIME = '10. System - Date & Time'
-const PAGE_KR = '11. System - KR'
-const PAGE_TEMPLATES = '12. System - Templates'
-const PAGE_MEDIA = '13. System - Media'
+const PAGE_KR = '11. System - Korea Templates'
+const PAGE_MEDIA = '12. System - Media'
+const PAGE_TEMPLATES = '13. System - Templates'
+const PAGE_ETC = '14. System - ETC'
 // 컴포넌트 세트는 별도 소스 페이지 없이 각 카테고리 페이지에 함께 둔다.
 // 레거시 이름들은 reset 정리용으로만 남긴다(생성하지 않음).
 export const CATEGORY_PAGE_NAMES = [
@@ -57,6 +59,11 @@ export const CATEGORY_PAGE_NAMES = [
   PAGE_KR,
   PAGE_TEMPLATES,
   PAGE_MEDIA,
+  PAGE_ETC,
+  // 레거시 페이지명(reset 정리용)
+  '11. System - KR',
+  '12. System - Templates',
+  '13. System - Media',
   'DS · 컴포넌트 소스',
   'Input',
   'Selection',
@@ -2988,18 +2995,28 @@ function renderTplLogin(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   const social = autoFrame('social', 'VERTICAL')
   social.layoutAlign = 'STRETCH'
   social.itemSpacing = 8
-  ;[['카카오 로그인', '#FEE500', '#191919'], ['Google로 로그인', '#FFFFFF', '#1F1F1F'], ['네이버 로그인', '#03C75A', '#FFFFFF']].forEach(([label, bg, fg]) => {
+  ;[
+    ['kakao', '카카오 로그인', '#FEE500', '#191919'],
+    ['naver', '네이버 로그인', '#03C75A', '#FFFFFF'],
+    ['google', 'Google로 로그인', '#FFFFFF', '#1F1F1F'],
+  ].forEach(([provider, label, bg, fg]) => {
     const b = autoFrame('social-btn', 'HORIZONTAL')
     b.layoutAlign = 'STRETCH'
     b.primaryAxisSizingMode = 'FIXED'
     b.primaryAxisAlignItems = 'CENTER'
     b.counterAxisAlignItems = 'CENTER'
+    b.itemSpacing = 8
     b.paddingTop = b.paddingBottom = 11
     b.cornerRadius = 8
     b.fills = [solid(bg)]
     if (bg === '#FFFFFF') {
       b.strokes = [solid('#DADCE0')]
       b.strokeWeight = 1
+    }
+    const logo = brandLogo(provider, 18)
+    if (logo) {
+      logo.name = 'logo'
+      b.appendChild(logo)
     }
     b.appendChild(txt(ctx, label, 14, fg, true))
     social.appendChild(b)
@@ -3516,6 +3533,47 @@ function renderKbd(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
     cap.appendChild(boundText(ctx, k, 13, 'color/secondary', SUB, true))
     c.appendChild(cap)
   })
+  return c
+}
+
+// ══ ETC — 소셜/OAuth 로그인 ══════════════════════════════════════════
+const SOCIAL_STYLE: Record<string, { bg: string; fg: string; label: string; border?: string }> = {
+  kakao: { bg: '#FEE500', fg: '#191919', label: '카카오 로그인' },
+  naver: { bg: '#03C75A', fg: '#FFFFFF', label: '네이버 로그인' },
+  google: { bg: '#FFFFFF', fg: '#1F1F1F', label: 'Google로 로그인', border: '#DADCE0' },
+  facebook: { bg: '#1877F2', fg: '#FFFFFF', label: 'Facebook으로 로그인' },
+  apple: { bg: '#000000', fg: '#FFFFFF', label: 'Apple로 로그인' },
+  microsoft: { bg: '#FFFFFF', fg: '#1F1F1F', label: 'Microsoft 계정으로 로그인', border: '#8C8C8C' },
+  x: { bg: '#000000', fg: '#FFFFFF', label: 'X로 계속하기' },
+}
+function renderSocial(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const provider = combo.provider || 'kakao'
+  const s = SOCIAL_STYLE[provider] || SOCIAL_STYLE.kakao
+  const lg = combo.size === 'lg'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'AUTO'
+  c.resize(320, c.height)
+  c.primaryAxisAlignItems = 'CENTER'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 8
+  c.paddingTop = c.paddingBottom = lg ? 14 : 11
+  c.cornerRadius = 8
+  c.fills = [solid(s.bg)]
+  if (s.border) {
+    c.strokes = [solid(s.border)]
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  }
+  const logo = brandLogo(provider, lg ? 22 : 18)
+  if (logo) {
+    logo.name = 'logo'
+    c.appendChild(logo)
+  }
+  const t = txt(ctx, s.label, lg ? 16 : 14, s.fg, true)
+  t.name = 'Label'
+  c.appendChild(t)
   return c
 }
 
@@ -4129,7 +4187,7 @@ function krBespokeDoc(han: string, key: string, desc: string, render: (ctx: Ctx,
 }
 const KR_CATEGORY: CategoryDef = {
   pageName: PAGE_KR,
-  title: 'KR 컴포넌트',
+  title: 'Korea Templates',
   subtitle: '한국 도메인 폼 계열 — 계좌·카드·본인인증·주소 등. Storybook "6. KR 컴포넌트"와 1:1.',
   docs: [
     krFieldDoc('계좌번호', 'KrAccountField', { label: '계좌번호', ph: '계좌번호 입력', helper: '숫자만 입력하세요' }),
@@ -4218,6 +4276,41 @@ const MEDIA_CATEGORY: CategoryDef = {
   ],
 }
 
+const ETC_CATEGORY: CategoryDef = {
+  pageName: PAGE_ETC,
+  title: 'ETC',
+  subtitle: '기타 — 소셜/OAuth 로그인. 카카오·네이버·구글·페이스북·애플·Microsoft·X.',
+  docs: [
+    {
+      key: 'SocialLoginButton',
+      setName: 'DS/SocialLoginButton',
+      eyebrow: 'MOLECULE · ETC',
+      desc: '소셜/OAuth 로그인 버튼(프로바이더·사이즈·로고 토글). 정식 브랜드 로고 SVG.',
+      build: (ctx, page) =>
+        buildSet(
+          ctx,
+          page,
+          'DS/SocialLoginButton',
+          [
+            { name: 'provider', values: ['kakao', 'naver', 'google', 'facebook', 'apple', 'microsoft', 'x'] },
+            { name: 'size', values: ['md', 'lg'] },
+          ],
+          (c) => renderSocial(ctx, c),
+          { texts: [{ prop: 'Label', layer: 'Label', def: '카카오 로그인' }], bools: [{ prop: 'Show Logo', layer: 'logo', def: true }] },
+        ),
+      states: [
+        { caption: 'Kakao', props: {} },
+        { caption: 'Naver', props: { provider: 'naver' } },
+        { caption: 'Google', props: { provider: 'google' } },
+        { caption: 'Facebook', props: { provider: 'facebook' } },
+        { caption: 'Apple', props: { provider: 'apple' } },
+        { caption: 'Microsoft', props: { provider: 'microsoft' } },
+        { caption: 'X', props: { provider: 'x' } },
+      ],
+    },
+  ],
+}
+
 const ALL_CATEGORIES = [
   INPUT_CATEGORY,
   SELECTION_CATEGORY,
@@ -4230,8 +4323,9 @@ const ALL_CATEGORIES = [
   STRUCTURE_CATEGORY,
   DATETIME_CATEGORY,
   KR_CATEGORY,
-  TEMPLATES_CATEGORY,
   MEDIA_CATEGORY,
+  TEMPLATES_CATEGORY,
+  ETC_CATEGORY,
 ]
 
 // ── 카테고리 생성 ────────────────────────────────────────────────────

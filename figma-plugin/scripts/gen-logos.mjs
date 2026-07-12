@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..', '..')
 const logosDir = resolve(root, 'src', 'ds', 'SocialLoginButton', 'logos')
-const KEYS = ['google', 'kakao', 'naver', 'facebook', 'apple']
+const KEYS = ['google', 'kakao', 'naver', 'facebook', 'apple', 'microsoft', 'x']
 
 const out = {}
 for (const key of KEYS) {

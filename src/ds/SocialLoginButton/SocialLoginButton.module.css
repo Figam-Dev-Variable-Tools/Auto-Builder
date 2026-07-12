@@ -57,6 +57,17 @@
   color: var(--brand-apple-label);
 }
 
+.microsoft {
+  background: var(--brand-microsoft-bg);
+  color: var(--brand-microsoft-label);
+  border: 1px solid var(--brand-microsoft-border);
+}
+
+.x {
+  background: var(--brand-x-bg);
+  color: var(--brand-x-label);
+}
+
 .logo {
   position: absolute;
   left: var(--ds-spacing-3);
