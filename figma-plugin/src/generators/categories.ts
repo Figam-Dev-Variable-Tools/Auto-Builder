@@ -21,6 +21,7 @@ import {
   WHITE,
 } from './foundations'
 import { strokeIcon } from './icon-vec'
+import { ICON_PATHS } from '../icons-data'
 
 const FIELD_W = 300
 // 오너 규칙: 페이지 탭은 "순번. System - 이름". 절취선은 하이픈 라인.
@@ -89,9 +90,89 @@ function fixedFrame(name: string, dir: 'HORIZONTAL' | 'VERTICAL', w: number, h: 
   return f
 }
 
+// ── 아이콘 컴포넌트 라이브러리 (instance-swap 대상) ─────────────────────
+// 오너: "아이콘도 전부 컴포넌트 속성만들기 적용" → 모든 아이콘을 컴포넌트로 만들어 인스턴스로 배치.
+let ICON_LIB: Map<string, ComponentNode> | null = null
+const ICON_DEFAULT = '_Icon/Star'
+function buildIconLib(ctx: Ctx, page: PageNode) {
+  const lib = new Map<string, ComponentNode>()
+  const tv = ctx.vars.get('color/text')
+  const keys = Object.keys(ICON_PATHS)
+  keys.forEach((key, i) => {
+    const inner = strokeIcon(key, 24, tv ? boundPaint(tv) : solid(INK))
+    if (!inner) return
+    const comp = figma.createComponent()
+    comp.name = key
+    comp.resize(24, 24)
+    comp.fills = []
+    inner.x = 0
+    inner.y = 0
+    comp.appendChild(inner)
+    page.appendChild(comp)
+    comp.x = 1360 + (i % 16) * 30
+    comp.y = -760 + Math.floor(i / 16) * 30
+    lib.set(key, comp)
+  })
+  ICON_LIB = lib
+}
+/** 아이콘 인스턴스(instance-swap 대상). 라이브러리 없으면 빈 프레임 폴백. */
+function iconInstance(key: string, name: string, size: number): SceneNode {
+  const comp = ICON_LIB && ICON_LIB.get(key)
+  if (!comp) {
+    const f = figma.createFrame()
+    f.name = name
+    f.resize(size, size)
+    f.fills = []
+    return f
+  }
+  const inst = comp.createInstance()
+  inst.name = name
+  if (size !== 24) inst.rescale(size / 24)
+  return inst
+}
+
+// ── 컴포넌트 속성(속성 만들기) 헬퍼 ──────────────────────────────────
+function addTextProp(set: ComponentSetNode, prop: string, layer: string, def: string) {
+  try {
+    const id = set.addComponentProperty(prop, 'TEXT', def)
+    for (const n of set.findAll((x) => x.type === 'TEXT' && x.name === layer)) {
+      ;(n as TextNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), characters: id }
+    }
+  } catch {
+    /* 이미 있거나 대상 없음 */
+  }
+}
+function addBoolProp(set: ComponentSetNode, prop: string, layer: string, def: boolean) {
+  try {
+    const id = set.addComponentProperty(prop, 'BOOLEAN', def)
+    for (const n of set.findAll((x) => x.name === layer)) {
+      n.componentPropertyReferences = { ...(n.componentPropertyReferences || {}), visible: id }
+    }
+  } catch {
+    /* skip */
+  }
+}
+function addSwapProp(set: ComponentSetNode, prop: string, layer: string, defKey: string) {
+  const comp = ICON_LIB && ICON_LIB.get(defKey)
+  if (!comp) return
+  try {
+    const id = set.addComponentProperty(prop, 'INSTANCE_SWAP', comp.id)
+    for (const n of set.findAll((x) => x.type === 'INSTANCE' && x.name === layer)) {
+      ;(n as InstanceNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), mainComponent: id }
+    }
+  } catch {
+    /* skip */
+  }
+}
+
 // ── 제네릭 베리언트 세트 빌더 ────────────────────────────────────────
 type Axis = { name: string; values: string[] }
 type State = { caption: string; props: Record<string, string> }
+type PropSpec = {
+  texts?: Array<{ prop: string; layer: string; def: string }>
+  bools?: Array<{ prop: string; layer: string; def: boolean }>
+  swaps?: Array<{ prop: string; layer: string; defKey: string }>
+}
 
 function buildSet(
   ctx: Ctx,
@@ -99,6 +180,7 @@ function buildSet(
   setName: string,
   axes: Axis[],
   render: (combo: Record<string, string>) => ComponentNode,
+  props?: PropSpec,
   srcFill = '#FBFCFE',
 ): ComponentSetNode {
   let combos: Record<string, string>[] = [{}]
@@ -121,6 +203,13 @@ function buildSet(
   set.counterAxisSpacing = 20
   set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
   set.fills = [solid(srcFill)]
+
+  // 속성 만들기: 텍스트/불리언(표시)/인스턴스 스왑
+  if (props) {
+    props.texts?.forEach((t) => addTextProp(set, t.prop, t.layer, t.def))
+    props.bools?.forEach((b) => addBoolProp(set, b.prop, b.layer, b.def))
+    props.swaps?.forEach((s) => addSwapProp(set, s.prop, s.layer, s.defKey))
+  }
   return set
 }
 
@@ -183,7 +272,9 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
 
   const labelRow = autoFrame('label-row', 'HORIZONTAL')
   labelRow.itemSpacing = 2
-  labelRow.appendChild(boundText(ctx, def.label, 13, 'color/text', INK, true))
+  const labelText = boundText(ctx, def.label, 13, 'color/text', INK, true)
+  labelText.name = 'Label'
+  labelRow.appendChild(labelText)
   if (required) labelRow.appendChild(txt(ctx, '*', 13, '#F04452', true))
   c.appendChild(labelRow)
 
@@ -222,14 +313,22 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
     bindStrokeVar(ctx, input, toneVar ?? 'color/border', toneHex ?? BORDER)
     input.strokeWeight = 1
     input.strokeAlign = 'INSIDE'
-    if (def.affordance.leading === 'search') input.appendChild(iconNode(ctx, '_Icon/Search', 16, MUTED))
+    if (def.affordance.leading === 'search') {
+      const lead = iconInstance('_Icon/Search', 'Leading Icon', 16)
+      recolorIcon(lead, MUTED)
+      input.appendChild(lead)
+    }
     const val = boundText(ctx, def.placeholder, 15, 'color/secondary', MUTED)
+    val.name = 'Value'
     val.layoutGrow = 1
     val.textAutoResize = 'HEIGHT'
     input.appendChild(val)
     if (def.affordance.unit) input.appendChild(txt(ctx, def.affordance.unit, 14, SUB))
-    if (def.affordance.trailing === 'eye') input.appendChild(iconNode(ctx, '_Icon/Eye', 16, MUTED))
-    if (def.affordance.trailing === 'clear') input.appendChild(iconNode(ctx, '_Icon/Close', 15, MUTED))
+    if (def.affordance.trailing === 'eye' || def.affordance.trailing === 'clear') {
+      const tr = iconInstance(def.affordance.trailing === 'eye' ? '_Icon/Eye' : '_Icon/Close', 'Trailing Icon', 16)
+      recolorIcon(tr, MUTED)
+      input.appendChild(tr)
+    }
     if (def.affordance.trailing === 'stepper') {
       input.appendChild(iconNode(ctx, '_Icon/Minus', 18, SUB))
       input.appendChild(iconNode(ctx, '_Icon/Plus', 18, SUB))
@@ -238,8 +337,10 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   }
 
   const helperMsg = error ? errorMsg(def.key) : success ? '사용 가능합니다.' : def.helper
-  if (helperMsg) {
-    const helper = boundText(ctx, helperMsg, 12, toneVar ?? 'color/secondary', toneHex ?? SUB)
+  {
+    const helper = boundText(ctx, helperMsg || def.helper || ' ', 12, toneVar ?? 'color/secondary', toneHex ?? SUB)
+    helper.name = 'Helper'
+    helper.visible = !!helperMsg
     helper.layoutAlign = 'STRETCH'
     helper.textAutoResize = 'HEIGHT'
     c.appendChild(helper)
@@ -247,7 +348,14 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   return c
 }
 function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode {
-  return buildSet(ctx, page, def.setName, def.axes.map((a) => ({ name: a, values: ['false', 'true'] })), (combo) => renderInput(ctx, def, combo))
+  const props: PropSpec = { texts: [{ prop: 'Label', layer: 'Label', def: def.label }] }
+  if (!def.affordance.otp) props.texts!.push({ prop: 'Value', layer: 'Value', def: def.placeholder })
+  props.texts!.push({ prop: 'Helper', layer: 'Helper', def: def.helper })
+  props.swaps = []
+  if (def.affordance.leading === 'search') props.swaps.push({ prop: 'Leading Icon', layer: 'Leading Icon', defKey: '_Icon/Search' })
+  if (def.affordance.trailing === 'eye' || def.affordance.trailing === 'clear')
+    props.swaps.push({ prop: 'Trailing Icon', layer: 'Trailing Icon', defKey: def.affordance.trailing === 'eye' ? '_Icon/Eye' : '_Icon/Close' })
+  return buildSet(ctx, page, def.setName, def.axes.map((a) => ({ name: a, values: ['false', 'true'] })), (combo) => renderInput(ctx, def, combo), props)
 }
 
 // ══ SELECTION 계열 ════════════════════════════════════════════════════
@@ -273,7 +381,9 @@ function renderToggle(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   knob.fills = [solid(WHITE)]
   track.appendChild(knob)
   c.appendChild(track)
-  c.appendChild(boundText(ctx, '알림 받기', 14, 'color/text', INK))
+  const lbl = boundText(ctx, '알림 받기', 14, 'color/text', INK)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
   return c
 }
 function renderCheckbox(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -306,7 +416,9 @@ function renderCheckbox(ctx: Ctx, combo: Record<string, string>): ComponentNode 
     box.appendChild(dash)
   }
   c.appendChild(box)
-  c.appendChild(boundText(ctx, '약관에 동의합니다', 14, 'color/text', INK))
+  const lbl = boundText(ctx, '약관에 동의합니다', 14, 'color/text', INK)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
   return c
 }
 function renderRadio(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -335,7 +447,9 @@ function renderRadio(ctx: Ctx, combo: Record<string, string>): ComponentNode {
     outer.appendChild(dot)
   }
   c.appendChild(outer)
-  c.appendChild(boundText(ctx, '선택 옵션', 14, 'color/text', INK))
+  const lbl = boundText(ctx, '선택 옵션', 14, 'color/text', INK)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
   return c
 }
 function renderChip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -357,11 +471,20 @@ function renderChip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
     c.strokeAlign = 'INSIDE'
   }
   if (disabled) c.opacity = 0.45
-  c.appendChild(boundText(ctx, '필터', 13, selected ? 'color/bg' : 'color/text', selected ? WHITE : INK, true))
+  const lbl = boundText(ctx, '필터', 13, selected ? 'color/bg' : 'color/text', selected ? WHITE : INK, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
   return c
 }
 
 // ══ ACTION 계열 (Button / Badge) ═════════════════════════════════════
+/** 인스턴스 아이콘 색 오버라이드(버튼 위 흰색 등). */
+function recolorIcon(node: SceneNode, hex: string) {
+  if (node.type === 'INSTANCE') {
+    const v = node.findOne((n) => n.type === 'VECTOR')
+    if (v) (v as VectorNode).strokes = [solid(hex)]
+  }
+}
 function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const variant = combo.variant || 'primary'
   const size = combo.size || 'md'
@@ -382,7 +505,20 @@ function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.cornerRadius = 8
   bindFillVar(ctx, c, `color/${variant}`, VARIANT_HEX[variant] ?? ACCENT)
   if (disabled) c.opacity = 0.45
-  c.appendChild(boundText(ctx, '버튼', pad[size].f, 'color/bg', WHITE, true))
+  const ipx = pad[size].f + 2
+  // 왼쪽 아이콘(기본 숨김, 토글 대상)
+  const li = iconInstance(ICON_DEFAULT, 'Left Icon', ipx)
+  li.visible = false
+  recolorIcon(li, WHITE)
+  c.appendChild(li)
+  const lbl = boundText(ctx, '버튼', pad[size].f, 'color/bg', WHITE, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
+  // 오른쪽 아이콘(기본 숨김, 토글 대상)
+  const ri = iconInstance('_Icon/ChevronRight', 'Right Icon', ipx)
+  ri.visible = false
+  recolorIcon(ri, WHITE)
+  c.appendChild(ri)
   return c
 }
 function renderBadge(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -397,7 +533,9 @@ function renderBadge(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.paddingLeft = c.paddingRight = size === 'sm' ? 7 : 9
   c.cornerRadius = 6
   bindFillVar(ctx, c, `color/${variant}`, VARIANT_HEX[variant] ?? ACCENT)
-  c.appendChild(boundText(ctx, 'Badge', size === 'sm' ? 11 : 13, 'color/bg', WHITE, true))
+  const lbl = boundText(ctx, 'Badge', size === 'sm' ? 11 : 13, 'color/bg', WHITE, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
   return c
 }
 
@@ -438,12 +576,18 @@ function renderAlert(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   bindStrokeVar(ctx, c, 'color/' + tone, VARIANT_HEX[tone])
   c.strokeWeight = 1
   c.strokeAlign = 'INSIDE'
-  c.appendChild(iconNode(ctx, FB_ICON[variant], 18, VARIANT_HEX[tone]))
+  const aicon = iconInstance(FB_ICON[variant], 'Icon', 18)
+  recolorIcon(aicon, VARIANT_HEX[tone])
+  c.appendChild(aicon)
   const col = autoFrame('msg', 'VERTICAL')
   col.layoutGrow = 1
   col.itemSpacing = 2
-  col.appendChild(boundText(ctx, FB_TITLE[variant], 13, 'color/text', INK, true))
-  col.appendChild(boundText(ctx, FB_MSG[variant], 12, 'color/secondary', SUB))
+  const title = boundText(ctx, FB_TITLE[variant], 13, 'color/text', INK, true)
+  title.name = 'Title'
+  col.appendChild(title)
+  const amsg = boundText(ctx, FB_MSG[variant], 12, 'color/secondary', SUB)
+  amsg.name = 'Message'
+  col.appendChild(amsg)
   c.appendChild(col)
   return c
 }
@@ -458,11 +602,16 @@ function renderToast(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.effects = [
     { type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.16 }, offset: { x: 0, y: 4 }, radius: 16, spread: 0, visible: true, blendMode: 'NORMAL' },
   ]
-  c.appendChild(iconNode(ctx, FB_ICON[variant], 18, VARIANT_HEX[FB_TONE[variant]]))
+  const ticon = iconInstance(FB_ICON[variant], 'Icon', 18)
+  recolorIcon(ticon, VARIANT_HEX[FB_TONE[variant]])
+  c.appendChild(ticon)
   const msg = boundText(ctx, FB_MSG[variant], 13, 'color/text', INK)
+  msg.name = 'Message'
   msg.layoutGrow = 1
   c.appendChild(msg)
-  c.appendChild(iconNode(ctx, '_Icon/Close', 16, MUTED))
+  const closeI = iconInstance('_Icon/Close', 'Close Icon', 16)
+  recolorIcon(closeI, MUTED)
+  c.appendChild(closeI)
   return c
 }
 function renderSnackbar(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -475,9 +624,14 @@ function renderSnackbar(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   c.cornerRadius = 8
   c.fills = [solid('#191F28')]
   const msg = txt(ctx, '링크를 복사했어요.', 13, WHITE)
+  msg.name = 'Message'
   msg.layoutGrow = 1
   c.appendChild(msg)
-  if (withAction) c.appendChild(txt(ctx, '실행 취소', 13, '#6C9BFF', true))
+  if (withAction) {
+    const act = txt(ctx, '실행 취소', 13, '#6C9BFF', true)
+    act.name = 'Action'
+    c.appendChild(act)
+  }
   return c
 }
 function renderTooltip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -501,7 +655,9 @@ function renderTooltip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   bubble.paddingLeft = bubble.paddingRight = 10
   bubble.cornerRadius = 6
   bubble.fills = [solid('#191F28')]
-  bubble.appendChild(txt(ctx, '도움말 텍스트', 12, WHITE))
+  const tipText = txt(ctx, '도움말 텍스트', 12, WHITE)
+  tipText.name = 'Label'
+  bubble.appendChild(tipText)
   if (top) c.appendChild(tri())
   c.appendChild(bubble)
   if (!top) c.appendChild(tri())
@@ -517,8 +673,12 @@ function renderLoading(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.counterAxisAlignItems = 'CENTER'
   c.itemSpacing = 10
   c.fills = []
-  c.appendChild(iconNode(ctx, '_Icon/Refresh', px, VARIANT_HEX.primary))
-  c.appendChild(boundText(ctx, '불러오는 중…', 13, 'color/secondary', SUB))
+  const licon = iconInstance('_Icon/Refresh', 'Icon', px)
+  recolorIcon(licon, VARIANT_HEX.primary)
+  c.appendChild(licon)
+  const ltext = boundText(ctx, '불러오는 중…', 13, 'color/secondary', SUB)
+  ltext.name = 'Label'
+  c.appendChild(ltext)
   return c
 }
 
@@ -558,7 +718,7 @@ const SELECTION_CATEGORY: CategoryDef = {
       setName: 'DS/Toggle',
       eyebrow: 'ATOM · SELECTION',
       desc: '켜짐/꺼짐을 전환하는 스위치.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Toggle', [{ name: 'checked', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderToggle(ctx, c)),
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Toggle', [{ name: 'checked', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderToggle(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '알림 받기' }] }),
       states: [{ caption: 'Off', props: {} }, { caption: 'On', props: { checked: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
@@ -566,7 +726,7 @@ const SELECTION_CATEGORY: CategoryDef = {
       setName: 'DS/Checkbox',
       eyebrow: 'ATOM · SELECTION',
       desc: '여러 항목을 독립적으로 선택하는 체크박스.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Checkbox', [{ name: 'checked', values: ['false', 'true'] }, { name: 'indeterminate', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderCheckbox(ctx, c)),
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Checkbox', [{ name: 'checked', values: ['false', 'true'] }, { name: 'indeterminate', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderCheckbox(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '약관에 동의합니다' }] }),
       states: [{ caption: 'Unchecked', props: {} }, { caption: 'Checked', props: { checked: 'true' } }, { caption: 'Indeterminate', props: { indeterminate: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
@@ -574,7 +734,7 @@ const SELECTION_CATEGORY: CategoryDef = {
       setName: 'DS/Radio',
       eyebrow: 'ATOM · SELECTION',
       desc: '한 그룹에서 하나만 고르는 라디오.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Radio', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderRadio(ctx, c)),
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Radio', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderRadio(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '선택 옵션' }] }),
       states: [{ caption: 'Unselected', props: {} }, { caption: 'Selected', props: { selected: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
@@ -582,7 +742,7 @@ const SELECTION_CATEGORY: CategoryDef = {
       setName: 'DS/Chip',
       eyebrow: 'MOLECULE · SELECTION',
       desc: '선택 가능한 필터/태그 칩.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Chip', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderChip(ctx, c)),
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Chip', [{ name: 'selected', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderChip(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '필터' }] }),
       states: [{ caption: 'Default', props: {} }, { caption: 'Selected', props: { selected: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
   ],
@@ -598,7 +758,18 @@ const ACTION_CATEGORY: CategoryDef = {
       setName: 'DS/Button',
       eyebrow: 'ATOM · ACTION',
       desc: '주요 액션을 실행하는 버튼. variant·size 축을 가집니다.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md', 'lg'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderButton(ctx, c)),
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md', 'lg'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderButton(ctx, c), {
+          texts: [{ prop: 'Label', layer: 'Label', def: '버튼' }],
+          bools: [
+            { prop: 'Show Left Icon', layer: 'Left Icon', def: false },
+            { prop: 'Show Right Icon', layer: 'Right Icon', def: false },
+          ],
+          swaps: [
+            { prop: 'Left Icon', layer: 'Left Icon', defKey: '_Icon/Star' },
+            { prop: 'Right Icon', layer: 'Right Icon', defKey: '_Icon/ChevronRight' },
+          ],
+        }),
       states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }, { caption: 'Disabled', props: { disabled: 'true', size: 'md' } }],
     },
     {
@@ -606,7 +777,7 @@ const ACTION_CATEGORY: CategoryDef = {
       setName: 'DS/Badge',
       eyebrow: 'ATOM · ACTION',
       desc: '상태·분류를 표시하는 배지. variant·size 축을 가집니다.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Badge', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md'] }], (c) => renderBadge(ctx, c)),
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Badge', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md'] }], (c) => renderBadge(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: 'Badge' }] }),
       states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }],
     },
   ],
@@ -623,7 +794,7 @@ const FEEDBACK_CATEGORY: CategoryDef = {
       eyebrow: 'MOLECULE · FEEDBACK',
       desc: '페이지 안에 인라인으로 상태를 알리는 배너.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Alert', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderAlert(ctx, c)),
+        buildSet(ctx, page, 'DS/Alert', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderAlert(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '안내' }, { prop: 'Message', layer: 'Message', def: '메시지 내용' }] }),
       states: [
         { caption: 'Info', props: { variant: 'info' } },
         { caption: 'Success', props: { variant: 'success' } },
@@ -637,7 +808,7 @@ const FEEDBACK_CATEGORY: CategoryDef = {
       eyebrow: 'MOLECULE · FEEDBACK',
       desc: '일시적으로 떠서 결과를 알리는 카드(그림자).',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Toast', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderToast(ctx, c)),
+        buildSet(ctx, page, 'DS/Toast', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderToast(ctx, c), { texts: [{ prop: 'Message', layer: 'Message', def: '메시지 내용' }] }),
       states: [
         { caption: 'Info', props: { variant: 'info' } },
         { caption: 'Success', props: { variant: 'success' } },
@@ -651,7 +822,7 @@ const FEEDBACK_CATEGORY: CategoryDef = {
       eyebrow: 'MOLECULE · FEEDBACK',
       desc: '하단에서 간단한 메시지와 실행취소를 제공하는 바.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Snackbar', [{ name: 'action', values: ['false', 'true'] }], (c) => renderSnackbar(ctx, c)),
+        buildSet(ctx, page, 'DS/Snackbar', [{ name: 'action', values: ['false', 'true'] }], (c) => renderSnackbar(ctx, c), { texts: [{ prop: 'Message', layer: 'Message', def: '링크를 복사했어요.' }, { prop: 'Action', layer: 'Action', def: '실행 취소' }] }),
       states: [
         { caption: 'Default', props: {} },
         { caption: 'WithAction', props: { action: 'true' } },
@@ -663,7 +834,7 @@ const FEEDBACK_CATEGORY: CategoryDef = {
       eyebrow: 'ATOM · FEEDBACK',
       desc: '요소에 대한 짧은 도움말 말풍선.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Tooltip', [{ name: 'placement', values: ['bottom', 'top'] }], (c) => renderTooltip(ctx, c)),
+        buildSet(ctx, page, 'DS/Tooltip', [{ name: 'placement', values: ['bottom', 'top'] }], (c) => renderTooltip(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '도움말 텍스트' }] }),
       states: [
         { caption: 'Bottom', props: { placement: 'bottom' } },
         { caption: 'Top', props: { placement: 'top' } },
@@ -675,7 +846,7 @@ const FEEDBACK_CATEGORY: CategoryDef = {
       eyebrow: 'ATOM · FEEDBACK',
       desc: '처리 중임을 나타내는 로딩 표시.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Loading', [{ name: 'size', values: ['sm', 'md', 'lg'] }], (c) => renderLoading(ctx, c)),
+        buildSet(ctx, page, 'DS/Loading', [{ name: 'size', values: ['sm', 'md', 'lg'] }], (c) => renderLoading(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '불러오는 중…' }] }),
       states: [
         { caption: 'Small', props: { size: 'sm' } },
         { caption: 'Medium', props: { size: 'md' } },
@@ -711,6 +882,7 @@ export async function generateCategories(fontFamily: string): Promise<string[]> 
   if (!ctx.vars.get('color/primary')) {
     ctx.warnings.push("Variables가 없습니다 — '토큰'을 먼저 생성하세요(색이 프리셋과 연결되지 않습니다).")
   }
+  ICON_LIB = null // 이번 생성분 라이브러리(재실행 시 이전 참조 무효화)
 
   // 절취선(구분) 페이지 — 파운데이션과 컴포넌트 카테고리 사이. 페이지 목록에서 시각적 구분자.
   if (!figma.root.children.some((p) => p.name === DIVIDER_PAGE)) {
@@ -725,6 +897,9 @@ export async function generateCategories(fontFamily: string): Promise<string[]> 
     }
     const page = figma.createPage()
     page.name = cat.pageName
+
+    // 아이콘 컴포넌트 라이브러리(instance-swap 대상)를 첫 카테고리 페이지에 1회 생성 → 전 페이지 공유.
+    if (!ICON_LIB) buildIconLib(ctx, page)
 
     // 컴포넌트 세트(편집 소스)를 이 카테고리 페이지에 함께 둔다(별도 소스 페이지 없음).
     // 문서(x=0)와 겹치지 않도록 오른쪽(x≥1360)에 세로로 쌓는다.
