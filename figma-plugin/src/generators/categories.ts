@@ -9,7 +9,7 @@ import {
   txt,
   makeRoot,
   makeHeader,
-  makeSection,
+  txtWrap,
   setup,
   placeRoot,
   INK,
@@ -21,7 +21,6 @@ import {
   WHITE,
 } from './foundations'
 import { strokeIcon } from './icon-vec'
-import { ICON_PATHS } from '../icons-data'
 
 const FIELD_W = 300
 // 오너 규칙: 페이지 탭은 "순번. System - 이름". 절취선은 하이픈 라인.
@@ -30,6 +29,8 @@ const PAGE_INPUT = '1. System - Input'
 const PAGE_SELECTION = '2. System - Selection'
 const PAGE_ACTION = '3. System - Action'
 const PAGE_FEEDBACK = '4. System - Feedback'
+const PAGE_NAV = '5. System - Navigation'
+const PAGE_LAYOUT = '6. System - Layout'
 // 컴포넌트 세트는 별도 소스 페이지 없이 각 카테고리 페이지에 함께 둔다.
 // 레거시 이름들은 reset 정리용으로만 남긴다(생성하지 않음).
 export const CATEGORY_PAGE_NAMES = [
@@ -38,6 +39,8 @@ export const CATEGORY_PAGE_NAMES = [
   PAGE_SELECTION,
   PAGE_ACTION,
   PAGE_FEEDBACK,
+  PAGE_NAV,
+  PAGE_LAYOUT,
   'DS · 컴포넌트 소스',
   'Input',
   'Selection',
@@ -90,40 +93,32 @@ function fixedFrame(name: string, dir: 'HORIZONTAL' | 'VERTICAL', w: number, h: 
   return f
 }
 
-// ── 아이콘 컴포넌트 라이브러리 (instance-swap 대상) ─────────────────────
-// 오너: "아이콘도 전부 컴포넌트 속성만들기 적용" → 모든 아이콘을 컴포넌트로 만들어 인스턴스로 배치.
+// ── 아이콘 인스턴스 (Icon System 페이지의 _Icon/* 컴포넌트를 instance-swap 소스로 사용) ──
+// 오너: 아이콘은 Icon System 페이지에 있고, 컴포넌트들은 그걸 인스턴스로 참조한다.
 let ICON_LIB: Map<string, ComponentNode> | null = null
 const ICON_DEFAULT = '_Icon/Star'
-function buildIconLib(ctx: Ctx, page: PageNode) {
-  const lib = new Map<string, ComponentNode>()
-  const tv = ctx.vars.get('color/text')
-  const keys = Object.keys(ICON_PATHS)
-  keys.forEach((key, i) => {
-    const inner = strokeIcon(key, 24, tv ? boundPaint(tv) : solid(INK))
-    if (!inner) return
-    const comp = figma.createComponent()
-    comp.name = key
-    comp.resize(24, 24)
-    comp.fills = []
-    inner.x = 0
-    inner.y = 0
-    comp.appendChild(inner)
-    page.appendChild(comp)
-    comp.x = 1360 + (i % 16) * 30
-    comp.y = -760 + Math.floor(i / 16) * 30
-    lib.set(key, comp)
-  })
-  ICON_LIB = lib
+function ensureIconLib() {
+  if (ICON_LIB) return
+  ICON_LIB = new Map()
+  for (const n of figma.root.findAllWithCriteria({ types: ['COMPONENT'] })) {
+    if (n.name.indexOf('_Icon/') === 0) ICON_LIB.set(n.name, n as ComponentNode)
+  }
 }
-/** 아이콘 인스턴스(instance-swap 대상). 라이브러리 없으면 빈 프레임 폴백. */
+/** 아이콘 인스턴스. Icon System 미생성 시 인라인 stroke 프레임으로 폴백(스왑 불가). */
 function iconInstance(key: string, name: string, size: number): SceneNode {
+  ensureIconLib()
   const comp = ICON_LIB && ICON_LIB.get(key)
   if (!comp) {
-    const f = figma.createFrame()
-    f.name = name
-    f.resize(size, size)
-    f.fills = []
-    return f
+    const f = strokeIcon(key, size, solid(SUB))
+    if (f) {
+      f.name = name
+      return f
+    }
+    const e = figma.createFrame()
+    e.name = name
+    e.resize(size, size)
+    e.fills = []
+    return e
   }
   const inst = comp.createInstance()
   inst.name = name
@@ -174,14 +169,15 @@ type PropSpec = {
   swaps?: Array<{ prop: string; layer: string; defKey: string }>
 }
 
+// 오너: "문서 안 컴포넌트가 곧 부모(마스터)". 세트를 문서 섹션에 직접 배치하고,
+// 세트 자체를 render 컨테이너(흰 표면·보더·라운드·WRAP)로 스타일링한다. 인스턴스/우측 세트 없음.
 function buildSet(
   ctx: Ctx,
-  page: PageNode,
+  parent: FrameNode,
   setName: string,
   axes: Axis[],
   render: (combo: Record<string, string>) => ComponentNode,
   props?: PropSpec,
-  srcFill = '#FBFCFE',
 ): ComponentSetNode {
   let combos: Record<string, string>[] = [{}]
   for (const axis of axes) {
@@ -192,21 +188,33 @@ function buildSet(
   const variants = combos.map((combo) => {
     const comp = render(combo)
     comp.name = axes.map((a) => `${a.name}=${combo[a.name]}`).join(', ')
-    page.appendChild(comp)
+    parent.appendChild(comp)
     return comp
   })
-  const set = figma.combineAsVariants(variants, page)
+  const set = figma.combineAsVariants(variants, parent)
   set.name = setName
   set.layoutMode = 'HORIZONTAL'
   set.layoutWrap = 'WRAP'
-  set.itemSpacing = 20
-  set.counterAxisSpacing = 20
+  set.primaryAxisSizingMode = 'FIXED'
+  set.counterAxisSizingMode = 'AUTO'
+  set.layoutAlign = 'STRETCH'
+  set.primaryAxisAlignItems = 'MIN'
+  set.counterAxisAlignItems = 'MIN'
+  set.itemSpacing = 24
+  set.counterAxisSpacing = 24
   set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid(srcFill)]
+  set.cornerRadius = 12
+  set.fills = [solid(WHITE)]
+  set.strokes = [solid(BORDER)]
+  set.strokeWeight = 1
+  set.strokeAlign = 'INSIDE'
 
-  // 속성 만들기: 텍스트/불리언(표시)/인스턴스 스왑
+  // 속성 만들기: 텍스트(+표시 on/off)·불리언·인스턴스 스왑
   if (props) {
-    props.texts?.forEach((t) => addTextProp(set, t.prop, t.layer, t.def))
+    props.texts?.forEach((t) => {
+      addTextProp(set, t.prop, t.layer, t.def)
+      addBoolProp(set, `Show ${t.prop}`, t.layer, true) // 오너: 라벨/텍스트 on/off 토글
+    })
     props.bools?.forEach((b) => addBoolProp(set, b.prop, b.layer, b.def))
     props.swaps?.forEach((s) => addSwapProp(set, s.prop, s.layer, s.defKey))
   }
@@ -347,7 +355,7 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   }
   return c
 }
-function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode {
+function makeInputSet(ctx: Ctx, def: InputDef, parent: FrameNode): ComponentSetNode {
   const props: PropSpec = { texts: [{ prop: 'Label', layer: 'Label', def: def.label }] }
   if (!def.affordance.otp) props.texts!.push({ prop: 'Value', layer: 'Value', def: def.placeholder })
   props.texts!.push({ prop: 'Helper', layer: 'Helper', def: def.helper })
@@ -355,7 +363,11 @@ function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode
   if (def.affordance.leading === 'search') props.swaps.push({ prop: 'Leading Icon', layer: 'Leading Icon', defKey: '_Icon/Search' })
   if (def.affordance.trailing === 'eye' || def.affordance.trailing === 'clear')
     props.swaps.push({ prop: 'Trailing Icon', layer: 'Trailing Icon', defKey: def.affordance.trailing === 'eye' ? '_Icon/Eye' : '_Icon/Close' })
-  return buildSet(ctx, page, def.setName, def.axes.map((a) => ({ name: a, values: ['false', 'true'] })), (combo) => renderInput(ctx, def, combo), props)
+  // 상태(States)를 단일 'State' 축의 베리언트로 — 문서에 곧바로 놓일 마스터 세트(과도한 카르테시안 없이).
+  const axes: Axis[] = [{ name: 'State', values: def.states.map((s) => s.caption) }]
+  const flagsOf: Record<string, Record<string, string>> = {}
+  def.states.forEach((s) => (flagsOf[s.caption] = s.props))
+  return buildSet(ctx, parent, def.setName, axes, (combo) => renderInput(ctx, def, flagsOf[combo.State] || {}), props)
 }
 
 // ══ SELECTION 계열 ════════════════════════════════════════════════════
@@ -682,13 +694,320 @@ function renderLoading(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   return c
 }
 
+// ══ NAVIGATION (Tab / Breadcrumb / Pagination / Dropdown) ════════════
+function renderTab(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const active = combo.active === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 8
+  c.paddingTop = c.paddingBottom = 4
+  c.fills = []
+  const t = boundText(ctx, '메뉴', 14, active ? 'color/primary' : 'color/secondary', active ? ACCENT : SUB, active)
+  t.name = 'Label'
+  c.appendChild(t)
+  const ul = figma.createRectangle()
+  ul.resize(40, 2)
+  ul.cornerRadius = 1
+  ul.layoutAlign = 'STRETCH'
+  if (active) bindFillVar(ctx, ul, 'color/primary', ACCENT)
+  else ul.fills = []
+  c.appendChild(ul)
+  return c
+}
+function renderBreadcrumb(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 6
+  c.fills = []
+  const chev = () => {
+    const i = iconInstance('_Icon/ChevronRight', 'Separator', 14)
+    recolorIcon(i, MUTED)
+    return i
+  }
+  const t1 = boundText(ctx, '홈', 13, 'color/secondary', SUB)
+  t1.name = 'Item 1'
+  c.appendChild(t1)
+  c.appendChild(chev())
+  const t2 = boundText(ctx, '카테고리', 13, 'color/secondary', SUB)
+  t2.name = 'Item 2'
+  c.appendChild(t2)
+  c.appendChild(chev())
+  const t3 = boundText(ctx, '상세 페이지', 13, 'color/text', INK, true)
+  t3.name = 'Current'
+  c.appendChild(t3)
+  return c
+}
+function renderPagination(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 4
+  c.fills = []
+  const cell = (label: string, active: boolean) => {
+    const f = fixedFrame('cell', 'HORIZONTAL', 32, 32)
+    f.primaryAxisAlignItems = 'CENTER'
+    f.counterAxisAlignItems = 'CENTER'
+    f.cornerRadius = 8
+    if (active) bindFillVar(ctx, f, 'color/primary', ACCENT)
+    else {
+      bindFillVar(ctx, f, 'color/bg', WHITE)
+      bindStrokeVar(ctx, f, 'color/border', BORDER)
+      f.strokeWeight = 1
+      f.strokeAlign = 'INSIDE'
+    }
+    f.appendChild(boundText(ctx, label, 13, active ? 'color/bg' : 'color/text', active ? WHITE : INK, active))
+    return f
+  }
+  const arrow = (key: string) => {
+    const f = fixedFrame('arrow', 'HORIZONTAL', 32, 32)
+    f.primaryAxisAlignItems = 'CENTER'
+    f.counterAxisAlignItems = 'CENTER'
+    f.cornerRadius = 8
+    bindFillVar(ctx, f, 'color/bg', WHITE)
+    bindStrokeVar(ctx, f, 'color/border', BORDER)
+    f.strokeWeight = 1
+    f.strokeAlign = 'INSIDE'
+    const i = iconInstance(key, 'Arrow', 16)
+    recolorIcon(i, SUB)
+    f.appendChild(i)
+    return f
+  }
+  c.appendChild(arrow('_Icon/ChevronLeft'))
+  c.appendChild(cell('1', true))
+  c.appendChild(cell('2', false))
+  c.appendChild(cell('3', false))
+  c.appendChild(boundText(ctx, '…', 13, 'color/secondary', MUTED))
+  c.appendChild(cell('10', false))
+  c.appendChild(arrow('_Icon/ChevronRight'))
+  return c
+}
+function renderDropdown(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(200, c.height)
+  c.paddingTop = c.paddingBottom = 6
+  c.paddingLeft = c.paddingRight = 6
+  c.itemSpacing = 2
+  c.cornerRadius = 10
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  c.effects = [{ type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.14 }, offset: { x: 0, y: 6 }, radius: 20, spread: 0, visible: true, blendMode: 'NORMAL' }]
+  const item = (label: string, icon: string, active: boolean) => {
+    const r = autoFrame('item', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 10
+    r.paddingTop = r.paddingBottom = 8
+    r.paddingLeft = r.paddingRight = 10
+    r.cornerRadius = 6
+    if (active) bindFillVar(ctx, r, 'color/bgSubtle', SURFACE)
+    const ic = iconInstance(icon, 'Icon', 16)
+    recolorIcon(ic, active ? ACCENT : SUB)
+    r.appendChild(ic)
+    r.appendChild(boundText(ctx, label, 13, active ? 'color/primary' : 'color/text', active ? ACCENT : INK, active))
+    return r
+  }
+  c.appendChild(item('프로필', '_Icon/Person', false))
+  c.appendChild(item('설정', '_Icon/Settings', true))
+  c.appendChild(item('로그아웃', '_Icon/LogOut', false))
+  return c
+}
+
+// ══ LAYOUT (Card / List / Accordion / Divider) ═══════════════════════
+function renderCard(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const footer = combo.footer === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(280, c.height)
+  c.itemSpacing = 12
+  c.paddingTop = c.paddingBottom = c.paddingLeft = c.paddingRight = 20
+  c.cornerRadius = 12
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  const title = boundText(ctx, '카드 제목', 16, 'color/text', INK, true)
+  title.name = 'Title'
+  c.appendChild(title)
+  const body = boundText(ctx, '카드 본문 텍스트가 들어갑니다. 여러 줄로 늘어날 수 있어요.', 13, 'color/secondary', SUB)
+  body.name = 'Body'
+  body.layoutAlign = 'STRETCH'
+  body.textAutoResize = 'HEIGHT'
+  c.appendChild(body)
+  if (footer) {
+    const div = figma.createRectangle()
+    div.resize(240, 1)
+    div.layoutAlign = 'STRETCH'
+    bindFillVar(ctx, div, 'color/border', BORDER)
+    c.appendChild(div)
+    const f = autoFrame('footer', 'HORIZONTAL')
+    f.layoutAlign = 'STRETCH'
+    f.primaryAxisSizingMode = 'FIXED'
+    f.primaryAxisAlignItems = 'MAX'
+    const btn = autoFrame('btn', 'HORIZONTAL')
+    btn.paddingTop = btn.paddingBottom = 7
+    btn.paddingLeft = btn.paddingRight = 14
+    btn.cornerRadius = 8
+    bindFillVar(ctx, btn, 'color/primary', ACCENT)
+    btn.appendChild(boundText(ctx, '확인', 13, 'color/bg', WHITE, true))
+    f.appendChild(btn)
+    c.appendChild(f)
+  }
+  return c
+}
+function renderList(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, c.height)
+  c.itemSpacing = 0
+  c.cornerRadius = 12
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  c.clipsContent = true
+  const rows: Array<[string, string]> = [
+    ['홍길동', '디자이너'],
+    ['김철수', '개발자'],
+    ['이영희', '기획자'],
+  ]
+  rows.forEach(([title, sub], idx) => {
+    if (idx > 0) {
+      const d = figma.createRectangle()
+      d.resize(320, 1)
+      d.layoutAlign = 'STRETCH'
+      bindFillVar(ctx, d, 'color/border', BORDER)
+      c.appendChild(d)
+    }
+    const r = autoFrame('row', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 12
+    r.paddingTop = r.paddingBottom = 12
+    r.paddingLeft = r.paddingRight = 16
+    const av = fixedFrame('avatar', 'HORIZONTAL', 36, 36)
+    av.primaryAxisAlignItems = 'CENTER'
+    av.counterAxisAlignItems = 'CENTER'
+    av.cornerRadius = 18
+    bindFillVar(ctx, av, 'color/bgSubtle', SURFACE)
+    const ic = iconInstance('_Icon/Person', 'Icon', 18)
+    recolorIcon(ic, SUB)
+    av.appendChild(ic)
+    r.appendChild(av)
+    const col = autoFrame('col', 'VERTICAL')
+    col.layoutGrow = 1
+    col.itemSpacing = 2
+    col.appendChild(boundText(ctx, title, 14, 'color/text', INK, true))
+    col.appendChild(boundText(ctx, sub, 12, 'color/secondary', SUB))
+    r.appendChild(col)
+    const chev = iconInstance('_Icon/ChevronRight', 'Chevron', 16)
+    recolorIcon(chev, MUTED)
+    r.appendChild(chev)
+    c.appendChild(r)
+  })
+  return c
+}
+function renderAccordion(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const expanded = combo.expanded === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, c.height)
+  c.itemSpacing = 0
+  c.cornerRadius = 8
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  c.clipsContent = true
+  const header = autoFrame('header', 'HORIZONTAL')
+  header.layoutAlign = 'STRETCH'
+  header.primaryAxisSizingMode = 'FIXED'
+  header.counterAxisAlignItems = 'CENTER'
+  header.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  header.paddingTop = header.paddingBottom = 14
+  header.paddingLeft = header.paddingRight = 16
+  header.itemSpacing = 8
+  const title = boundText(ctx, '섹션 제목', 14, 'color/text', INK, true)
+  title.name = 'Title'
+  header.appendChild(title)
+  const chev = iconInstance(expanded ? '_Icon/ChevronUp' : '_Icon/ChevronDown', 'Chevron', 18)
+  recolorIcon(chev, SUB)
+  header.appendChild(chev)
+  c.appendChild(header)
+  if (expanded) {
+    const div = figma.createRectangle()
+    div.resize(320, 1)
+    div.layoutAlign = 'STRETCH'
+    bindFillVar(ctx, div, 'color/border', BORDER)
+    c.appendChild(div)
+    const body = autoFrame('body', 'VERTICAL')
+    body.layoutAlign = 'STRETCH'
+    body.primaryAxisSizingMode = 'FIXED'
+    body.paddingTop = body.paddingBottom = 14
+    body.paddingLeft = body.paddingRight = 16
+    const bt = boundText(ctx, '펼쳐진 본문 내용이 여기에 표시됩니다.', 13, 'color/secondary', SUB)
+    bt.name = 'Body'
+    bt.layoutAlign = 'STRETCH'
+    bt.textAutoResize = 'HEIGHT'
+    body.appendChild(bt)
+    c.appendChild(body)
+  }
+  return c
+}
+function renderDivider(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const withLabel = combo.label === 'true'
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'AUTO'
+  c.resize(280, c.height)
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 12
+  c.fills = []
+  const line = () => {
+    const l = figma.createRectangle()
+    l.resize(100, 1)
+    l.layoutGrow = 1
+    bindFillVar(ctx, l, 'color/border', BORDER)
+    return l
+  }
+  c.appendChild(line())
+  if (withLabel) {
+    const t = boundText(ctx, '또는', 12, 'color/secondary', MUTED)
+    t.name = 'Label'
+    c.appendChild(t)
+    c.appendChild(line())
+  }
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
   setName: string
   eyebrow: string
   desc: string
-  build: (ctx: Ctx, page: PageNode) => ComponentSetNode
+  build: (ctx: Ctx, parent: FrameNode) => ComponentSetNode
   states: State[]
 }
 type CategoryDef = { pageName: string; title: string; subtitle: string; docs: ComponentDoc[] }
@@ -758,8 +1077,8 @@ const ACTION_CATEGORY: CategoryDef = {
       setName: 'DS/Button',
       eyebrow: 'ATOM · ACTION',
       desc: '주요 액션을 실행하는 버튼. variant·size 축을 가집니다.',
-      build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md', 'lg'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderButton(ctx, c), {
+      build: (ctx, parent) =>
+        buildSet(ctx, parent, 'DS/Button', [{ name: 'State', values: ['Primary', 'Secondary', 'Error', 'Success', 'Disabled'] }], (c) => renderButton(ctx, ({ Primary: { variant: 'primary', size: 'md' }, Secondary: { variant: 'secondary', size: 'md' }, Error: { variant: 'error', size: 'md' }, Success: { variant: 'success', size: 'md' }, Disabled: { variant: 'primary', size: 'md', disabled: 'true' } } as Record<string, Record<string, string>>)[c.State] || {}), {
           texts: [{ prop: 'Label', layer: 'Label', def: '버튼' }],
           bools: [
             { prop: 'Show Left Icon', layer: 'Left Icon', def: false },
@@ -777,7 +1096,7 @@ const ACTION_CATEGORY: CategoryDef = {
       setName: 'DS/Badge',
       eyebrow: 'ATOM · ACTION',
       desc: '상태·분류를 표시하는 배지. variant·size 축을 가집니다.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Badge', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success'] }, { name: 'size', values: ['sm', 'md'] }], (c) => renderBadge(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: 'Badge' }] }),
+      build: (ctx, parent) => buildSet(ctx, parent, 'DS/Badge', [{ name: 'State', values: ['Primary', 'Secondary', 'Error', 'Success'] }], (c) => renderBadge(ctx, ({ Primary: { variant: 'primary' }, Secondary: { variant: 'secondary' }, Error: { variant: 'error' }, Success: { variant: 'success' } } as Record<string, Record<string, string>>)[c.State] || {}), { texts: [{ prop: 'Label', layer: 'Label', def: 'Badge' }] }),
       states: [{ caption: 'Primary', props: { variant: 'primary', size: 'md' } }, { caption: 'Secondary', props: { variant: 'secondary', size: 'md' } }, { caption: 'Error', props: { variant: 'error', size: 'md' } }, { caption: 'Success', props: { variant: 'success', size: 'md' } }],
     },
   ],
@@ -856,25 +1175,94 @@ const FEEDBACK_CATEGORY: CategoryDef = {
   ],
 }
 
-const ALL_CATEGORIES = [INPUT_CATEGORY, SELECTION_CATEGORY, ACTION_CATEGORY, FEEDBACK_CATEGORY]
-
-// ── 변형 아이템(인스턴스 + 캡션) ────────────────────────────────────
-function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
-  const item = autoFrame('Variant / ' + state.caption, 'VERTICAL')
-  item.counterAxisAlignItems = 'MIN'
-  item.itemSpacing = 8
-  const inst = set.defaultVariant.createInstance()
-  inst.layoutAlign = 'INHERIT'
-  inst.layoutGrow = 0
-  try {
-    inst.setProperties(state.props)
-  } catch {
-    ctx.warnings.push(`${set.name} setProperties 실패: ${JSON.stringify(state.props)}`)
-  }
-  item.appendChild(inst)
-  item.appendChild(txt(ctx, state.caption, 12, SUB))
-  return item
+const NAVIGATION_CATEGORY: CategoryDef = {
+  pageName: PAGE_NAV,
+  title: 'Navigation',
+  subtitle: '내비게이션 계열 — 이동·탐색 컨트롤. Tab · Breadcrumb · Pagination · Dropdown.',
+  docs: [
+    {
+      key: 'Tab',
+      setName: 'DS/Tab',
+      eyebrow: 'MOLECULE · NAVIGATION',
+      desc: '섹션을 전환하는 탭 아이템(활성/비활성).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Tab', [{ name: 'active', values: ['false', 'true'] }], (c) => renderTab(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '메뉴' }] }),
+      states: [{ caption: 'Inactive', props: {} }, { caption: 'Active', props: { active: 'true' } }],
+    },
+    {
+      key: 'Breadcrumb',
+      setName: 'DS/Breadcrumb',
+      eyebrow: 'MOLECULE · NAVIGATION',
+      desc: '현재 위치의 경로를 보여주는 이동 경로.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Breadcrumb', [{ name: 'state', values: ['default'] }], (c) => renderBreadcrumb(ctx, c), { texts: [{ prop: 'Item 1', layer: 'Item 1', def: '홈' }, { prop: 'Item 2', layer: 'Item 2', def: '카테고리' }, { prop: 'Current', layer: 'Current', def: '상세 페이지' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'Pagination',
+      setName: 'DS/Pagination',
+      eyebrow: 'MOLECULE · NAVIGATION',
+      desc: '페이지를 넘기는 페이지네이션.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Pagination', [{ name: 'state', values: ['default'] }], (c) => renderPagination(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'Dropdown',
+      setName: 'DS/Dropdown',
+      eyebrow: 'ORGANISM · NAVIGATION',
+      desc: '액션·이동 항목을 담는 드롭다운 메뉴.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Dropdown', [{ name: 'state', values: ['default'] }], (c) => renderDropdown(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+  ],
 }
+
+const LAYOUT_CATEGORY: CategoryDef = {
+  pageName: PAGE_LAYOUT,
+  title: 'Layout',
+  subtitle: '레이아웃 계열 — 콘텐츠를 담고 배치하는 컨테이너. Card · List · Accordion · Divider.',
+  docs: [
+    {
+      key: 'Card',
+      setName: 'DS/Card',
+      eyebrow: 'MOLECULE · LAYOUT',
+      desc: '제목·본문·(선택)푸터를 담는 카드.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Card', [{ name: 'footer', values: ['false', 'true'] }], (c) => renderCard(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '카드 제목' }, { prop: 'Body', layer: 'Body', def: '카드 본문 텍스트가 들어갑니다.' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'With Footer', props: { footer: 'true' } }],
+    },
+    {
+      key: 'List',
+      setName: 'DS/List',
+      eyebrow: 'ORGANISM · LAYOUT',
+      desc: '아바타·제목·설명·이동을 가진 리스트.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/List', [{ name: 'state', values: ['default'] }], (c) => renderList(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'Accordion',
+      setName: 'DS/Accordion',
+      eyebrow: 'MOLECULE · LAYOUT',
+      desc: '제목을 눌러 본문을 펼치고 접는 아코디언.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Accordion', [{ name: 'expanded', values: ['false', 'true'] }], (c) => renderAccordion(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '섹션 제목' }, { prop: 'Body', layer: 'Body', def: '펼쳐진 본문 내용' }] }),
+      states: [{ caption: 'Collapsed', props: {} }, { caption: 'Expanded', props: { expanded: 'true' } }],
+    },
+    {
+      key: 'Divider',
+      setName: 'DS/Divider',
+      eyebrow: 'ATOM · LAYOUT',
+      desc: '콘텐츠를 나누는 구분선(라벨 옵션).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Divider', [{ name: 'label', values: ['false', 'true'] }], (c) => renderDivider(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '또는' }] }),
+      states: [{ caption: 'Plain', props: {} }, { caption: 'With Label', props: { label: 'true' } }],
+    },
+  ],
+}
+
+const ALL_CATEGORIES = [
+  INPUT_CATEGORY,
+  SELECTION_CATEGORY,
+  ACTION_CATEGORY,
+  FEEDBACK_CATEGORY,
+  NAVIGATION_CATEGORY,
+  LAYOUT_CATEGORY,
+]
 
 // ── 카테고리 생성 ────────────────────────────────────────────────────
 export async function generateCategories(fontFamily: string): Promise<string[]> {
@@ -897,40 +1285,67 @@ export async function generateCategories(fontFamily: string): Promise<string[]> 
     }
     const page = figma.createPage()
     page.name = cat.pageName
-
-    // 아이콘 컴포넌트 라이브러리(instance-swap 대상)를 첫 카테고리 페이지에 1회 생성 → 전 페이지 공유.
-    if (!ICON_LIB) buildIconLib(ctx, page)
-
-    // 컴포넌트 세트(편집 소스)를 이 카테고리 페이지에 함께 둔다(별도 소스 페이지 없음).
-    // 문서(x=0)와 겹치지 않도록 오른쪽(x≥1360)에 세로로 쌓는다.
-    const sets = new Map<string, ComponentSetNode>()
-    let sy = 200
-    for (const doc of cat.docs) {
-      const set = doc.build(ctx, page)
-      set.x = 1360
-      set.y = sy
-      sy += set.height + 48
-      sets.set(doc.setName, set)
-    }
+    // createComponent가 이 페이지에 붙도록(그다음 combineAsVariants가 문서 섹션으로 이동).
+    await figma.setCurrentPageAsync(page)
 
     const root = makeRoot(cat.title)
     placeRoot(root, page)
     makeHeader(ctx, root, cat.title, cat.subtitle)
+
+    // 각 컴포넌트: 문서 섹션(헤드) 아래에 마스터 세트를 직접 배치(= 문서 안의 컴포넌트가 부모).
     for (const doc of cat.docs) {
-      const render = makeSection(ctx, root, {
+      const section = makeDocSection(ctx, root, {
         eyebrow: doc.eyebrow,
         name: doc.key,
         desc: doc.desc,
-        meta: [`Set: ${doc.setName}`, `변형 ${doc.states.length}개`, 'Platform: Web'],
-        renderDir: 'WRAP',
+        meta: [`Set: ${doc.setName}`, 'Platform: Web'],
       })
-      const set = sets.get(doc.setName)
-      if (!set) {
-        ctx.warnings.push(`${doc.setName} 세트 없음 — 문서 건너뜀`)
-        continue
+      try {
+        doc.build(ctx, section)
+      } catch (e) {
+        ctx.warnings.push(`${doc.setName} 생성 실패: ${e instanceof Error ? e.message : String(e)}`)
       }
-      for (const st of doc.states) render.appendChild(variantItem(ctx, set, st))
     }
   }
   return ctx.warnings
+}
+
+/** 문서 섹션(eyebrow·이름·설명·메타)만 만들어 섹션 프레임을 반환. 마스터 세트는 caller가 append. */
+function makeDocSection(ctx: Ctx, root: FrameNode, o: { eyebrow: string; name: string; desc: string; meta: string[] }): FrameNode {
+  const section = autoFrame('Doc / ' + o.name, 'VERTICAL')
+  section.layoutAlign = 'STRETCH'
+  section.itemSpacing = 16
+  root.appendChild(section)
+  const head = autoFrame('Doc Head', 'VERTICAL')
+  head.layoutAlign = 'STRETCH'
+  head.itemSpacing = 8
+  section.appendChild(head)
+  const ebRow = autoFrame('Eyebrow', 'HORIZONTAL')
+  ebRow.counterAxisAlignItems = 'CENTER'
+  ebRow.itemSpacing = 8
+  head.appendChild(ebRow)
+  const tag = autoFrame('tag', 'HORIZONTAL')
+  tag.counterAxisAlignItems = 'CENTER'
+  tag.paddingTop = tag.paddingBottom = 4
+  tag.paddingLeft = tag.paddingRight = 8
+  tag.cornerRadius = 6
+  tag.fills = [solid('#EDF2FF')]
+  tag.appendChild(txt(ctx, o.eyebrow, 12, ACCENT, true))
+  ebRow.appendChild(tag)
+  head.appendChild(txt(ctx, o.name, 28, INK, true))
+  head.appendChild(txtWrap(ctx, o.desc, 16, SUB, 640))
+  const meta = autoFrame('Meta', 'HORIZONTAL')
+  meta.counterAxisAlignItems = 'CENTER'
+  meta.itemSpacing = 8
+  head.appendChild(meta)
+  o.meta.forEach((m, i) => {
+    if (i > 0) {
+      const dot = figma.createEllipse()
+      dot.resize(3, 3)
+      dot.fills = [solid('#C5CCD3')]
+      meta.appendChild(dot)
+    }
+    meta.appendChild(txt(ctx, m, 13, MUTED))
+  })
+  return section
 }

@@ -269,9 +269,19 @@ function iconItem(ctx: Ctx, fullKey: string): FrameNode {
   box.counterAxisSizingMode = 'FIXED'
   box.resize(48, 48)
   box.fills = []
+  // 각 아이콘을 실제 컴포넌트(_Icon/*)로 만든다 → 이 페이지가 아이콘의 홈이자 instance-swap 소스.
   const tv = ctx.vars.get('color/text')
-  const ic = strokeIcon(fullKey, 28, tv ? boundPaint(tv) : solid(INK))
-  if (ic) box.appendChild(ic)
+  const ic = strokeIcon(fullKey, 24, tv ? boundPaint(tv) : solid(INK))
+  if (ic) {
+    const comp = figma.createComponent()
+    comp.name = fullKey
+    comp.resize(24, 24)
+    comp.fills = []
+    ic.x = 0
+    ic.y = 0
+    comp.appendChild(ic)
+    box.appendChild(comp)
+  }
   item.appendChild(box)
   item.appendChild(txt(ctx, name, 11, SUB))
   return item
