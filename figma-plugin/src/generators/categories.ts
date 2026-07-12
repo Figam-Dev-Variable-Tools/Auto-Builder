@@ -39,6 +39,7 @@ const PAGE_STRUCTURE = '9. System - Structure'
 const PAGE_DATETIME = '10. System - Date & Time'
 const PAGE_KR = '11. System - KR'
 const PAGE_TEMPLATES = '12. System - Templates'
+const PAGE_MEDIA = '13. System - Media'
 // 컴포넌트 세트는 별도 소스 페이지 없이 각 카테고리 페이지에 함께 둔다.
 // 레거시 이름들은 reset 정리용으로만 남긴다(생성하지 않음).
 export const CATEGORY_PAGE_NAMES = [
@@ -55,6 +56,7 @@ export const CATEGORY_PAGE_NAMES = [
   PAGE_DATETIME,
   PAGE_KR,
   PAGE_TEMPLATES,
+  PAGE_MEDIA,
   'DS · 컴포넌트 소스',
   'Input',
   'Selection',
@@ -3125,6 +3127,155 @@ function renderImageUpload(ctx: Ctx, combo: Record<string, string>): ComponentNo
   return c
 }
 
+// ══ MEDIA (Image · Video · YouTube · ImageCard · ImageSlide) ═════════
+function imgBox(ctx: Ctx, w: number, h: number, iconSize = 36): FrameNode {
+  const f = figma.createFrame()
+  f.name = 'image'
+  f.layoutMode = 'HORIZONTAL'
+  f.primaryAxisSizingMode = 'FIXED'
+  f.counterAxisSizingMode = 'FIXED'
+  f.resize(w, h)
+  f.primaryAxisAlignItems = 'CENTER'
+  f.counterAxisAlignItems = 'CENTER'
+  f.clipsContent = true
+  bindFillVar(ctx, f, 'color/bgSubtle', SURFACE)
+  const ic = iconInstance('_Icon/Image', 'Icon', iconSize)
+  recolorIcon(ic, MUTED)
+  f.appendChild(ic)
+  return f
+}
+function playButton(ctx: Ctx, yt = false): FrameNode {
+  const b = figma.createFrame()
+  b.name = 'play'
+  b.layoutMode = 'HORIZONTAL'
+  b.primaryAxisSizingMode = 'FIXED'
+  b.counterAxisSizingMode = 'FIXED'
+  b.resize(yt ? 62 : 56, yt ? 44 : 56)
+  b.primaryAxisAlignItems = 'CENTER'
+  b.counterAxisAlignItems = 'CENTER'
+  b.cornerRadius = yt ? 12 : 999
+  b.fills = [{ type: 'SOLID', color: yt ? { r: 1, g: 0, b: 0 } : { r: 1, g: 1, b: 1 }, opacity: yt ? 1 : 0.92 }]
+  const tri = figma.createVector()
+  tri.vectorPaths = [{ windingRule: 'NONZERO', data: 'M0 0 L14 8 L0 16 Z' }]
+  tri.fills = [{ type: 'SOLID', color: yt ? { r: 1, g: 1, b: 1 } : { r: 0.1, g: 0.12, b: 0.16 } }]
+  tri.strokes = []
+  b.appendChild(tri)
+  return b
+}
+function renderImage(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const ratio = combo.ratio || '16x9'
+  const w = 280
+  const h = ratio === '1x1' ? 280 : ratio === '4x3' ? 210 : 158
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(w, h)
+  c.primaryAxisAlignItems = 'CENTER'
+  c.counterAxisAlignItems = 'CENTER'
+  c.cornerRadius = combo.rounded === 'false' ? 0 : 12
+  c.clipsContent = true
+  bindFillVar(ctx, c, 'color/bgSubtle', SURFACE)
+  const ic = iconInstance('_Icon/Image', 'Icon', 40)
+  recolorIcon(ic, MUTED)
+  c.appendChild(ic)
+  return c
+}
+function renderVideo(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, 180)
+  c.primaryAxisAlignItems = 'CENTER'
+  c.counterAxisAlignItems = 'CENTER'
+  c.cornerRadius = 12
+  c.clipsContent = true
+  c.fills = [solid('#1A1F28')]
+  c.appendChild(playButton(ctx))
+  return c
+}
+function renderYouTube(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(320, 180)
+  c.primaryAxisAlignItems = 'CENTER'
+  c.counterAxisAlignItems = 'CENTER'
+  c.cornerRadius = 12
+  c.clipsContent = true
+  c.fills = [solid('#0F0F0F')]
+  c.appendChild(playButton(ctx, true))
+  return c
+}
+function renderImageCard(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(280, c.height)
+  c.itemSpacing = 0
+  c.cornerRadius = 12
+  c.clipsContent = true
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/border', BORDER)
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  const img = imgBox(ctx, 280, 158)
+  img.layoutAlign = 'STRETCH'
+  c.appendChild(img)
+  const body = autoFrame('body', 'VERTICAL')
+  body.layoutAlign = 'STRETCH'
+  body.itemSpacing = 4
+  body.paddingTop = body.paddingBottom = 16
+  body.paddingLeft = body.paddingRight = 16
+  const t = boundText(ctx, '이미지 카드', 16, 'color/text', INK, true)
+  t.name = 'Title'
+  body.appendChild(t)
+  const d = boundText(ctx, '이미지 위에 제목과 설명이 붙는 카드입니다.', 13, 'color/secondary', SUB)
+  d.name = 'Body'
+  d.layoutAlign = 'STRETCH'
+  d.textAutoResize = 'HEIGHT'
+  body.appendChild(d)
+  c.appendChild(body)
+  return c
+}
+function renderImageSlide(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 12
+  c.fills = []
+  const stage = autoFrame('stage', 'HORIZONTAL')
+  stage.counterAxisAlignItems = 'CENTER'
+  stage.itemSpacing = 12
+  stage.appendChild(circleBtn(ctx, '_Icon/ChevronLeft', 'Prev', 36))
+  const slide = imgBox(ctx, 300, 169, 40)
+  slide.cornerRadius = 12
+  const lbl = boundText(ctx, '1 / 3', 13, 'color/secondary', SUB, true)
+  lbl.name = 'Counter'
+  slide.appendChild(lbl)
+  slide.itemSpacing = 8
+  stage.appendChild(slide)
+  stage.appendChild(circleBtn(ctx, '_Icon/ChevronRight', 'Next', 36))
+  c.appendChild(stage)
+  const dots = autoFrame('dots', 'HORIZONTAL')
+  dots.counterAxisAlignItems = 'CENTER'
+  dots.itemSpacing = 6
+  for (let i = 0; i < 3; i++) {
+    const d = figma.createFrame()
+    d.resize(i === 0 ? 18 : 8, 8)
+    d.cornerRadius = 999
+    bindFillVar(ctx, d, i === 0 ? 'color/primary' : 'color/border', i === 0 ? ACCENT : BORDER)
+    dots.appendChild(d)
+  }
+  c.appendChild(dots)
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -3728,6 +3879,54 @@ const TEMPLATES_CATEGORY: CategoryDef = {
   ],
 }
 
+const MEDIA_CATEGORY: CategoryDef = {
+  pageName: PAGE_MEDIA,
+  title: 'Media',
+  subtitle: '미디어 계열 — 이미지·동영상·임베드. Image · Video · YouTube · ImageCard · ImageSlide.',
+  docs: [
+    {
+      key: 'Image',
+      setName: 'DS/Image',
+      eyebrow: 'ATOM · MEDIA',
+      desc: '비율 지정 이미지(플레이스홀더).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Image', [{ name: 'ratio', values: ['16x9', '4x3', '1x1'] }], (c) => renderImage(ctx, c)),
+      states: [{ caption: '16:9', props: {} }, { caption: '4:3', props: { ratio: '4x3' } }, { caption: '1:1', props: { ratio: '1x1' } }],
+    },
+    {
+      key: 'Video',
+      setName: 'DS/Video',
+      eyebrow: 'MOLECULE · MEDIA',
+      desc: '재생 버튼 오버레이가 있는 동영상 플레이어.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Video', [{ name: 'state', values: ['default'] }], (c) => renderVideo(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'YouTube',
+      setName: 'DS/YouTube',
+      eyebrow: 'MOLECULE · MEDIA',
+      desc: '유튜브 임베드(빨강 재생 버튼).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/YouTube', [{ name: 'state', values: ['default'] }], (c) => renderYouTube(ctx, c)),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'ImageCard',
+      setName: 'DS/ImageCard',
+      eyebrow: 'MOLECULE · MEDIA',
+      desc: '이미지 + 제목/설명 카드.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/ImageCard', [{ name: 'state', values: ['default'] }], (c) => renderImageCard(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '이미지 카드' }, { prop: 'Body', layer: 'Body', def: '이미지 위에 제목과 설명이 붙는 카드입니다.' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+    {
+      key: 'ImageSlide',
+      setName: 'DS/ImageSlide',
+      eyebrow: 'ORGANISM · MEDIA',
+      desc: '3개 이미지 슬라이드(좌우 이동 + 도트).',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/ImageSlide', [{ name: 'state', values: ['default'] }], (c) => renderImageSlide(ctx, c), { swaps: [{ prop: 'Prev', layer: 'Prev Icon', defKey: '_Icon/ChevronLeft' }, { prop: 'Next', layer: 'Next Icon', defKey: '_Icon/ChevronRight' }] }),
+      states: [{ caption: 'Default', props: {} }],
+    },
+  ],
+}
+
 const ALL_CATEGORIES = [
   INPUT_CATEGORY,
   SELECTION_CATEGORY,
@@ -3741,6 +3940,7 @@ const ALL_CATEGORIES = [
   DATETIME_CATEGORY,
   KR_CATEGORY,
   TEMPLATES_CATEGORY,
+  MEDIA_CATEGORY,
 ]
 
 // ── 카테고리 생성 ────────────────────────────────────────────────────
