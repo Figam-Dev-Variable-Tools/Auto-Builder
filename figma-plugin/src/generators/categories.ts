@@ -92,6 +92,60 @@ function bindStrokeVar(ctx: Ctx, node: MinimalStrokesMixin, varName: string, hex
   const v = ctx.vars.get(varName)
   node.strokes = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
 }
+// 오너: 생성 컴포넌트의 보더·마진(패딩/간격)·라운드를 값이 맞는 변수에 후처리 바인딩.
+function bindTokens(ctx: Ctx, root: SceneNode) {
+  const all: SceneNode[] = [root]
+  const rf = root as unknown as { findAll?: (cb: (n: SceneNode) => boolean) => SceneNode[] }
+  if (typeof rf.findAll === 'function') all.push(...rf.findAll(() => true))
+  for (const node of all) {
+    const a = node as unknown as {
+      cornerRadius?: number | symbol
+      strokeWeight?: number | symbol
+      strokes?: readonly Paint[]
+      layoutMode?: string
+      paddingTop?: number
+      paddingRight?: number
+      paddingBottom?: number
+      paddingLeft?: number
+      itemSpacing?: number
+      setBoundVariable: (field: string, v: Variable) => void
+    }
+    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
+      const rv = ctx.vars.get('radius/' + a.cornerRadius)
+      if (rv)
+        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
+          try {
+            a.setBoundVariable(c, rv)
+          } catch {
+            /* skip */
+          }
+        }
+    }
+    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
+      const bv = ctx.vars.get('border/' + a.strokeWeight)
+      if (bv)
+        try {
+          a.setBoundVariable('strokeWeight', bv)
+        } catch {
+          /* skip */
+        }
+    }
+    if (a.layoutMode && a.layoutMode !== 'NONE') {
+      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
+        const val = a[p]
+        if (typeof val === 'number' && val > 0) {
+          const sv = ctx.vars.get('spacing/' + val)
+          if (sv)
+            try {
+              a.setBoundVariable(p, sv)
+            } catch {
+              /* skip */
+            }
+        }
+      }
+    }
+  }
+}
 function iconNode(_ctx: Ctx, key: string, size: number, hex: string): SceneNode {
   const ic = iconInstance(key, 'icon', size)
   recolorIcon(ic, hex)
@@ -4214,6 +4268,7 @@ export async function generateCategories(fontFamily: string, colors?: Record<str
         set.x = 1360
         set.y = sy
         sy += set.height + 48
+        bindTokens(ctx, set) // 보더·마진·라운드 변수 바인딩
         sets.set(doc.setName, set)
       } catch (e) {
         ctx.warnings.push(`${doc.setName} 세트 생성 실패: ${e instanceof Error ? e.message : String(e)}`)

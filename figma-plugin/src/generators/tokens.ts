@@ -150,6 +150,16 @@ export async function generateTokens(payload: GenerateTokensPayload): Promise<To
     const v = figma.variables.createVariable(name, rsCol, 'FLOAT')
     v.setValueForMode(rsMode, w)
   }
+  // 오너: 보더·마진·라운드도 전부 변수로 — 컴포넌트가 쓰는 px 값을 변수로 등록해 후처리 바인딩.
+  for (const px of [2, 4, 5, 6, 7, 8, 10, 12, 13, 14, 16, 18, 20, 24, 999]) {
+    figma.variables.createVariable(`radius/${px}`, rsCol, 'FLOAT').setValueForMode(rsMode, px)
+  }
+  for (const px of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 40]) {
+    figma.variables.createVariable(`spacing/${px}`, rsCol, 'FLOAT').setValueForMode(rsMode, px)
+  }
+  for (const w of [1, 1.5, 2, 3]) {
+    figma.variables.createVariable(`border/${w}`, rsCol, 'FLOAT').setValueForMode(rsMode, w)
+  }
 
   // 4. Text Styles — DS/Display·Title·Body·Caption (로드 실패 시 Inter 폴백)
   let familyName = firstFontFamily(payload.typography.fontFamily)
