@@ -73,6 +73,56 @@ const MAP = [
   ['Sun', ['sun']],
   ['Moon', ['moon']],
   ['BookOpen', ['book-open']],
+  // 다양성 확장(오너: 다양한 아이콘)
+  ['Copy', ['copy']],
+  ['Clipboard', ['clipboard']],
+  ['Save', ['save']],
+  ['Send', ['send']],
+  ['Printer', ['printer']],
+  ['Users', ['users']],
+  ['UserPlus', ['user-plus']],
+  ['LogOut', ['log-out']],
+  ['LogIn', ['log-in']],
+  ['ShoppingBag', ['shopping-bag']],
+  ['Package', ['package']],
+  ['Truck', ['truck']],
+  ['Wallet', ['wallet']],
+  ['Dollar', ['dollar-sign']],
+  ['Percent', ['percent']],
+  ['Trending', ['trending-up']],
+  ['BarChart', ['chart-column', 'bar-chart-3', 'bar-chart']],
+  ['PieChart', ['chart-pie', 'pie-chart']],
+  ['Activity', ['activity']],
+  ['Zap', ['zap']],
+  ['Wifi', ['wifi']],
+  ['Battery', ['battery']],
+  ['Volume', ['volume-2']],
+  ['Mic', ['mic']],
+  ['Video', ['video']],
+  ['Music', ['music']],
+  ['Headphones', ['headphones']],
+  ['Maximize', ['maximize']],
+  ['ZoomIn', ['zoom-in']],
+  ['ZoomOut', ['zoom-out']],
+  ['Rotate', ['rotate-cw']],
+  ['Layers', ['layers']],
+  ['Grid', ['grid-3x3', 'grid-2x2', 'grid']],
+  ['Layout', ['layout-dashboard', 'layout']],
+  ['Compass', ['compass']],
+  ['Map', ['map']],
+  ['Award', ['award']],
+  ['Sparkles', ['sparkles']],
+  ['Smile', ['smile']],
+  ['Hash', ['hash']],
+  ['AtSign', ['at-sign']],
+  ['Code', ['code']],
+  ['Database', ['database']],
+  ['Server', ['server']],
+  ['Monitor', ['monitor']],
+  ['Smartphone', ['smartphone']],
+  ['ThumbsUp', ['thumbs-up']],
+  ['MessageSquare', ['message-square']],
+  ['Repeat', ['repeat']],
 ]
 
 // SVG 원시 도형 → path d (stroke용). 원/선/사각형/폴리라인을 path로 통일.
@@ -139,14 +189,18 @@ function iconNodeOf(file) {
 const out = {}
 const skipped = []
 for (const [name, candidates] of MAP) {
-  const file = candidates.find((c) => existsSync(resolve(iconsDir, `${c}.mjs`)))
-  if (!file) {
-    skipped.push(name + '(no file)')
-    continue
+  // 후보를 순회: __iconNode가 실제로 있는 첫 파일 사용(별칭 파일은 __iconNode 없음 → 다음 후보).
+  let node = null
+  for (const c of candidates) {
+    if (!existsSync(resolve(iconsDir, `${c}.mjs`))) continue
+    const n = iconNodeOf(c)
+    if (n) {
+      node = n
+      break
+    }
   }
-  const node = iconNodeOf(file)
   if (!node) {
-    skipped.push(name + '(no node)')
+    skipped.push(name)
     continue
   }
   const ds = node.map(([tag, attrs]) => elToD(tag, attrs)).filter(Boolean)

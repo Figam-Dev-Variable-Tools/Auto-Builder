@@ -23,13 +23,29 @@ import {
 import { strokeIcon } from './icon-vec'
 
 const FIELD_W = 300
-const DIVIDER_PAGE = '✂ ─────────  컴포넌트  ─────────'
-const PAGE_INPUT = '1. Molecule - Input'
-const PAGE_SELECTION = '2. Atom - Selection'
-const PAGE_ACTION = '3. Atom - Action'
-// 오너: 'DS · 컴포넌트 소스' 페이지는 만들지 않는다(세트를 카테고리 페이지에 함께 둠).
-// 'DS · 컴포넌트 소스'는 레거시 정리용으로만 reset 대상에 남긴다.
-export const CATEGORY_PAGE_NAMES = [DIVIDER_PAGE, PAGE_INPUT, PAGE_SELECTION, PAGE_ACTION, 'DS · 컴포넌트 소스']
+// 오너 규칙: 페이지 탭은 "순번. System - 이름". 절취선은 하이픈 라인.
+const DIVIDER_PAGE = '---------------------------'
+const PAGE_INPUT = '1. System - Input'
+const PAGE_SELECTION = '2. System - Selection'
+const PAGE_ACTION = '3. System - Action'
+const PAGE_FEEDBACK = '4. System - Feedback'
+// 컴포넌트 세트는 별도 소스 페이지 없이 각 카테고리 페이지에 함께 둔다.
+// 레거시 이름들은 reset 정리용으로만 남긴다(생성하지 않음).
+export const CATEGORY_PAGE_NAMES = [
+  DIVIDER_PAGE,
+  PAGE_INPUT,
+  PAGE_SELECTION,
+  PAGE_ACTION,
+  PAGE_FEEDBACK,
+  'DS · 컴포넌트 소스',
+  'Input',
+  'Selection',
+  'Action',
+  '1. Molecule - Input',
+  '2. Atom - Selection',
+  '3. Atom - Action',
+  '✂ ─────────  컴포넌트  ─────────',
+]
 
 const VARIANT_HEX: Record<string, string> = {
   primary: ACCENT,
@@ -385,6 +401,127 @@ function renderBadge(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   return c
 }
 
+// ══ FEEDBACK 계열 (Alert / Toast / Snackbar / Tooltip / Loading) ═════
+const FB_TONE: Record<string, string> = { info: 'primary', success: 'success', warning: 'warning', error: 'error' }
+const FB_ICON: Record<string, string> = {
+  info: '_Icon/Info',
+  success: '_Icon/Check',
+  warning: '_Icon/Warning',
+  error: '_Icon/AlertCircle',
+}
+const FB_TITLE: Record<string, string> = { info: '안내', success: '완료', warning: '주의', error: '오류' }
+const FB_MSG: Record<string, string> = {
+  info: '새로운 업데이트가 있어요.',
+  success: '저장되었습니다.',
+  warning: '저장 공간이 부족해요.',
+  error: '문제가 발생했습니다.',
+}
+function fbBox(w: number): ComponentNode {
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'MIN'
+  c.itemSpacing = 10
+  c.resize(w, c.height)
+  c.fills = []
+  return c
+}
+function renderAlert(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const variant = combo.variant || 'info'
+  const tone = FB_TONE[variant]
+  const c = fbBox(360)
+  c.paddingTop = c.paddingBottom = 12
+  c.paddingLeft = c.paddingRight = 14
+  c.cornerRadius = 8
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  bindStrokeVar(ctx, c, 'color/' + tone, VARIANT_HEX[tone])
+  c.strokeWeight = 1
+  c.strokeAlign = 'INSIDE'
+  c.appendChild(iconNode(ctx, FB_ICON[variant], 18, VARIANT_HEX[tone]))
+  const col = autoFrame('msg', 'VERTICAL')
+  col.layoutGrow = 1
+  col.itemSpacing = 2
+  col.appendChild(boundText(ctx, FB_TITLE[variant], 13, 'color/text', INK, true))
+  col.appendChild(boundText(ctx, FB_MSG[variant], 12, 'color/secondary', SUB))
+  c.appendChild(col)
+  return c
+}
+function renderToast(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const variant = combo.variant || 'info'
+  const c = fbBox(340)
+  c.counterAxisAlignItems = 'CENTER'
+  c.paddingTop = c.paddingBottom = 12
+  c.paddingLeft = c.paddingRight = 14
+  c.cornerRadius = 10
+  bindFillVar(ctx, c, 'color/bg', WHITE)
+  c.effects = [
+    { type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.16 }, offset: { x: 0, y: 4 }, radius: 16, spread: 0, visible: true, blendMode: 'NORMAL' },
+  ]
+  c.appendChild(iconNode(ctx, FB_ICON[variant], 18, VARIANT_HEX[FB_TONE[variant]]))
+  const msg = boundText(ctx, FB_MSG[variant], 13, 'color/text', INK)
+  msg.layoutGrow = 1
+  c.appendChild(msg)
+  c.appendChild(iconNode(ctx, '_Icon/Close', 16, MUTED))
+  return c
+}
+function renderSnackbar(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const withAction = combo.action === 'true'
+  const c = fbBox(340)
+  c.counterAxisAlignItems = 'CENTER'
+  c.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  c.paddingTop = c.paddingBottom = 12
+  c.paddingLeft = c.paddingRight = 16
+  c.cornerRadius = 8
+  c.fills = [solid('#191F28')]
+  const msg = txt(ctx, '링크를 복사했어요.', 13, WHITE)
+  msg.layoutGrow = 1
+  c.appendChild(msg)
+  if (withAction) c.appendChild(txt(ctx, '실행 취소', 13, '#6C9BFF', true))
+  return c
+}
+function renderTooltip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const top = combo.placement === 'top'
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 0
+  c.fills = []
+  const tri = () => {
+    const t = figma.createVector()
+    t.vectorPaths = [{ windingRule: 'NONZERO', data: top ? 'M0 6 L12 6 L6 0 Z' : 'M0 0 L12 0 L6 6 Z' }]
+    t.fills = [solid('#191F28')]
+    t.strokes = []
+    return t
+  }
+  const bubble = autoFrame('bubble', 'HORIZONTAL')
+  bubble.paddingTop = bubble.paddingBottom = 6
+  bubble.paddingLeft = bubble.paddingRight = 10
+  bubble.cornerRadius = 6
+  bubble.fills = [solid('#191F28')]
+  bubble.appendChild(txt(ctx, '도움말 텍스트', 12, WHITE))
+  if (top) c.appendChild(tri())
+  c.appendChild(bubble)
+  if (!top) c.appendChild(tri())
+  return c
+}
+function renderLoading(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const size = combo.size || 'md'
+  const px = size === 'sm' ? 18 : size === 'lg' ? 32 : 24
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.counterAxisAlignItems = 'CENTER'
+  c.itemSpacing = 10
+  c.fills = []
+  c.appendChild(iconNode(ctx, '_Icon/Refresh', px, VARIANT_HEX.primary))
+  c.appendChild(boundText(ctx, '불러오는 중…', 13, 'color/secondary', SUB))
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -394,10 +531,11 @@ type ComponentDoc = {
   build: (ctx: Ctx, page: PageNode) => ComponentSetNode
   states: State[]
 }
-type CategoryDef = { pageName: string; subtitle: string; docs: ComponentDoc[] }
+type CategoryDef = { pageName: string; title: string; subtitle: string; docs: ComponentDoc[] }
 
 const INPUT_CATEGORY: CategoryDef = {
   pageName: PAGE_INPUT,
+  title: 'Input',
   subtitle:
     '텍스트 입력 계열 — 라벨·입력·헬퍼 규약을 공유하는 폼 필드. 각 컴포넌트의 상태 변형을 편집 가능한 Figma 컴포넌트로 렌더합니다.',
   docs: INPUTS.map((def) => ({
@@ -412,6 +550,7 @@ const INPUT_CATEGORY: CategoryDef = {
 
 const SELECTION_CATEGORY: CategoryDef = {
   pageName: PAGE_SELECTION,
+  title: 'Selection',
   subtitle: '선택 계열 — 켜고 끄거나 고르는 컨트롤. Toggle · Checkbox · Radio · Chip.',
   docs: [
     {
@@ -451,6 +590,7 @@ const SELECTION_CATEGORY: CategoryDef = {
 
 const ACTION_CATEGORY: CategoryDef = {
   pageName: PAGE_ACTION,
+  title: 'Action',
   subtitle: '액션 계열 — 사용자 행동을 유발하거나 상태를 표시. Button · Badge.',
   docs: [
     {
@@ -472,7 +612,80 @@ const ACTION_CATEGORY: CategoryDef = {
   ],
 }
 
-const ALL_CATEGORIES = [INPUT_CATEGORY, SELECTION_CATEGORY, ACTION_CATEGORY]
+const FEEDBACK_CATEGORY: CategoryDef = {
+  pageName: PAGE_FEEDBACK,
+  title: 'Feedback',
+  subtitle: '피드백 계열 — 상태·결과를 알리는 요소. Alert · Toast · Snackbar · Tooltip · Loading.',
+  docs: [
+    {
+      key: 'Alert',
+      setName: 'DS/Alert',
+      eyebrow: 'MOLECULE · FEEDBACK',
+      desc: '페이지 안에 인라인으로 상태를 알리는 배너.',
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Alert', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderAlert(ctx, c)),
+      states: [
+        { caption: 'Info', props: { variant: 'info' } },
+        { caption: 'Success', props: { variant: 'success' } },
+        { caption: 'Warning', props: { variant: 'warning' } },
+        { caption: 'Error', props: { variant: 'error' } },
+      ],
+    },
+    {
+      key: 'Toast',
+      setName: 'DS/Toast',
+      eyebrow: 'MOLECULE · FEEDBACK',
+      desc: '일시적으로 떠서 결과를 알리는 카드(그림자).',
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Toast', [{ name: 'variant', values: ['info', 'success', 'warning', 'error'] }], (c) => renderToast(ctx, c)),
+      states: [
+        { caption: 'Info', props: { variant: 'info' } },
+        { caption: 'Success', props: { variant: 'success' } },
+        { caption: 'Warning', props: { variant: 'warning' } },
+        { caption: 'Error', props: { variant: 'error' } },
+      ],
+    },
+    {
+      key: 'Snackbar',
+      setName: 'DS/Snackbar',
+      eyebrow: 'MOLECULE · FEEDBACK',
+      desc: '하단에서 간단한 메시지와 실행취소를 제공하는 바.',
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Snackbar', [{ name: 'action', values: ['false', 'true'] }], (c) => renderSnackbar(ctx, c)),
+      states: [
+        { caption: 'Default', props: {} },
+        { caption: 'WithAction', props: { action: 'true' } },
+      ],
+    },
+    {
+      key: 'Tooltip',
+      setName: 'DS/Tooltip',
+      eyebrow: 'ATOM · FEEDBACK',
+      desc: '요소에 대한 짧은 도움말 말풍선.',
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Tooltip', [{ name: 'placement', values: ['bottom', 'top'] }], (c) => renderTooltip(ctx, c)),
+      states: [
+        { caption: 'Bottom', props: { placement: 'bottom' } },
+        { caption: 'Top', props: { placement: 'top' } },
+      ],
+    },
+    {
+      key: 'Loading',
+      setName: 'DS/Loading',
+      eyebrow: 'ATOM · FEEDBACK',
+      desc: '처리 중임을 나타내는 로딩 표시.',
+      build: (ctx, page) =>
+        buildSet(ctx, page, 'DS/Loading', [{ name: 'size', values: ['sm', 'md', 'lg'] }], (c) => renderLoading(ctx, c)),
+      states: [
+        { caption: 'Small', props: { size: 'sm' } },
+        { caption: 'Medium', props: { size: 'md' } },
+        { caption: 'Large', props: { size: 'lg' } },
+      ],
+    },
+  ],
+}
+
+const ALL_CATEGORIES = [INPUT_CATEGORY, SELECTION_CATEGORY, ACTION_CATEGORY, FEEDBACK_CATEGORY]
 
 // ── 변형 아이템(인스턴스 + 캡션) ────────────────────────────────────
 function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
@@ -525,9 +738,9 @@ export async function generateCategories(fontFamily: string): Promise<string[]> 
       sets.set(doc.setName, set)
     }
 
-    const root = makeRoot(cat.pageName)
+    const root = makeRoot(cat.title)
     placeRoot(root, page)
-    makeHeader(ctx, root, cat.pageName, cat.subtitle)
+    makeHeader(ctx, root, cat.title, cat.subtitle)
     for (const doc of cat.docs) {
       const render = makeSection(ctx, root, {
         eyebrow: doc.eyebrow,

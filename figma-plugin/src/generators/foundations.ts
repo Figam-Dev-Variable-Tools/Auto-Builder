@@ -6,7 +6,11 @@ import { hexToRgb } from '../presets'
 import { ICON_PATHS } from '../icons-data'
 import { strokeIcon } from './icon-vec'
 
-export const FOUNDATION_PAGE_NAMES = ['Design System', 'Icon System']
+// 오너 규칙: 생성되는 모든 페이지는 "순번. System - 이름". 페이지 탭에는 순번명, 내부 헤더엔 깔끔한 제목.
+const PAGE_DS = '1. System - Design System'
+const PAGE_ICON = '2. System - Icon System'
+// 새 이름 + 정리용 레거시 이름(reset이 함께 삭제).
+export const FOUNDATION_PAGE_NAMES = [PAGE_DS, PAGE_ICON, 'Design System', 'Icon System']
 
 // TDS 문서 크롬 색(장식용 — 프리셋 재색 대상 아님)
 const INK = '#191F28'
@@ -306,12 +310,12 @@ function placeRoot(root: FrameNode, page: PageNode) {
 // ── 1) Design System 페이지 ──────────────────────────────────────────
 export async function generateDesignSystemPage(fontFamily: string): Promise<string[]> {
   const ctx = await setup(fontFamily)
-  if (figma.root.children.some((p) => p.name === 'Design System')) {
-    ctx.warnings.push("페이지 'Design System' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').")
+  if (figma.root.children.some((p) => p.name === PAGE_DS)) {
+    ctx.warnings.push(`페이지 '${PAGE_DS}' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').`)
     return ctx.warnings
   }
   const page = figma.createPage()
-  page.name = 'Design System'
+  page.name = PAGE_DS
   const root = makeRoot('Design System')
   placeRoot(root, page)
 
@@ -498,12 +502,12 @@ function borderWeightItem(ctx: Ctx, kr: string, w: number): FrameNode {
 // ── 2) Icon System 페이지 ────────────────────────────────────────────
 export async function generateIconSystemPage(fontFamily: string): Promise<string[]> {
   const ctx = await setup(fontFamily)
-  if (figma.root.children.some((p) => p.name === 'Icon System')) {
-    ctx.warnings.push("페이지 'Icon System' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').")
+  if (figma.root.children.some((p) => p.name === PAGE_ICON)) {
+    ctx.warnings.push(`페이지 '${PAGE_ICON}' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').`)
     return ctx.warnings
   }
   const page = figma.createPage()
-  page.name = 'Icon System'
+  page.name = PAGE_ICON
   const root = makeRoot('Icon System')
   placeRoot(root, page)
 
