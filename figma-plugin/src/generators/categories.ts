@@ -935,6 +935,8 @@ function renderList(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
     r.itemSpacing = 12
     r.paddingTop = r.paddingBottom = 12
     r.paddingLeft = r.paddingRight = 16
+    const selected = idx === 0 // 대표: 선택된 행
+    if (selected) bindFillVar(ctx, r, 'color/bgSubtle', SURFACE)
     const av = fixedFrame('avatar', 'HORIZONTAL', 36, 36)
     av.primaryAxisAlignItems = 'CENTER'
     av.counterAxisAlignItems = 'CENTER'
@@ -964,6 +966,7 @@ function renderList(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
 function renderAccordion(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const expanded = combo.expanded === 'true'
   const c = figma.createComponent()
+  if (combo.disabled === 'true') c.opacity = 0.45
   c.layoutMode = 'VERTICAL'
   c.primaryAxisSizingMode = 'AUTO'
   c.counterAxisSizingMode = 'FIXED'
@@ -1170,7 +1173,8 @@ function renderDialog(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.appendChild(footer)
   return c
 }
-function renderPopover(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+function renderPopover(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const bottom = combo.placement === 'bottom'
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
   c.primaryAxisSizingMode = 'AUTO'
@@ -1198,12 +1202,14 @@ function renderPopover(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
   body.layoutAlign = 'STRETCH'
   body.textAutoResize = 'HEIGHT'
   bubble.appendChild(body)
-  c.appendChild(bubble)
   const tri = figma.createVector()
-  tri.vectorPaths = [{ windingRule: 'NONZERO', data: 'M0 0 L12 0 L6 6 Z' }]
+  tri.vectorPaths = [{ windingRule: 'NONZERO', data: bottom ? 'M0 6 L12 6 L6 0 Z' : 'M0 0 L12 0 L6 6 Z' }]
   bindFillVar(ctx, tri, 'color/bg', WHITE)
   tri.strokes = []
-  c.appendChild(tri)
+  // placement=bottom(대상 아래) → 위쪽 화살표 먼저, 기본 top → 아래쪽 화살표 나중
+  if (bottom) c.appendChild(tri)
+  c.appendChild(bubble)
+  if (!bottom) c.appendChild(tri)
   return c
 }
 
@@ -2235,7 +2241,9 @@ function renderTree(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
   })
   return c
 }
-function renderCarousel(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+function renderCarousel(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const showArrows = combo.showArrows !== 'false'
+  const showDots = combo.showDots !== 'false'
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
   c.primaryAxisSizingMode = 'AUTO'
@@ -2246,7 +2254,7 @@ function renderCarousel(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   const stage = autoFrame('stage', 'HORIZONTAL')
   stage.counterAxisAlignItems = 'CENTER'
   stage.itemSpacing = 12
-  stage.appendChild(circleBtn(ctx, '_Icon/ChevronLeft', 'Prev', 36))
+  if (showArrows) stage.appendChild(circleBtn(ctx, '_Icon/ChevronLeft', 'Prev', 36))
   const slide = figma.createFrame()
   slide.name = 'slide'
   slide.layoutMode = 'HORIZONTAL'
@@ -2261,19 +2269,21 @@ function renderCarousel(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   st.name = 'Slide'
   slide.appendChild(st)
   stage.appendChild(slide)
-  stage.appendChild(circleBtn(ctx, '_Icon/ChevronRight', 'Next', 36))
+  if (showArrows) stage.appendChild(circleBtn(ctx, '_Icon/ChevronRight', 'Next', 36))
   c.appendChild(stage)
-  const dots = autoFrame('dots', 'HORIZONTAL')
-  dots.counterAxisAlignItems = 'CENTER'
-  dots.itemSpacing = 6
-  for (let i = 0; i < 4; i++) {
-    const d = figma.createFrame()
-    d.resize(i === 0 ? 18 : 8, 8)
-    d.cornerRadius = 999
-    bindFillVar(ctx, d, i === 0 ? 'color/primary' : 'color/border', i === 0 ? ACCENT : BORDER)
-    dots.appendChild(d)
+  if (showDots) {
+    const dots = autoFrame('dots', 'HORIZONTAL')
+    dots.counterAxisAlignItems = 'CENTER'
+    dots.itemSpacing = 6
+    for (let i = 0; i < 4; i++) {
+      const d = figma.createFrame()
+      d.resize(i === 0 ? 18 : 8, 8)
+      d.cornerRadius = 999
+      bindFillVar(ctx, d, i === 0 ? 'color/primary' : 'color/border', i === 0 ? ACCENT : BORDER)
+      dots.appendChild(d)
+    }
+    c.appendChild(dots)
   }
-  c.appendChild(dots)
   return c
 }
 
@@ -3593,8 +3603,8 @@ const LAYOUT_CATEGORY: CategoryDef = {
       setName: 'DS/Accordion',
       eyebrow: 'MOLECULE · LAYOUT',
       desc: '제목을 눌러 본문을 펼치고 접는 아코디언.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Accordion', [{ name: 'expanded', values: ['false', 'true'] }], (c) => renderAccordion(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '섹션 제목' }, { prop: 'Body', layer: 'Body', def: '펼쳐진 본문 내용' }] }),
-      states: [{ caption: 'Collapsed', props: {} }, { caption: 'Expanded', props: { expanded: 'true' } }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Accordion', [{ name: 'expanded', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderAccordion(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '섹션 제목' }, { prop: 'Body', layer: 'Body', def: '펼쳐진 본문 내용' }] }),
+      states: [{ caption: 'Collapsed', props: {} }, { caption: 'Expanded', props: { expanded: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
       key: 'Divider',
@@ -3633,8 +3643,8 @@ const OVERLAY_CATEGORY: CategoryDef = {
       setName: 'DS/Popover',
       eyebrow: 'MOLECULE · OVERLAY',
       desc: '요소 옆에 붙는 작은 부가정보 팝오버.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Popover', [{ name: 'state', values: ['default'] }], (c) => renderPopover(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '팝오버 제목' }, { prop: 'Body', layer: 'Body', def: '간단한 부가 설명' }] }),
-      states: [{ caption: 'Default', props: {} }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Popover', [{ name: 'placement', values: ['top', 'bottom'] }], (c) => renderPopover(ctx, c), { texts: [{ prop: 'Title', layer: 'Title', def: '팝오버 제목' }, { prop: 'Body', layer: 'Body', def: '간단한 부가 설명' }] }),
+      states: [{ caption: 'Top', props: {} }, { caption: 'Bottom', props: { placement: 'bottom' } }],
     },
     {
       key: 'Drawer',
@@ -3721,8 +3731,8 @@ const DATA_CATEGORY: CategoryDef = {
       setName: 'DS/Carousel',
       eyebrow: 'MOLECULE · DATA',
       desc: '슬라이드 + 좌우 이동 + 인디케이터 캐러셀.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Carousel', [{ name: 'state', values: ['default'] }], (c) => renderCarousel(ctx, c), { texts: [{ prop: 'Slide', layer: 'Slide', def: '슬라이드 1 / 4' }], swaps: [{ prop: 'Prev', layer: 'Prev Icon', defKey: '_Icon/ChevronLeft' }, { prop: 'Next', layer: 'Next Icon', defKey: '_Icon/ChevronRight' }] }),
-      states: [{ caption: 'Default', props: {} }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Carousel', [{ name: 'showArrows', values: ['true', 'false'] }, { name: 'showDots', values: ['true', 'false'] }], (c) => renderCarousel(ctx, c), { texts: [{ prop: 'Slide', layer: 'Slide', def: '슬라이드 1 / 4' }], swaps: [{ prop: 'Prev', layer: 'Prev Icon', defKey: '_Icon/ChevronLeft' }, { prop: 'Next', layer: 'Next Icon', defKey: '_Icon/ChevronRight' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'No Arrows', props: { showArrows: 'false' } }, { caption: 'No Dots', props: { showDots: 'false' } }],
     },
   ],
 }
