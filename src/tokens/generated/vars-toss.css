@@ -10,6 +10,31 @@
   --ds-color-bgSubtle: #F5F7FA;
   --ds-color-text: #191F28;
   --ds-color-border: #E5E8EB;
+  --ds-color-primary-100: #CDD9FF;
+  --ds-color-primary-300: #8EA9FF;
+  --ds-color-primary-500: #3D6BFF;
+  --ds-color-primary-700: #3053C7;
+  --ds-color-primary-900: #223C8F;
+  --ds-color-secondary-100: #D1D4D8;
+  --ds-color-secondary-300: #989FA7;
+  --ds-color-secondary-500: #4E5968;
+  --ds-color-secondary-700: #3D4551;
+  --ds-color-secondary-900: #2C323A;
+  --ds-color-error-100: #FBCED2;
+  --ds-color-error-300: #F6939B;
+  --ds-color-error-500: #F04452;
+  --ds-color-error-700: #BB3540;
+  --ds-color-error-900: #86262E;
+  --ds-color-success-100: #BDF0DA;
+  --ds-color-success-300: #6BDDAD;
+  --ds-color-success-500: #00C471;
+  --ds-color-success-700: #009958;
+  --ds-color-success-900: #006E3F;
+  --ds-color-warning-100: #FFE6BF;
+  --ds-color-warning-300: #FFC771;
+  --ds-color-warning-500: #FF9F0A;
+  --ds-color-warning-700: #C77C08;
+  --ds-color-warning-900: #8F5906;
   --ds-font-family: 'Pretendard', -apple-system, sans-serif;
   --ds-font-size-xs: 11px;
   --ds-font-size-sm: 13px;
@@ -29,4 +54,6 @@
   --ds-spacing-4: 16px;
   --ds-spacing-5: 20px;
   --ds-spacing-6: 24px;
+  --ds-border-width: 1px;
+  --ds-border-width-thick: 2px;
 }

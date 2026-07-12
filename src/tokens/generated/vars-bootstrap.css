@@ -10,6 +10,31 @@
   --ds-color-bgSubtle: #F8F9FA;
   --ds-color-text: #212529;
   --ds-color-border: #DEE2E6;
+  --ds-color-primary-100: #DCD2EB;
+  --ds-color-primary-300: #B19BD3;
+  --ds-color-primary-500: #7952B3;
+  --ds-color-primary-700: #5E408C;
+  --ds-color-primary-900: #442E64;
+  --ds-color-secondary-100: #D9DBDD;
+  --ds-color-secondary-300: #AAAFB4;
+  --ds-color-secondary-500: #6C757D;
+  --ds-color-secondary-700: #545B62;
+  --ds-color-secondary-900: #3C4246;
+  --ds-color-error-100: #F6CACF;
+  --ds-color-error-300: #EB8A93;
+  --ds-color-error-500: #DC3545;
+  --ds-color-error-700: #AC2936;
+  --ds-color-error-900: #7B1E27;
+  --ds-color-success-100: #C3E0D3;
+  --ds-color-success-300: #7AB99C;
+  --ds-color-success-500: #198754;
+  --ds-color-success-700: #146942;
+  --ds-color-success-900: #0E4C2F;
+  --ds-color-warning-100: #FFEFBF;
+  --ds-color-warning-300: #FFDB6F;
+  --ds-color-warning-500: #FFC107;
+  --ds-color-warning-700: #C79705;
+  --ds-color-warning-900: #8F6C04;
   --ds-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --ds-font-size-xs: 10px;
   --ds-font-size-sm: 13px;
@@ -29,4 +54,6 @@
   --ds-spacing-4: 16px;
   --ds-spacing-5: 20px;
   --ds-spacing-6: 24px;
+  --ds-border-width: 1px;
+  --ds-border-width-thick: 2px;
 }

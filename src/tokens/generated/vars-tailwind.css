@@ -10,6 +10,31 @@
   --ds-color-bgSubtle: #F9FAFB;
   --ds-color-text: #0F172A;
   --ds-color-border: #E5E7EB;
+  --ds-color-primary-100: #BEECF4;
+  --ds-color-primary-300: #6FD5E6;
+  --ds-color-primary-500: #06B6D4;
+  --ds-color-primary-700: #058EA5;
+  --ds-color-primary-900: #036677;
+  --ds-color-secondary-100: #D7DBE1;
+  --ds-color-secondary-300: #A5AEBC;
+  --ds-color-secondary-500: #64748B;
+  --ds-color-secondary-700: #4E5A6C;
+  --ds-color-secondary-900: #38414E;
+  --ds-color-error-100: #FBCECE;
+  --ds-color-error-300: #F69393;
+  --ds-color-error-500: #EF4444;
+  --ds-color-error-700: #BA3535;
+  --ds-color-error-900: #862626;
+  --ds-color-success-100: #C6F0D5;
+  --ds-color-success-300: #7FDDA2;
+  --ds-color-success-500: #22C55E;
+  --ds-color-success-700: #1B9A49;
+  --ds-color-success-900: #136E35;
+  --ds-color-warning-100: #FCE6C0;
+  --ds-color-warning-300: #F9C771;
+  --ds-color-warning-500: #F59E0B;
+  --ds-color-warning-700: #BF7B09;
+  --ds-color-warning-900: #895806;
   --ds-font-family: 'Inter', system-ui, sans-serif;
   --ds-font-size-xs: 10px;
   --ds-font-size-sm: 13px;
@@ -29,4 +54,6 @@
   --ds-spacing-4: 16px;
   --ds-spacing-5: 20px;
   --ds-spacing-6: 24px;
+  --ds-border-width: 1px;
+  --ds-border-width-thick: 2px;
 }
