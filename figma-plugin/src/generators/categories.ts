@@ -1283,6 +1283,68 @@ function fieldRow(ctx: Ctx, toneVar: string | null, toneHex: string | null, disa
   row.strokeAlign = 'INSIDE'
   return row
 }
+// 열림 상태 옵션 패널(Select/MultiSelect의 open 베리언트). 떠 있는 메뉴 형태.
+function optionPanel(ctx: Ctx, opts: Array<[string, boolean]>, multi: boolean): FrameNode {
+  const p = figma.createFrame()
+  p.name = 'panel'
+  p.layoutMode = 'VERTICAL'
+  p.primaryAxisSizingMode = 'AUTO'
+  p.counterAxisSizingMode = 'FIXED'
+  p.itemSpacing = 2
+  p.paddingTop = p.paddingBottom = 6
+  p.paddingLeft = p.paddingRight = 6
+  p.cornerRadius = 10
+  bindFillVar(ctx, p, 'color/bg', WHITE)
+  bindStrokeVar(ctx, p, 'color/border', BORDER)
+  p.strokeWeight = 1
+  p.strokeAlign = 'INSIDE'
+  p.effects = [{ type: 'DROP_SHADOW', color: { r: 0.1, g: 0.12, b: 0.16, a: 0.14 }, offset: { x: 0, y: 6 }, radius: 20, spread: 0, visible: true, blendMode: 'NORMAL' }]
+  p.resize(FIELD_W, p.height)
+  opts.forEach(([label, selected], i) => {
+    const r = autoFrame('option', 'HORIZONTAL')
+    r.layoutAlign = 'STRETCH'
+    r.primaryAxisSizingMode = 'FIXED'
+    r.counterAxisAlignItems = 'CENTER'
+    r.itemSpacing = 10
+    r.paddingTop = r.paddingBottom = 9
+    r.paddingLeft = r.paddingRight = 10
+    r.cornerRadius = 6
+    if (selected && !multi) bindFillVar(ctx, r, 'color/bgSubtle', SURFACE)
+    if (multi) {
+      const box = autoFrame('box', 'HORIZONTAL')
+      box.primaryAxisSizingMode = 'FIXED'
+      box.counterAxisSizingMode = 'FIXED'
+      box.resize(18, 18)
+      box.primaryAxisAlignItems = 'CENTER'
+      box.counterAxisAlignItems = 'CENTER'
+      box.cornerRadius = 5
+      if (selected) {
+        bindFillVar(ctx, box, 'color/primary', ACCENT)
+        const ck = iconInstance('_Icon/Check', 'check', 13)
+        recolorIcon(ck, WHITE)
+        box.appendChild(ck)
+      } else {
+        box.fills = []
+        bindStrokeVar(ctx, box, 'color/border', BORDER)
+        box.strokeWeight = 1.5
+        box.strokeAlign = 'INSIDE'
+      }
+      r.appendChild(box)
+    }
+    const hot = selected && !multi
+    const t = boundText(ctx, label, 14, hot ? 'color/primary' : 'color/text', hot ? ACCENT : INK, hot)
+    t.name = 'Option ' + (i + 1)
+    t.layoutGrow = 1
+    r.appendChild(t)
+    if (hot) {
+      const ck = iconInstance('_Icon/Check', 'check', 16)
+      recolorIcon(ck, ACCENT)
+      r.appendChild(ck)
+    }
+    p.appendChild(r)
+  })
+  return p
+}
 function renderSelect(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const error = combo.error === 'true'
   const disabled = combo.disabled === 'true'
@@ -1296,6 +1358,9 @@ function renderSelect(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   recolorIcon(chev, SUB)
   row.appendChild(chev)
   addField(row)
+  if (combo.open === 'true') {
+    addField(optionPanel(ctx, [['전체', false], ['진행 중', true], ['완료', false], ['보류', false]], false))
+  }
   const helper = boundText(ctx, error ? '필수 항목입니다.' : '하나를 선택하세요.', 12, error ? 'color/error' : 'color/secondary', error ? '#F04452' : SUB)
   helper.name = 'Helper'
   helper.layoutAlign = 'STRETCH'
@@ -1324,6 +1389,9 @@ function renderMultiSelect(ctx: Ctx, combo: Record<string, string>): ComponentNo
   recolorIcon(chev, SUB)
   row.appendChild(chev)
   addField(row)
+  if (combo.open === 'true') {
+    addField(optionPanel(ctx, [['React', true], ['Svelte', true], ['Vue', false], ['Angular', false]], true))
+  }
   return c
 }
 function renderSlider(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -2140,16 +2208,16 @@ const INPUT_CATEGORY: CategoryDef = {
       setName: 'DS/Select',
       eyebrow: 'ORGANISM · INPUT',
       desc: '옵션 목록에서 하나를 고르는 단일 선택.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/Select', [{ name: 'error', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '카테고리' }, { prop: 'Value', layer: 'Value', def: '선택하세요' }, { prop: 'Helper', layer: 'Helper', def: '하나를 선택하세요.' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
-      states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Select', [{ name: 'open', values: ['false', 'true'] }, { name: 'error', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '카테고리' }, { prop: 'Value', layer: 'Value', def: '선택하세요' }, { prop: 'Helper', layer: 'Helper', def: '하나를 선택하세요.' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Open', props: { open: 'true' } }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
       key: 'MultiSelect',
       setName: 'DS/MultiSelect',
       eyebrow: 'ORGANISM · INPUT',
       desc: '여러 항목을 칩으로 선택하는 다중 선택.',
-      build: (ctx, page) => buildSet(ctx, page, 'DS/MultiSelect', [{ name: 'disabled', values: ['false', 'true'] }], (c) => renderMultiSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '기술 스택' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
-      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { disabled: 'true' } }],
+      build: (ctx, page) => buildSet(ctx, page, 'DS/MultiSelect', [{ name: 'open', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderMultiSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '기술 스택' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Open', props: { open: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
     },
     {
       key: 'Slider',
