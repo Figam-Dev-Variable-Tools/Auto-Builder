@@ -1213,6 +1213,151 @@ function renderProgress(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   return c
 }
 
+// ══ INPUT 복합 (Select / MultiSelect / Slider / Upload) ══════════════
+function inputShell(ctx: Ctx, label: string, disabled: boolean): { c: ComponentNode; addField: (f: SceneNode) => void } {
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(FIELD_W, c.height)
+  c.primaryAxisSizingMode = 'AUTO'
+  c.itemSpacing = 6
+  c.fills = []
+  if (disabled) c.opacity = 0.45
+  const lbl = boundText(ctx, label, 13, 'color/text', INK, true)
+  lbl.name = 'Label'
+  c.appendChild(lbl)
+  return { c, addField: (f) => c.appendChild(f) }
+}
+function fieldRow(ctx: Ctx, toneVar: string | null, toneHex: string | null, disabled: boolean): FrameNode {
+  const row = autoFrame('field', 'HORIZONTAL')
+  row.counterAxisAlignItems = 'CENTER'
+  row.layoutAlign = 'STRETCH'
+  row.primaryAxisSizingMode = 'FIXED'
+  row.itemSpacing = 8
+  row.paddingTop = row.paddingBottom = 10
+  row.paddingLeft = row.paddingRight = 12
+  row.cornerRadius = 8
+  bindFillVar(ctx, row, disabled ? 'color/bgSubtle' : 'color/bg', disabled ? '#F5F7FA' : WHITE)
+  bindStrokeVar(ctx, row, toneVar ?? 'color/border', toneHex ?? BORDER)
+  row.strokeWeight = 1
+  row.strokeAlign = 'INSIDE'
+  return row
+}
+function renderSelect(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const error = combo.error === 'true'
+  const disabled = combo.disabled === 'true'
+  const { c, addField } = inputShell(ctx, '카테고리', disabled)
+  const row = fieldRow(ctx, error ? 'color/error' : null, error ? '#F04452' : null, disabled)
+  const val = boundText(ctx, '선택하세요', 15, 'color/secondary', MUTED)
+  val.name = 'Value'
+  val.layoutGrow = 1
+  row.appendChild(val)
+  const chev = iconInstance('_Icon/ChevronDown', 'Icon', 18)
+  recolorIcon(chev, SUB)
+  row.appendChild(chev)
+  addField(row)
+  const helper = boundText(ctx, error ? '필수 항목입니다.' : '하나를 선택하세요.', 12, error ? 'color/error' : 'color/secondary', error ? '#F04452' : SUB)
+  helper.name = 'Helper'
+  helper.layoutAlign = 'STRETCH'
+  addField(helper)
+  return c
+}
+function renderMultiSelect(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const disabled = combo.disabled === 'true'
+  const { c, addField } = inputShell(ctx, '기술 스택', disabled)
+  const row = fieldRow(ctx, null, null, disabled)
+  const chips = autoFrame('chips', 'HORIZONTAL')
+  chips.itemSpacing = 6
+  chips.layoutGrow = 1
+  ;['React', 'Svelte'].forEach((t) => {
+    const chip = autoFrame('chip', 'HORIZONTAL')
+    chip.counterAxisAlignItems = 'CENTER'
+    chip.paddingTop = chip.paddingBottom = 3
+    chip.paddingLeft = chip.paddingRight = 8
+    chip.cornerRadius = 6
+    bindFillVar(ctx, chip, 'color/bgSubtle', SURFACE)
+    chip.appendChild(txt(ctx, t, 12, INK))
+    chips.appendChild(chip)
+  })
+  row.appendChild(chips)
+  const chev = iconInstance('_Icon/ChevronDown', 'Icon', 18)
+  recolorIcon(chev, SUB)
+  row.appendChild(chev)
+  addField(row)
+  return c
+}
+function renderSlider(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const pct = combo.value === '0' ? 0 : combo.value === '100' ? 100 : 50
+  const { c, addField } = inputShell(ctx, '볼륨', false)
+  const meta = autoFrame('meta', 'HORIZONTAL')
+  meta.layoutAlign = 'STRETCH'
+  meta.primaryAxisSizingMode = 'FIXED'
+  meta.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  const pv = boundText(ctx, pct + '%', 13, 'color/secondary', SUB)
+  pv.name = 'Value'
+  const spacer = txt(ctx, '', 13, SUB)
+  meta.appendChild(spacer)
+  meta.appendChild(pv)
+  // 트랙(플레인 프레임): fill + thumb 수동 배치
+  const track = figma.createFrame()
+  track.name = 'track'
+  track.resize(FIELD_W, 18)
+  track.fills = []
+  const rail = figma.createFrame()
+  rail.name = 'rail'
+  rail.resize(FIELD_W, 6)
+  rail.cornerRadius = 999
+  bindFillVar(ctx, rail, 'color/bgSubtle', SURFACE)
+  track.appendChild(rail)
+  rail.x = 0
+  rail.y = 6
+  const fill = figma.createFrame()
+  fill.name = 'fill'
+  fill.resize(Math.max(6, (FIELD_W * pct) / 100), 6)
+  fill.cornerRadius = 999
+  bindFillVar(ctx, fill, 'color/primary', ACCENT)
+  track.appendChild(fill)
+  fill.x = 0
+  fill.y = 6
+  const thumb = figma.createEllipse()
+  thumb.resize(18, 18)
+  thumb.fills = [solid(WHITE)]
+  bindStrokeVar(ctx, thumb, 'color/primary', ACCENT)
+  thumb.strokeWeight = 2
+  track.appendChild(thumb)
+  thumb.x = Math.min(FIELD_W - 18, Math.max(0, (FIELD_W * pct) / 100 - 9))
+  thumb.y = 0
+  addField(track)
+  return c
+}
+function renderUpload(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const disabled = combo.disabled === 'true'
+  const { c, addField } = inputShell(ctx, '첨부 파일', disabled)
+  const zone = autoFrame('dropzone', 'VERTICAL')
+  zone.layoutAlign = 'STRETCH'
+  zone.primaryAxisSizingMode = 'FIXED'
+  zone.counterAxisAlignItems = 'CENTER'
+  zone.itemSpacing = 8
+  zone.paddingTop = zone.paddingBottom = 24
+  zone.cornerRadius = 8
+  bindFillVar(ctx, zone, 'color/bgSubtle', SURFACE)
+  bindStrokeVar(ctx, zone, 'color/border', BORDER)
+  zone.strokeWeight = 1
+  zone.strokeAlign = 'INSIDE'
+  zone.dashPattern = [6, 4]
+  const up = iconInstance('_Icon/Upload', 'Icon', 24)
+  recolorIcon(up, SUB)
+  zone.appendChild(up)
+  const t = boundText(ctx, '파일을 끌어다 놓거나 클릭', 13, 'color/text', INK, true)
+  t.name = 'Prompt'
+  zone.appendChild(t)
+  const sub = boundText(ctx, 'PDF, PNG · 최대 10MB', 11, 'color/secondary', SUB)
+  sub.name = 'Hint'
+  zone.appendChild(sub)
+  addField(zone)
+  return c
+}
+
 // ── 카테고리 정의 ────────────────────────────────────────────────────
 type ComponentDoc = {
   key: string
@@ -1229,14 +1374,48 @@ const INPUT_CATEGORY: CategoryDef = {
   title: 'Input',
   subtitle:
     '텍스트 입력 계열 — 라벨·입력·헬퍼 규약을 공유하는 폼 필드. 각 컴포넌트의 상태 변형을 편집 가능한 Figma 컴포넌트로 렌더합니다.',
-  docs: INPUTS.map((def) => ({
-    key: def.key,
-    setName: def.setName,
-    eyebrow: def.eyebrow,
-    desc: def.desc,
-    build: (ctx, page) => makeInputSet(ctx, def, page),
-    states: def.states,
-  })),
+  docs: [
+    ...INPUTS.map((def) => ({
+      key: def.key,
+      setName: def.setName,
+      eyebrow: def.eyebrow,
+      desc: def.desc,
+      build: (ctx: Ctx, page: PageNode) => makeInputSet(ctx, def, page),
+      states: def.states,
+    })),
+    {
+      key: 'Select',
+      setName: 'DS/Select',
+      eyebrow: 'ORGANISM · INPUT',
+      desc: '옵션 목록에서 하나를 고르는 단일 선택.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Select', [{ name: 'error', values: ['false', 'true'] }, { name: 'disabled', values: ['false', 'true'] }], (c) => renderSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '카테고리' }, { prop: 'Value', layer: 'Value', def: '선택하세요' }, { prop: 'Helper', layer: 'Helper', def: '하나를 선택하세요.' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'MultiSelect',
+      setName: 'DS/MultiSelect',
+      eyebrow: 'ORGANISM · INPUT',
+      desc: '여러 항목을 칩으로 선택하는 다중 선택.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/MultiSelect', [{ name: 'disabled', values: ['false', 'true'] }], (c) => renderMultiSelect(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '기술 스택' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/ChevronDown' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+    {
+      key: 'Slider',
+      setName: 'DS/Slider',
+      eyebrow: 'MOLECULE · INPUT',
+      desc: '드래그로 수치를 조절하는 슬라이더.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Slider', [{ name: 'value', values: ['0', '50', '100'] }], (c) => renderSlider(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '볼륨' }, { prop: 'Value', layer: 'Value', def: '50%' }] }),
+      states: [{ caption: 'Min', props: { value: '0' } }, { caption: 'Mid', props: { value: '50' } }, { caption: 'Max', props: { value: '100' } }],
+    },
+    {
+      key: 'Upload',
+      setName: 'DS/Upload',
+      eyebrow: 'ORGANISM · INPUT',
+      desc: '클릭/드래그로 파일을 올리는 드롭존.',
+      build: (ctx, page) => buildSet(ctx, page, 'DS/Upload', [{ name: 'disabled', values: ['false', 'true'] }], (c) => renderUpload(ctx, c), { texts: [{ prop: 'Label', layer: 'Label', def: '첨부 파일' }, { prop: 'Prompt', layer: 'Prompt', def: '파일을 끌어다 놓거나 클릭' }, { prop: 'Hint', layer: 'Hint', def: 'PDF, PNG · 최대 10MB' }], swaps: [{ prop: 'Icon', layer: 'Icon', defKey: '_Icon/Upload' }] }),
+      states: [{ caption: 'Default', props: {} }, { caption: 'Disabled', props: { disabled: 'true' } }],
+    },
+  ],
 }
 
 const SELECTION_CATEGORY: CategoryDef = {
