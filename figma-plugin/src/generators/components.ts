@@ -1,6 +1,18 @@
 // P3 — DS 컴포넌트 생성 (Variants·Text·Boolean·Instance Swap·Slot)
 // 생성기는 "매니페스트 주도"로 설계한다: 내장 COMPONENT_MANIFEST(D1 props와 문자열까지 동일)
 // 또는 원격 URL로 받은 동일 스키마 매니페스트를 입력으로 같은 생성 로직을 실행한다.
+//
+// ⚠ 격리(quarantine) — 이 파일은 지금 죽어 있고, 네이밍 검사를 전혀 받지 않는다.
+//   · 도달 불가: code.ts가 `if (msg.scope.components)` 아래에서만 generateComponents를 부르는데
+//     ui.html이 `components: false`로 못박아 둔다. 즉 현재 런타임 경로가 없다.
+//   · 검사 없음: scripts/lib/figma-sets.mjs의 GENERATOR_FILES는 buildSet 기반 생성기만 본다.
+//     여기 COMPONENT_MANIFEST는 buildSet을 쓰지 않으므로 규약(§1~§5) 위반이 있어도 안 잡힌다.
+//
+//   되살리려면(ui.html의 components를 true로 바꾸려면) 반드시 함께 해라:
+//     1) 이 매니페스트를 네이밍 검사에 편입 — 지금 켜면 기존 위반이 그대로 Figma에 그려진다.
+//     2) prop 이름을 React 유니온/show*/ReactNode prop 이름에 맞춘다(뭉뚱그린 'Icon' 금지).
+//   B0(리팩터 배치)에서 편입하지 않은 이유: 편입 즉시 신규 위반이 터지는데, B0의 합격 기준은
+//   "위반 수를 1건도 늘리지 않는다"라서 배치가 상충한다. 별도 배치로 분리한다.
 import { firstFontFamily, hexToRgb, type PresetName, PRESETS } from '../presets'
 import { ICON_PATHS } from '../icons-data'
 import { strokeIcon, publicIconName } from './icon-vec'

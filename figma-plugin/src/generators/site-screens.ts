@@ -774,7 +774,9 @@ function siteHeader(ctx: Ctx, screen: FrameNode, activeIndex: number) {
   const node = inst(ctx, 'DS/SiteHeader', {
     name: 'Site Header',
     variant: { transparent: 'false', active: String(activeIndex + 1) },
-    props: { Brand: BRAND, Action: '1:1 문의' },
+    // 'Action' TEXT는 세트에서 제거됐다(actions는 문자열이 아니라 버튼 슬롯이다 — site.ts 참고).
+    // 넘기던 값이 renderSiteHeader가 그리는 기본 라벨과 같아 그림은 그대로다.
+    props: { brand: BRAND },
   })
   if (node) {
     screen.appendChild(instFill(node))
@@ -826,7 +828,7 @@ function drawSiteHeader(ctx: Ctx, screen: FrameNode, activeIndex: number) {
 function siteFooter(ctx: Ctx, screen: FrameNode) {
   const node = inst(ctx, 'DS/SiteFooter', {
     name: 'Site Footer',
-    props: { Brand: BRAND, Copyright: '© 2026 SPACE PLANNING Inc. All rights reserved.' },
+    props: { brand: BRAND, copyright: '© 2026 SPACE PLANNING Inc. All rights reserved.' },
   })
   if (node) {
     screen.appendChild(instFill(node))
@@ -1370,10 +1372,10 @@ function productCard(ctx: Ctx, p: Product): SceneNode {
     name: 'Product / ' + p.name,
     variant: { ratio: '3x4', soldOut: p.soldOut ? 'true' : 'false' },
     props: {
-      Brand: p.brand,
-      Name: p.name,
-      Description: p.desc,
-      Price: p.original ? `${p.original} → ${p.price}` : p.price,
+      brand: p.brand,
+      name: p.name,
+      description: p.desc,
+      price: p.original ? `${p.original} → ${p.price}` : p.price,
     },
   })
   if (node) return instGrow(node)
@@ -1457,9 +1459,10 @@ function screenShop(ctx: Ctx): FrameNode {
   sec.appendChild(underlineTabs(ctx, ['전체', '화분', '식물', '흙·용토'], 0))
 
   // 정렬 바 = DS/SortBar 인스턴스(개수만 TEXT 속성으로 갈아 끼운다).
+  // total은 세트 기본이 '6개'다 — 이 화면은 상품을 10장 그리므로 반드시 덮어써야 한다.
   const sortInst = inst(ctx, 'DS/SortBar', {
     name: 'Sort Bar',
-    props: { 'Total Label': '전체', Count: '10개' },
+    props: { totalLabel: '전체', total: '10개' },
   })
   sec.appendChild(sortInst ? instFill(sortInst) : drawSortBar(ctx))
 

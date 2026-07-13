@@ -3,19 +3,39 @@
 // 왜 AST인가: 생성기는 `figma` 전역에 의존하므로 런타임 import가 불가능하다.
 // 왜 정본만인가: components.ts의 COMPONENT_MANIFEST는 generateComponents가 호출되지 않아
 //   그림자 선언이다(ui.html이 components:false로 못박음). 실제 Figma에 그려지는 건
-//   generators/{categories,admin,site}.ts의 buildSet(...) 선언뿐이므로 그것만 본다.
+//   GENERATOR_FILES의 buildSet(...) 선언뿐이므로 그것만 본다.
 // 왜 조용히 건너뛰지 않는가: 파싱 실패를 continue로 넘기면 "검사하지 않아서 통과"가 된다.
 //   그게 이번 네이밍 드리프트를 아무도 못 잡은 근본 원인이다 → 미파싱은 E-UNPARSED 위반이고,
 //   추출 개수가 호출 개수와 다르면 E-COVERAGE로 실패한다(파서가 삼키는 걸 막는 안전핀).
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join, dirname, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
 
-/** 정본 생성기 — 여기 없는 파일은 Figma에 아무것도 그리지 않는다. */
-export const GENERATOR_FILES = ['categories', 'admin', 'site']
+/**
+ * 정본 생성기 — 여기 없는 파일은 Figma에 아무것도 그리지 않는다.
+ * categories.ts는 5천 줄이라 categories-{core,nav-overlay,data-kr-media}.ts로 쪼갰다.
+ * 남은 categories.ts는 생성 루프만 도는 오케스트레이터라 buildSet 선언이 없다(그래서 목록에 없다).
+ * 목록에서 빠진 파일에 buildSet이 생기면 E-UNREGISTERED로 잡는다 — 아래 assertNoUnregisteredSets 참고.
+ */
+export const CATEGORY_FILES = ['categories-core', 'categories-nav-overlay', 'categories-data-kr-media']
+
+export const GENERATOR_FILES = [...CATEGORY_FILES, 'admin', 'site']
+
+/** INPUTS/makeInputSet 어댑터가 사는 파일 — 분할로 categories.ts에서 categories-core.ts로 옮겨졌다. */
+const INPUT_ADAPTER_FILE = 'categories-core'
+
+/**
+ * buildSet 정본이 사는 곳. 유령 불리언 자동생성(`Show ${t.prop}`) 스캔은 반드시 여기도 봐야 한다.
+ * 예전엔 buildSet이 생성기마다 복붙돼 있어서 생성기 본문만 봐도 됐지만, 이제 본문은 lib에 한 벌뿐이다.
+ * 이 경로를 빼먹으면 가드가 구조적으로 죽는다(정본에서 자동생성을 되살려도 영원히 못 잡는다).
+ */
+const BUILD_SET_LIB = ['figma-plugin', 'src', 'generators', 'lib', 'build-set.ts']
+
+/** buildSet 본문이 텍스트마다 `Show <prop>` 불리언을 자동 생성하는지 — 유령 속성 드리프트 방어. */
+const GHOST_RE = /addBoolProp\(\s*set\s*,\s*`Show \$\{/
 
 class UnparsedError extends Error {
   constructor(message, node, sf) {
@@ -322,7 +342,9 @@ function makeEvaluator(sf, absPath) {
 const MAKE_INPUT_SET_FINGERPRINT = [
   "props.texts!.push({prop:'placeholder',layer:'placeholder',def:def.placeholder})",
   "props.texts!.push({prop:'helperText',layer:'helperText',def:def.helper})",
-  "if(def.affordance.leading==='search')",
+  "if(def.affordance.unit&&def.unitProp)props.texts!.push({prop:def.unitProp,layer:def.unitProp,def:def.affordance.unit})",
+  "if(def.description)props.texts!.push({prop:'description',layer:'description',def:def.description})",
+  'if(def.bools)props.bools=def.bools',
   "if(def.sizeAxis)axes.unshift({name:'size',values:['md','sm','lg']})",
 ]
 
@@ -364,17 +386,20 @@ function expandInputs(sf, evalNode, file, errors, autoGhost) {
   for (const def of defs) {
     const line = def.__line ?? lineOf(sf, inputsNode)
     const a = def.affordance || {}
-    // makeInputSet 재현: label(항상) / placeholder(otp 제외) / helperText(항상)
+    const omit = def.omit || []
+    // makeInputSet 재현: label(항상) / placeholder(otp·omit 제외) / helperText(omit 제외)
+    //                    + unitProp(단위 표기) + description(설명 줄) + bools(show* 불리언)
     const texts = [{ prop: 'label', layer: 'label', def: def.label, line }]
-    if (!a.otp) texts.push({ prop: 'placeholder', layer: 'placeholder', def: def.placeholder, line })
-    texts.push({ prop: 'helperText', layer: 'helperText', def: def.helper, line })
-    // (INPUT 계열의 Leading/Trailing Icon 스왑은 대응 React prop이 없다 — affordance로 하드코딩된
-    //  장식이라 N5 swap-extra로 잡히고 baseline이 관리한다. 여기서 이름을 지어내지 않는다.)
+    if (!a.otp && !omit.includes('placeholder'))
+      texts.push({ prop: 'placeholder', layer: 'placeholder', def: def.placeholder, line })
+    if (!omit.includes('helperText')) texts.push({ prop: 'helperText', layer: 'helperText', def: def.helper, line })
+    if (a.unit && def.unitProp) texts.push({ prop: def.unitProp, layer: def.unitProp, def: a.unit, line })
+    if (def.description) texts.push({ prop: 'description', layer: 'description', def: def.description, line })
 
+    const bools = (def.bools || []).map((b) => ({ ...b, line }))
+    // INPUT 계열은 INSTANCE_SWAP을 열지 않는다 — 선행/후행 아이콘에 대응하는 ReactNode prop이 코드에 없다
+    // (아이콘은 하드코딩된 장식이고, 여닫는 것만 showClear·showToggle BOOLEAN으로 열려 있다).
     const swaps = []
-    if (a.leading === 'search') swaps.push({ prop: 'Leading Icon', layer: 'Leading Icon', line })
-    if (a.trailing === 'eye' || a.trailing === 'clear')
-      swaps.push({ prop: 'Trailing Icon', layer: 'Trailing Icon', line })
 
     const axes = (def.axes || []).map((n) => ({ name: n, values: ['false', 'true'], line }))
     if (def.sizeAxis) axes.unshift({ name: 'size', values: ['md', 'sm', 'lg'], line })
@@ -386,13 +411,83 @@ function expandInputs(sf, evalNode, file, errors, autoGhost) {
       origin: 'makeInputSet',
       axes,
       texts,
-      bools: [],
+      bools,
       swaps,
       autoGhost,
       ghostLine: line,
     })
   }
   return specs
+}
+
+/**
+ * GENERATOR_FILES에 없는 생성기가 buildSet을 호출하면 그 세트는 "검사받지 않고" Figma에 그려진다.
+ * 이게 categories.ts 분할이 새로 만든 실패 모드다: 세트를 새 파일로 옮기고 목록에 등록만 안 하면
+ * 위반이 조용히 0으로 떨어진다(고쳐서가 아니라 안 봐서). 그래서 구조적으로 막는다.
+ *
+ * 선언(`function buildSet`)이 아니라 호출(CallExpression)만 센다 — lib/build-set.ts 정본은 잡히면 안 된다.
+ */
+function assertNoUnregisteredSets(root) {
+  const errors = []
+  const dir = join(root, 'figma-plugin', 'src', 'generators')
+  const registered = new Set(GENERATOR_FILES.map((n) => `${n}.ts`))
+
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith('.ts') || registered.has(file)) continue
+    const abs = join(dir, file)
+    const sf = parseFile(abs)
+    let hits = 0
+    const visit = (n) => {
+      if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'buildSet') hits++
+      ts.forEachChild(n, visit)
+    }
+    visit(sf)
+    if (hits > 0) {
+      errors.push({
+        code: 'E-UNREGISTERED',
+        file: `figma-plugin/src/generators/${file}`,
+        line: 0,
+        message:
+          `buildSet 호출 ${hits}건이 있는데 GENERATOR_FILES에 없다 — 이 세트들은 네이밍 검사를 통째로 건너뛴다. ` +
+          `scripts/lib/figma-sets.mjs의 GENERATOR_FILES에 '${file.replace(/\.ts$/, '')}'를 추가하라.`,
+      })
+    }
+  }
+  return errors
+}
+
+/** lib/build-set.ts가 정본인 헬퍼들 — 생성기에 사본이 생기면 규약을 한 곳에서 강제할 수 없다. */
+const CANON_HELPERS = new Set(['buildSet', 'addTextProp', 'addBoolProp', 'addSwapProp', 'propKeys'])
+
+/**
+ * 헬퍼 5번째 사본 차단.
+ * 이 헬퍼들은 원래 categories/admin/site에 3벌씩 복붙돼 있었고, 그래서 `Show <prop>` 유령 불리언
+ * 자동생성을 한 파일에서 고쳐도 나머지 사본이 계속 재생산했다 — 이번 네이밍 드리프트의 근본 원인이다.
+ * 정본을 lib/build-set.ts 한 벌로 합쳤으니, 사본이 다시 생기는 것을 기계로 막는다.
+ * (build-set.ts 헤더가 "CI가 grep으로 막는다"고 약속한 가드의 실제 구현부다.)
+ */
+function assertNoHelperCopies(root) {
+  const errors = []
+  const dir = join(root, 'figma-plugin', 'src', 'generators')
+
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith('.ts')) continue // lib/ 디렉터리(정본)는 여기서 걸리지 않는다
+    const abs = join(dir, file)
+    const sf = parseFile(abs)
+    for (const st of sf.statements) {
+      if (!ts.isFunctionDeclaration(st) || !st.name || !CANON_HELPERS.has(st.name.text)) continue
+      errors.push({
+        code: 'E-HELPER-COPY',
+        file: `figma-plugin/src/generators/${file}`,
+        line: lineOf(sf, st),
+        message:
+          `'${st.name.text}' 사본 — 정본은 figma-plugin/src/generators/lib/build-set.ts 한 벌뿐이다. ` +
+          `사본을 만들면 네이밍 규약을 한 곳에서 강제할 수 없다(사본이 위반을 계속 재생산한다). ` +
+          `삭제하고 import하라. 생성기별로 다른 동작이 필요하면 정본에 옵션 파라미터를 추가하라.`,
+      })
+    }
+  }
+  return errors
 }
 
 // ── 메인 추출 ────────────────────────────────────────────────────────
@@ -404,6 +499,15 @@ export function extractFigmaSets(root) {
   const specs = []
   const errors = []
 
+  // 등록 안 된 생성기에 buildSet이 숨어 있으면 여기서 잡는다(분할이 만든 새 실패 모드).
+  errors.push(...assertNoUnregisteredSets(root))
+  // 정본 헬퍼의 사본이 되살아나면 여기서 잡는다.
+  errors.push(...assertNoHelperCopies(root))
+
+  // 유령 불리언 자동생성은 이제 "전역" 성질이다 — buildSet 본문이 lib에 한 벌뿐이기 때문.
+  // 생성기 본문(과거 사본 잔재)도 계속 보되, 정본을 반드시 함께 본다.
+  const libAutoGhost = GHOST_RE.test(readFileSync(join(root, ...BUILD_SET_LIB), 'utf8'))
+
   for (const name of GENERATOR_FILES) {
     const rel = `figma-plugin/src/generators/${name}.ts`
     const abs = join(root, 'figma-plugin', 'src', 'generators', `${name}.ts`)
@@ -411,11 +515,9 @@ export function extractFigmaSets(root) {
     const sf = parseFile(abs)
     const evalNode = makeEvaluator(sf, abs)
 
-    // 유령 불리언 드리프트 방어: buildSet 본문이 텍스트마다 `Show ${t.prop}`를 자동 생성하는지
-    // 파일별로 확인한다(전역 가정 금지). 수리로 자동생성이 사라지면 이 검사도 자동으로 조용해진다.
-    const autoGhost = /addBoolProp\(\s*set\s*,\s*`Show \$\{/.test(src)
+    const autoGhost = libAutoGhost || GHOST_RE.test(src)
 
-    if (name === 'categories') {
+    if (name === INPUT_ADAPTER_FILE) {
       const stale = checkInputAdapterFresh(src)
       if (stale) errors.push({ code: 'E-ADAPTER-STALE', file: rel, line: 0, message: stale })
       specs.push(...expandInputs(sf, evalNode, rel, errors, autoGhost))
@@ -558,6 +660,12 @@ function parseBuildSetCall(node, sf, evalNode, file, line, autoGhost, env = new 
   let swaps = []
   if (args[5]) {
     const props = evalNode(args[5], env)
+    // 6번째 인자가 있는데 평가 결과가 없다 = 우리가 못 읽은 것이다.
+    // 조용히 {} 로 넘기면 그 세트의 TEXT/BOOLEAN/SWAP 속성이 검증에서 통째로 빠진다
+    // (= 안 봐서 통과). 그래서 크래시 대신 '파싱 실패'로 시끄럽게 보고한다.
+    if (props == null || typeof props !== 'object') {
+      throw new UnparsedError('buildSet의 props 인자를 평가하지 못함', args[5], sf)
+    }
     const at = (x) => x.__line ?? lineOf(sf, args[5])
     texts = (props.texts || []).map((t) => ({ prop: t.prop, layer: t.layer, def: t.def, line: at(t) }))
     bools = (props.bools || []).map((b) => ({ prop: b.prop, layer: b.layer, def: b.def, line: at(b) }))

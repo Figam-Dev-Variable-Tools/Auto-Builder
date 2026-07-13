@@ -7,6 +7,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { CATEGORY_FILES } from './lib/figma-sets.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const tokensDir = join(root, 'tokens')
@@ -154,7 +155,13 @@ try {
 // ── 6) 컴포넌트 커버리지: Storybook 컴포넌트 ↔ Figma 세트 (싱크율) ─────
 // 실패로 치지 않고 정보로 출력(일부 갭은 의도적).
 try {
-  const catSrc = readFileSync(join(root, 'figma-plugin', 'src', 'generators', 'categories.ts'), 'utf8')
+  // 카테고리 생성기를 이어붙여 훑는다. 예전엔 categories.ts 한 파일만 읽었는데,
+  // 그 파일이 categories-{core,nav-overlay,data-kr-media}.ts로 쪼개지면서 세트가 0개로 보였다.
+  // (이 구간은 실패로 치지 않는 정보 출력이라 조용히 썩는다 → CATEGORY_FILES를 단일 소스로 삼는다.)
+  // admin/site는 일부러 제외한다 — 이 지표의 분모는 예나 지금이나 "카테고리 세트"다(수치 의미 보존).
+  const catSrc = CATEGORY_FILES.map((n) =>
+    readFileSync(join(root, 'figma-plugin', 'src', 'generators', `${n}.ts`), 'utf8'),
+  ).join('\n')
   const figmaSets = new Set()
   // 모든 ComponentDoc의 setName 리터럴(INPUTS 포함) + buildSet 리터럴
   for (const m of catSrc.matchAll(/setName: '(DS\/[^']+)'/g)) figmaSets.add(m[1])

@@ -69,7 +69,21 @@ cd figma-plugin && npx tsc --noEmit         # 플러그인 타입체크
 node scripts/verify-parity.mjs              # 토큰·아이콘·로고·컴포넌트 커버리지
 node scripts/verify-mapping.mjs             # Storybook props ↔ Figma 매니페스트
 node scripts/verify-naming.mjs              # 코드 이름 ↔ Figma 속성/레이어 이름
+node scripts/verify-screen-props.mjs        # 화면의 inst() 오버라이드 ↔ 세트 속성 이름
 ```
+
+**`verify-screen-props`를 빼먹지 마라.** 화면(`screens.ts`·`site-screens.ts`)은 `inst(세트, { props })`로
+컴포넌트를 조립하는데, **`inst()`는 없는 속성 이름을 경고만 하고 무시한다**(warn-and-ignore).
+그래서 세트의 속성 이름을 바꾸면 화면의 오버라이드가 **조용히 끊기고, 나머지 게이트는 전부 초록으로 남는다.**
+
+> 실제 사고: `ProductCard`의 `Price`를 개명하자 **상품 카드 10장이 전부 세트 기본가로 렌더**됐다(세일가 소실).
+> `MemoBox`의 `Counter`·`Save`, `DropZone`의 `Action` ×3도 같은 방식으로 깨졌다.
+> **5개 게이트가 전부 초록인데 아무도 몰랐다** — 사람이 눈으로 21건을 찾아 고쳤고, 그러고도 6건을 놓쳤다.
+> (특히 `SortBar`는 상품 10장짜리 화면에서 "6개"를 그리고 있었다.)
+>
+> **세트의 속성 이름을 바꿨으면 그 세트를 부르는 화면도 함께 고쳐라.** 개명은 규약 준수인 **동시에** 사고다.
+
+자세한 내용: `docs/naming-parity.md` §화면 조립 게이트
 
 큰 변경 후에는 스토리 런타임 스모크도 돌린다(Storybook이 6006에 떠 있어야 함):
 전체 스토리를 순회하며 `pageerror`와 빈 렌더를 잡는다.

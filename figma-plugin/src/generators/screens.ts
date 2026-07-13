@@ -904,9 +904,9 @@ function pageHead(ctx: Ctx, title: string, desc: string, actions: SceneNode[] = 
     name: 'Topbar / ' + title,
     variant: { stacked: 'true', surface: 'plain' },
     props: {
-      Title: title,
-      Description: desc,
-      'Show Breadcrumb': false,
+      title: title,
+      description: desc,
+      showBreadcrumb: false,
       'Show Actions': false,
       'Show User': false,
     },
@@ -2167,11 +2167,12 @@ function screenCustomerDetail(ctx: Ctx): FrameNode {
   const memoInst = inst(ctx, 'DS/MemoBox', {
     name: 'Admin Memo',
     props: {
-      Title: '관리자 메모',
-      Description: '고객에게 노출되지 않습니다',
-      Placeholder: '메모를 입력하세요. (예: 재구매 문의 많음 — 쿠폰 발송 완료)',
-      Counter: '최근 수정: 박상담 · 2026-07-02',
-      Save: '메모 저장',
+      title: '관리자 메모',
+      description: '고객에게 노출되지 않습니다',
+      placeholder: '메모를 입력하세요. (예: 재구매 문의 많음 — 쿠폰 발송 완료)',
+      // 'Counter' TEXT는 제거됐다(React에 짝이 없다 → BOOLEAN showCounter로 대체).
+      // 자유 문구('최근 수정: …')를 담을 속성이 더는 없어 오버라이드를 뺀다 — 세트 기본 카운터가 그려진다.
+      saveLabel: '메모 저장',
     },
   })
   right.appendChild(memoInst ? instFill(memoInst) : drawMemoCard(ctx))
@@ -2669,9 +2670,9 @@ function screenPortfolioForm(ctx: Ctx): FrameNode {
     name: 'Image DropZone',
     variant: { state: 'idle' },
     props: {
-      Label: '이미지를 끌어다 놓거나 클릭해 업로드',
-      Hint: '대표 이미지 1장 + 상세 이미지 최대 10장',
-      Action: '파일 선택',
+      label: '이미지를 끌어다 놓거나 클릭해 업로드',
+      hint: '대표 이미지 1장 + 상세 이미지 최대 10장',
+      // 'Action' TEXT는 제거됐다(React에 짝 없음). 넘기던 값이 옛 기본값과 같아 그림은 그대로다.
     },
   })
   mrow.appendChild(dz ? instGrow(dz) : drawDropZone(ctx))
@@ -3091,9 +3092,9 @@ function screenCompanyForm(ctx: Ctx): FrameNode {
     name: 'Hero DropZone',
     variant: { state: 'idle' },
     props: {
-      Label: '이미지를 끌어다 놓거나 클릭해서 선택하세요',
-      Hint: 'JPG · PNG 이미지 · 최대 10MB',
-      Action: '파일 선택',
+      label: '이미지를 끌어다 놓거나 클릭해서 선택하세요',
+      hint: 'JPG · PNG 이미지 · 최대 10MB',
+      // 'Action' TEXT는 제거됐다(React에 짝 없음). 넘기던 값이 옛 기본값과 같아 그림은 그대로다.
     },
   })
   heroRow.appendChild(heroDrop ? instGrow(heroDrop) : drawDropZone(ctx))
@@ -3118,9 +3119,9 @@ function screenCompanyForm(ctx: Ctx): FrameNode {
     name: 'Intro DropZone',
     variant: { state: 'idle' },
     props: {
-      Label: '이미지를 끌어다 놓거나 클릭해서 선택하세요',
-      Hint: 'JPG · PNG 이미지 · 최대 10MB',
-      Action: '파일 선택',
+      label: '이미지를 끌어다 놓거나 클릭해서 선택하세요',
+      hint: 'JPG · PNG 이미지 · 최대 10MB',
+      // 'Action' TEXT는 제거됐다(React에 짝 없음). 넘기던 값이 옛 기본값과 같아 그림은 그대로다.
     },
   })
   introImg.appendChild(introDrop ? instGrow(introDrop) : drawDropZone(ctx))

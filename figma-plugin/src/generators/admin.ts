@@ -24,6 +24,9 @@ import {
   WHITE,
 } from './foundations'
 import { iconInstance, ICON_COMPONENTS } from './icon-vec'
+import { buildSet, addTextProp, addBoolProp, addSwapProp, type Axis, type TextProp, type PropSpec, type State } from './lib/build-set'
+// screens.ts가 './admin'에서 propKeys를 가져간다 — 정본은 lib/build-set.ts, 여기선 경로만 유지한다.
+export { propKeys } from './lib/build-set'
 import { solidToneHex, onToneHex, solidVarName, onVarName } from './tone'
 // 사이드바 메뉴의 단일 소스 — 화면(17)도 같은 모듈을 본다(라벨을 두 곳에 쓰지 않는다).
 import { ADMIN_MENU, ADMIN_ACTIVE_VALUES, groupOfActive, type AdminMenuItem } from './admin-menu'
@@ -75,20 +78,6 @@ export function adoptAdminSets(): number {
     }
   }
   return n
-}
-
-/**
- * 표시 이름 → setProperties가 요구하는 전체 키('Title#12:3').
- * TEXT·BOOLEAN·INSTANCE_SWAP 속성은 이 전체 키가 있어야 먹는다(베리언트 축만 이름 그대로).
- */
-export function propKeys(set: ComponentSetNode): Record<string, string> {
-  const map: Record<string, string> = {}
-  try {
-    for (const key of Object.keys(set.componentPropertyDefinitions)) map[key.split('#')[0]] = key
-  } catch {
-    /* 세트가 없거나 속성 없음 */
-  }
-  return map
 }
 
 // 톤 → 폴백 hex(변수 없을 때만 쓰는 리터럴). 출처: categories.ts VARIANT_HEX
@@ -272,50 +261,8 @@ function icon(key: string, name: string, size: number, hex: string): SceneNode {
   return ic
 }
 
-// ── 컴포넌트 속성 헬퍼 (출처: categories.ts) ─────────────────────────
-// 레이어 name과 layer가 정확히 같아야 붙는다. 실패는 조용히 무시된다.
-function addTextProp(set: ComponentSetNode, prop: string, layer: string, def: string) {
-  try {
-    const id = set.addComponentProperty(prop, 'TEXT', def)
-    for (const n of set.findAll((x) => x.type === 'TEXT' && x.name === layer)) {
-      ;(n as TextNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), characters: id }
-    }
-  } catch {
-    /* 이미 있거나 대상 없음 */
-  }
-}
-function addBoolProp(set: ComponentSetNode, prop: string, layer: string, def: boolean) {
-  try {
-    const id = set.addComponentProperty(prop, 'BOOLEAN', def)
-    for (const n of set.findAll((x) => x.name === layer)) {
-      n.componentPropertyReferences = { ...(n.componentPropertyReferences || {}), visible: id }
-    }
-  } catch {
-    /* skip */
-  }
-}
-function addSwapProp(set: ComponentSetNode, prop: string, layer: string, defKey: string) {
-  const comp = ICON_COMPONENTS.get(defKey)
-  if (!comp) return
-  try {
-    const id = set.addComponentProperty(prop, 'INSTANCE_SWAP', comp.id)
-    for (const n of set.findAll((x) => x.type === 'INSTANCE' && x.name === layer)) {
-      ;(n as InstanceNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), mainComponent: id }
-    }
-  } catch {
-    /* skip */
-  }
-}
 
-// ── 제네릭 베리언트 세트 빌더 (출처: categories.ts buildSet) ─────────
-type Axis = { name: string; values: string[] }
-type State = { caption: string; props: Record<string, string> }
-type TextProp = { prop: string; layer: string; def: string }
-type PropSpec = {
-  texts?: TextProp[]
-  bools?: Array<{ prop: string; layer: string; def: boolean }>
-  swaps?: Array<{ prop: string; layer: string; defKey: string }>
-}
+// 베리언트 세트 빌더 + 속성 헬퍼 + State는 lib/build-set.ts가 정본이다(사본 금지).
 /** 타깃이 ES2017이라 Array.flatMap이 없다 — 행 단위로 만든 속성 묶음을 펼친다. */
 function flatProps(groups: TextProp[][]): TextProp[] {
   const out: TextProp[] = []
@@ -332,46 +279,6 @@ type ComponentDoc = {
 }
 type CategoryDef = { pageName: string; title: string; subtitle: string; docs: ComponentDoc[] }
 
-// 세트는 페이지에 만들고(소스), 문서에는 인스턴스를 배치한다.
-function buildSet(
-  ctx: Ctx,
-  page: PageNode,
-  setName: string,
-  axes: Axis[],
-  render: (combo: Record<string, string>) => ComponentNode,
-  props?: PropSpec,
-): ComponentSetNode {
-  let combos: Record<string, string>[] = [{}]
-  for (const axis of axes) {
-    const next: Record<string, string>[] = []
-    for (const c of combos) for (const v of axis.values) next.push({ ...c, [axis.name]: v })
-    combos = next
-  }
-  const variants = combos.map((combo) => {
-    const comp = render(combo)
-    comp.name = axes.map((a) => `${a.name}=${combo[a.name]}`).join(', ')
-    page.appendChild(comp)
-    return comp
-  })
-  const set = figma.combineAsVariants(variants, page)
-  set.name = setName
-  set.layoutMode = 'HORIZONTAL'
-  set.layoutWrap = 'WRAP'
-  set.itemSpacing = 20
-  set.counterAxisSpacing = 20
-  set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid('#FBFCFE')]
-
-  if (props) {
-    // TEXT마다 `Show <prop>` 불리언을 자동 생성하지 않는다 — 대응하는 React prop이 없는 "유령 속성"이라
-    // 규약 §3(BOOLEAN 이름 = show* prop 이름 그대로)을 기계적으로 위반한다. 텍스트 on/off가 필요하면
-    // 코드에 show* prop을 만들고 props.bools에 명시적으로 선언하라.
-    props.texts?.forEach((t) => addTextProp(set, t.prop, t.layer, t.def))
-    props.bools?.forEach((b) => addBoolProp(set, b.prop, b.layer, b.def))
-    props.swaps?.forEach((s) => addSwapProp(set, s.prop, s.layer, s.defKey))
-  }
-  return set
-}
 
 // ── 문서 안 변형 아이템(인스턴스 + 캡션). 출처: categories.ts variantItem ──
 function variantItem(ctx: Ctx, set: ComponentSetNode, state: State): FrameNode {
@@ -408,7 +315,10 @@ function badge(ctx: Ctx, label: string, tone: string, layer: string): FrameNode 
 }
 
 type BtnKind = 'primary' | 'outline' | 'error' | 'ghost'
-/** 버튼 — solid(primary/error) · outline · ghost. 라벨 레이어 이름을 지정해 텍스트 속성에 연결. */
+/**
+ * 버튼 — solid(primary/error) · outline · ghost. 라벨 레이어 이름을 지정해 텍스트 속성에 연결.
+ * layer = 라벨 텍스트 레이어 이름(= React string prop 이름 그대로). 규약 §4·§6.
+ */
 function btn(ctx: Ctx, label: string, kind: BtnKind, layer: string, size: 'sm' | 'md' = 'md'): FrameNode {
   const b = autoFrame(layer.replace(' Label', '') + ' Button', 'HORIZONTAL')
   b.counterAxisAlignItems = 'CENTER'
@@ -442,14 +352,18 @@ function btn(ctx: Ctx, label: string, kind: BtnKind, layer: string, size: 'sm' |
   return b
 }
 
-/** 정사각 고스트 아이콘 버튼(행/카드의 수정·삭제). */
-function iconBtn(ctx: Ctx, key: string, name: string, hex = SUB, size = 28): FrameNode {
+/**
+ * 정사각 고스트 아이콘 버튼(행/카드의 수정·삭제).
+ * iconLayer — 안쪽 아이콘 인스턴스의 레이어 이름. INSTANCE_SWAP 속성은 레이어 이름으로 붙으므로
+ * React의 ReactNode prop 이름(editIcon·deleteIcon)을 그대로 줘야 규약 §5가 성립한다.
+ */
+function iconBtn(ctx: Ctx, key: string, name: string, hex = SUB, size = 28, iconLayer?: string): FrameNode {
   const b = fixedFrame(name, 'HORIZONTAL', size, size)
   b.primaryAxisAlignItems = 'CENTER'
   b.counterAxisAlignItems = 'CENTER'
   b.cornerRadius = 6
   b.fills = []
-  b.appendChild(icon(key, name + ' Icon', 15, hex))
+  b.appendChild(icon(key, iconLayer ?? name + ' Icon', 15, hex))
   return b
 }
 
@@ -513,11 +427,16 @@ function avatar(ctx: Ctx, size: number, name = 'Avatar'): FrameNode {
   return a
 }
 
-/** 검색 패널의 입력 필드(라벨 상단 + 컨트롤). trailing 아이콘 옵션. */
+/**
+ * 검색 패널의 입력 필드(라벨 상단 + 컨트롤). trailing 아이콘 옵션.
+ * 라벨 레이어를 CSS 클래스 이름 'label'로 둔다 — SearchPanel의 showLabels(BOOLEAN)가
+ * 이름으로 붙어 4개 필드 라벨을 한 번에 끄고 켠다(규약 §3·§6).
+ */
 function searchField(ctx: Ctx, label: string, value: string, w: number, iconKey?: string): FrameNode {
   const cell = fixedFrame('field', 'VERTICAL', w, 62)
   cell.itemSpacing = 6
   const lb = boundText(ctx, label, 12, 'color/secondary', SUB, true)
+  lb.name = 'label'
   cell.appendChild(lb)
   const ctrl = fixedFrame('control', 'HORIZONTAL', w, 36)
   ctrl.counterAxisAlignItems = 'CENTER'
@@ -711,7 +630,10 @@ function renderAdminTopbar(ctx: Ctx, combo: Record<string, string>): ComponentNo
   const left = autoFrame('headings', 'VERTICAL')
   left.itemSpacing = 4
   if (stacked) {
-    const crumb = autoFrame('breadcrumb', 'HORIZONTAL')
+    // 레이어 이름 = 바인딩된 prop 이름(showBreadcrumb) — CSS에 breadcrumb 클래스가 없어 N6의
+    // '바인딩된 레이어는 prop 이름을 쓸 수 있다'를 따른다. 예전 이름('breadcrumb')은 BOOLEAN이
+    // 찾는 레이어와 달라 토글이 아무 노드에도 안 붙어 있었다.
+    const crumb = autoFrame('showBreadcrumb', 'HORIZONTAL')
     crumb.counterAxisAlignItems = 'CENTER'
     crumb.itemSpacing = 6
     const trail: Array<[string, boolean]> = [
@@ -756,14 +678,17 @@ function renderAdminTopbar(ctx: Ctx, combo: Record<string, string>): ComponentNo
   right.counterAxisAlignItems = 'CENTER'
   right.itemSpacing = 16
 
-  const actions = autoFrame('Actions', 'HORIZONTAL')
+  // 레이어 이름 = CSS 모듈 클래스 이름(actions·user) — 규약 §6.
+  // 예전엔 프레임이 'Actions'/'User'인데 BOOLEAN은 레이어 'Show Actions'/'Show User'를 찾아
+  // 아무 노드에도 안 붙었다 → screens.ts의 'Show Actions': false가 조용히 먹지 않았다.
+  const actions = autoFrame('actions', 'HORIZONTAL')
   actions.counterAxisAlignItems = 'CENTER'
   actions.itemSpacing = 8
   actions.appendChild(btn(ctx, '엑셀 다운로드', 'outline', 'Action 1 Label', 'sm'))
   actions.appendChild(btn(ctx, '상품 등록', 'primary', 'Action 2 Label', 'sm'))
   right.appendChild(actions)
 
-  const user = autoFrame('User', 'HORIZONTAL')
+  const user = autoFrame('user', 'HORIZONTAL')
   user.counterAxisAlignItems = 'CENTER'
   user.itemSpacing = 8
   const utext = autoFrame('user text', 'VERTICAL')
@@ -776,7 +701,8 @@ function renderAdminTopbar(ctx: Ctx, combo: Record<string, string>): ComponentNo
   urole.name = 'user.role'
   utext.appendChild(urole)
   user.appendChild(utext)
-  user.appendChild(avatar(ctx, 32))
+  // 레이어 이름 = prop 이름 — showAvatar(BOOLEAN)가 아바타만 끈다(이름/역할 텍스트는 남는다).
+  user.appendChild(avatar(ctx, 32, 'showAvatar'))
   right.appendChild(user)
 
   c.appendChild(right)
@@ -826,7 +752,9 @@ const TBL_DEF: TblCol[] = [
   { label: '재고', w: TBL_COLS.stock, layer: 'Stock', align: 'MAX' },
   { label: '카테고리', w: TBL_COLS.category, layer: 'Category', align: 'MIN' },
   { label: '등록일', w: TBL_COLS.date, layer: 'Date', align: 'MIN' },
-  { label: '관리', w: TBL_COLS.actions, layer: 'Show Actions', align: 'CENTER' },
+  // 레이어는 'Actions'다 — 예전엔 'Show Actions'라 속성 이름이 `Show ${col.layer}` = 'Show Show Actions'로
+  // 겹쳐 나왔고, screens.ts가 넘기는 'Show Actions'와 이름이 어긋나 열 토글이 조용히 먹지 않았다.
+  { label: '관리', w: TBL_COLS.actions, layer: 'Actions', align: 'CENTER' },
 ]
 
 // 행 데이터 — [상품번호, 상품명, 판매가, 상태, 톤, 재고, 카테고리, 등록일, 선택됨]
@@ -841,6 +769,9 @@ const TBL_ROWS: Array<[string, string, string, string, string, string, string, s
 function renderAdminTable(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const compact = combo.density === 'compact'
   const flush = combo.frame === 'flush'
+  // striped — React AdminTable의 striped prop(얼룩 행). 짝수 행에 bgSubtle을 깐다.
+  // 기본값 false라 기존 변형의 모양은 그대로다(축을 늘려도 default 변형은 안 바뀐다).
+  const striped = combo.striped === 'true'
   const rowH = compact ? 44 : 56
   const thumbSize = compact ? 28 : 36
 
@@ -884,7 +815,9 @@ function renderAdminTable(ctx: Ctx, combo: Record<string, string>): ComponentNod
     row.counterAxisSizingMode = 'FIXED'
     row.resize(TBL_W, rowH)
     row.itemSpacing = 0
+    // 선택 강조가 얼룩보다 우선한다 — 둘 다 배경색이라 겹치면 선택이 보이지 않는다.
     if (selected) bindFillVar(ctx, row, 'color/primary/50', tintHex(ACCENT, 0.94))
+    else if (striped && i % 2 === 1) bindFillVar(ctx, row, 'color/bgSubtle', SURFACE)
     if (i < TBL_ROWS.length - 1) bottomBorder(ctx, row)
 
     for (const col of TBL_DEF) {
@@ -900,7 +833,9 @@ function renderAdminTable(ctx: Ctx, combo: Record<string, string>): ComponentNod
         case 'Thumb':
           cell.appendChild(thumbBox(ctx, thumbSize, thumbSize, Math.round(thumbSize * 0.5), 'Row Thumb'))
           break
-        case 'Title': {
+        // TBL_DEF의 레이어가 'title'(소문자)인데 case가 'Title'이라 지금까지 한 번도 안 걸렸다
+        // → 상품명 칸이 모든 행에서 비어 있었고 'Row Title N' TEXT 속성도 붙을 노드가 없었다.
+        case 'title': {
           const t = boundText(ctx, name, 14, 'color/text', INK, true)
           t.name = 'Row Title ' + (i + 1)
           // 폭 고정(HEIGHT) → grow → 말줄임 순서. WIDTH_AND_HEIGHT인 채로 grow하면 잘리지 않고 삐져나온다.
@@ -925,10 +860,11 @@ function renderAdminTable(ctx: Ctx, combo: Record<string, string>): ComponentNod
         case 'Date':
           cell.appendChild(boundText(ctx, date, 12, 'color/secondary/400', MUTED))
           break
+        // 아이콘 인스턴스 레이어 이름 = React prop 이름(editIcon·deleteIcon) → INSTANCE_SWAP이 붙는다.
         case 'Actions':
           cell.itemSpacing = 2
-          cell.appendChild(iconBtn(ctx, '_Icon/Edit', 'Edit'))
-          cell.appendChild(iconBtn(ctx, '_Icon/Trash2', 'Delete', VARIANT_HEX.error))
+          cell.appendChild(iconBtn(ctx, '_Icon/Edit', 'Edit', SUB, 28, 'editIcon'))
+          cell.appendChild(iconBtn(ctx, '_Icon/Trash2', 'Delete', VARIANT_HEX.error, 28, 'deleteIcon'))
           break
       }
       row.appendChild(cell)
@@ -939,12 +875,18 @@ function renderAdminTable(ctx: Ctx, combo: Record<string, string>): ComponentNod
 }
 
 // ══ DS/AdminCard ═════════════════════════════════════════════════════
-// 축: selected(false|true) × soldout(false|true). 16:9 썸네일 + 배지 오버레이 + 가격 강조 + 액션 바.
+// 축: selected × active × density × appearance — 전부 React prop 이름 그대로(규약 §2).
+//
+// 예전 'soldout' 축은 코드에 없는 이름이었다. 실제로는 React의 active(판매중/중지)를 뒤집어 놓은 것이라
+// active로 개명하고 의미를 뒤집었다(active=false = 예전 soldout=true). 값 순서를 ['true','false']로 둔 건
+// 기본 변형(첫 조합)을 '판매중'으로 유지해 기존 모양을 그대로 두기 위함이다(setEq라 순서는 검증에 무관).
 function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const selected = combo.selected === 'true'
-  const soldout = combo.soldout === 'true'
+  const inactive = combo.active === 'false' // 판매 중지 = 예전 soldout
+  const compact = combo.density === 'compact'
+  const appearance = combo.appearance || 'outline'
   const w = 260
-  const mediaH = 146 // 16:9
+  const mediaH = compact ? 195 : 146 // comfortable 16:9 / compact 4:3
 
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
@@ -955,11 +897,36 @@ function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
   c.cornerRadius = 12
   c.clipsContent = true
   bindFillVar(ctx, c, 'color/bg', WHITE)
-  bindStrokeVar(ctx, c, selected ? 'color/primary' : 'color/border', selected ? ACCENT : BORDER)
-  c.strokeWeight = selected ? 2 : 1
-  c.strokeAlign = 'INSIDE'
+  // outline = 1px 보더 / elevated = 보더 없이 그림자 / plain = 둘 다 없음(이미 보더 있는 컨테이너 안).
+  // 선택 상태는 어느 마감에서도 primary 보더로 이긴다 — 선택이 안 보이면 목록에서 길을 잃는다.
+  if (selected) {
+    bindStrokeVar(ctx, c, 'color/primary', ACCENT)
+    c.strokeWeight = 2
+    c.strokeAlign = 'INSIDE'
+  } else if (appearance === 'outline') {
+    bindStrokeVar(ctx, c, 'color/border', BORDER)
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  } else {
+    c.strokes = []
+  }
+  if (appearance === 'elevated' && !selected) {
+    c.effects = [
+      {
+        type: 'DROP_SHADOW',
+        color: { r: 0.06, g: 0.09, b: 0.16, a: 0.08 },
+        offset: { x: 0, y: 2 },
+        radius: 8,
+        spread: 0,
+        visible: true,
+        blendMode: 'NORMAL',
+      },
+    ]
+  }
 
   // 미디어 — 플레이스홀더 + 오버레이(배지·선택 체크박스)는 절대 배치라 본문 높이를 흔들지 않는다.
+  // 레이어 이름 'media'는 CSS 클래스 이름 그대로 — showThumbnail(BOOLEAN)이 여기에 붙어
+  // 썸네일 영역을 통째로 끈다(오버레이 배지·체크박스도 함께 사라진다 = React와 같은 동작).
   const media = fixedFrame('media', 'HORIZONTAL', w, mediaH)
   media.primaryAxisAlignItems = 'CENTER'
   media.counterAxisAlignItems = 'CENTER'
@@ -967,10 +934,10 @@ function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
   bindFillVar(ctx, media, 'color/bgSubtle', SURFACE)
   // SceneNode 유니온엔 opacity가 없다(SliceNode) → 블렌드 믹스인으로 좁혀서 접근.
   const ph = icon('_Icon/Image', 'Media Icon', 40, MUTED) as SceneNode & MinimalBlendMixin
-  if (soldout) ph.opacity = 0.5 // bindTokens가 opacity/50 변수로 후처리 바인딩
+  if (inactive) ph.opacity = 0.5 // bindTokens가 opacity/50 변수로 후처리 바인딩
   media.appendChild(ph)
 
-  const bd = badge(ctx, soldout ? '품절' : 'BEST', soldout ? 'error' : 'primary', 'Badge')
+  const bd = badge(ctx, inactive ? '품절' : 'BEST', inactive ? 'error' : 'primary', 'Badge')
   media.appendChild(bd)
   bd.layoutPositioning = 'ABSOLUTE'
   bd.x = 10
@@ -995,21 +962,31 @@ function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
   title.name = 'title'
   body.appendChild(title)
   const subtitle = boundText(ctx, '가구 · 서재', 12, 'color/secondary', SUB)
-  subtitle.name = 'Subtitle'
+  subtitle.name = 'subtitle' // = React string prop 이름(규약 §4)
   body.appendChild(subtitle)
 
-  const priceRow = autoFrame('price row', 'HORIZONTAL')
+  // 가격/재고는 meta[] 배열의 데모 값이다 — 배열은 Figma 속성으로 1:1 표현이 안 되므로
+  // TEXT 속성으로 열지 않는다(레이어 이름만 CSS 클래스 price·subMeta로 맞춘다).
+  const priceRow = autoFrame('priceRow', 'HORIZONTAL')
   priceRow.layoutAlign = 'STRETCH'
   priceRow.primaryAxisSizingMode = 'FIXED'
   priceRow.counterAxisAlignItems = 'CENTER'
   priceRow.itemSpacing = 8
   priceRow.paddingTop = 4
   const price = boundText(ctx, '₩129,000', 18, 'color/text', INK, true)
-  price.name = 'Price'
+  price.name = 'price'
   price.layoutGrow = 1
   priceRow.appendChild(price)
-  priceRow.appendChild(boundText(ctx, soldout ? '재고 0' : '재고 32', 12, 'color/secondary/400', MUTED))
+  // compact는 보조 메타를 1건으로 줄인다(React density=compact와 같은 규칙).
+  const subMeta = boundText(ctx, inactive ? '재고 0' : '재고 32', 12, 'color/secondary/400', MUTED)
+  subMeta.name = 'subMeta' // showSubMeta(BOOLEAN)가 붙는 레이어 = CSS 클래스 이름
+  priceRow.appendChild(subMeta)
   body.appendChild(priceRow)
+  if (!compact) {
+    const subMeta2 = boundText(ctx, inactive ? '수정 2026-05-02' : '등록 2026-05-02', 12, 'color/secondary/400', MUTED)
+    subMeta2.name = 'subMeta'
+    body.appendChild(subMeta2)
+  }
   c.appendChild(body)
 
   // 액션 바 — 상태 토글 + 수정/삭제
@@ -1030,20 +1007,22 @@ function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
   const state = autoFrame('state', 'HORIZONTAL')
   state.counterAxisAlignItems = 'CENTER'
   state.itemSpacing = 8
-  state.appendChild(toggleSw(ctx, !soldout, 'Active Toggle'))
+  state.appendChild(toggleSw(ctx, !inactive, 'Active Toggle'))
+  // 상태 문구는 켜짐/꺼짐이 서로 다른 prop이다(activeLabel · inactiveLabel) → 변형마다 레이어 이름을
+  // 달리 줘야 TEXT 속성 두 개가 각자 붙는다. 한 레이어에 TEXT 속성 2개는 못 붙인다.
   const stLabel = boundText(
     ctx,
-    soldout ? '중지' : '판매중',
+    inactive ? '중지' : '판매중',
     12,
-    soldout ? 'color/secondary/400' : 'color/text',
-    soldout ? MUTED : INK,
+    inactive ? 'color/secondary/400' : 'color/text',
+    inactive ? MUTED : INK,
     true,
   )
-  stLabel.name = 'State Label'
+  stLabel.name = inactive ? 'inactiveLabel' : 'activeLabel'
   state.appendChild(stLabel)
   actions.appendChild(state)
 
-  const btns = autoFrame('icon buttons', 'HORIZONTAL')
+  const btns = autoFrame('iconButtons', 'HORIZONTAL')
   btns.counterAxisAlignItems = 'CENTER'
   btns.itemSpacing = 2
   btns.appendChild(iconBtn(ctx, '_Icon/Edit', 'Edit'))
@@ -1055,31 +1034,41 @@ function renderAdminCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
 }
 
 // ══ DS/ViewSwitch ════════════════════════════════════════════════════
-// 축: value(card|board). 카드형 / 게시물형 세그먼트.
+// 축: value(card|board) × size(sm|md|lg) × orientation(horizontal|vertical) — 전부 React prop 이름 그대로.
+// 라벨 ON/OFF는 축이 아니라 BOOLEAN showLabel이다(D1 ViewSwitch.tsx와 1:1).
 function renderViewSwitch(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const value = combo.value || 'card'
+  const size = combo.size || 'md'
+  const vertical = combo.orientation === 'vertical'
+  // sm/md/lg — 패딩·글자·아이콘을 한 단씩. 기본 md가 기존 모양 그대로다.
+  const padY = size === 'sm' ? 5 : size === 'lg' ? 9 : 7
+  const padX = size === 'sm' ? 9 : size === 'lg' ? 14 : 12
+  const fs = size === 'sm' ? 12 : size === 'lg' ? 14 : 13
+  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16
+
   const c = figma.createComponent()
-  c.layoutMode = 'HORIZONTAL'
+  c.layoutMode = vertical ? 'VERTICAL' : 'HORIZONTAL'
   c.primaryAxisSizingMode = 'AUTO'
   c.counterAxisSizingMode = 'AUTO'
-  c.counterAxisAlignItems = 'CENTER'
+  c.counterAxisAlignItems = vertical ? 'MIN' : 'CENTER'
   c.itemSpacing = 2
   c.paddingTop = c.paddingBottom = 3
   c.paddingLeft = c.paddingRight = 3
   c.cornerRadius = 10
   bindFillVar(ctx, c, 'color/bgSubtle', SURFACE)
 
-  const opts: Array<[string, string, string, string]> = [
-    ['card', '카드형', '_Icon/LayoutGrid', 'Card Label'],
-    ['board', '게시물형', '_Icon/List', 'Board Label'],
+  const opts: Array<[string, string, string]> = [
+    ['card', '카드형', '_Icon/LayoutGrid'],
+    ['board', '게시물형', '_Icon/List'],
   ]
-  opts.forEach(([key, label, iconKey, layer]) => {
+  opts.forEach(([key, label, iconKey]) => {
     const active = key === value
-    const o = autoFrame('option ' + key, 'HORIZONTAL')
+    const o = autoFrame('option', 'HORIZONTAL')
+    if (vertical) o.layoutAlign = 'STRETCH'
     o.counterAxisAlignItems = 'CENTER'
     o.itemSpacing = 6
-    o.paddingTop = o.paddingBottom = 7
-    o.paddingLeft = o.paddingRight = 12
+    o.paddingTop = o.paddingBottom = padY
+    o.paddingLeft = o.paddingRight = padX
     o.cornerRadius = 8
     if (active) {
       bindFillVar(ctx, o, 'color/bg', WHITE)
@@ -1089,9 +1078,11 @@ function renderViewSwitch(ctx: Ctx, combo: Record<string, string>): ComponentNod
     } else {
       o.fills = []
     }
-    o.appendChild(icon(iconKey, label + ' Icon', 15, active ? ACCENT : SUB))
-    const t = boundText(ctx, label, 13, active ? 'color/primary' : 'color/secondary', active ? ACCENT : SUB, active)
-    t.name = layer
+    o.appendChild(icon(iconKey, label + ' Icon', iconSize, active ? ACCENT : SUB))
+    const t = boundText(ctx, label, fs, active ? 'color/primary' : 'color/secondary', active ? ACCENT : SUB, active)
+    // 두 옵션의 라벨 레이어 이름을 CSS 클래스 이름 'label'로 통일한다 →
+    // BOOLEAN showLabel 하나가 이름으로 둘 다 잡아 함께 끈다(코드의 단일 showLabel과 1:1).
+    t.name = 'label'
     o.appendChild(t)
     c.appendChild(o)
   })
@@ -1099,8 +1090,11 @@ function renderViewSwitch(ctx: Ctx, combo: Record<string, string>): ComponentNod
 }
 
 // ══ DS/SearchPanel ═══════════════════════════════════════════════════
-// 검색 필드 4개 + [초기화][검색].
-function renderSearchPanel(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+// 축: loading(false|true) × appearance(card|plain) — React prop 이름 그대로.
+// 검색 필드 4개 + [초기화][검색]. 라벨·초기화·검색은 showLabels / showReset / showSearch로 끈다.
+function renderSearchPanel(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const loading = combo.loading === 'true'
+  const plain = combo.appearance === 'plain' // 이미 카드 안이면 껍데기를 벗긴다(이중 보더 방지)
   const w = 720
   const fieldW = (w - 40 - 16) / 2 // padding 20*2, 그리드 간격 16 → 2열
 
@@ -1110,13 +1104,18 @@ function renderSearchPanel(ctx: Ctx, _combo: Record<string, string>): ComponentN
   c.counterAxisSizingMode = 'FIXED'
   c.resize(w, c.height)
   c.itemSpacing = 16
-  c.paddingTop = c.paddingBottom = 20
-  c.paddingLeft = c.paddingRight = 20
-  c.cornerRadius = 12
-  bindFillVar(ctx, c, 'color/bg', WHITE)
-  bindStrokeVar(ctx, c, 'color/border', BORDER)
-  c.strokeWeight = 1
-  c.strokeAlign = 'INSIDE'
+  c.paddingTop = c.paddingBottom = plain ? 0 : 20
+  c.paddingLeft = c.paddingRight = plain ? 0 : 20
+  if (plain) {
+    c.fills = []
+    c.strokes = []
+  } else {
+    c.cornerRadius = 12
+    bindFillVar(ctx, c, 'color/bg', WHITE)
+    bindStrokeVar(ctx, c, 'color/border', BORDER)
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  }
 
   const grid = autoFrame('grid', 'HORIZONTAL')
   grid.layoutAlign = 'STRETCH'
@@ -1136,16 +1135,27 @@ function renderSearchPanel(ctx: Ctx, _combo: Record<string, string>): ComponentN
   footer.primaryAxisAlignItems = 'MAX'
   footer.counterAxisAlignItems = 'CENTER'
   footer.itemSpacing = 8
-  footer.appendChild(btn(ctx, '초기화', 'outline', 'Reset Label'))
-  footer.appendChild(btn(ctx, '검색', 'primary', 'Search Label'))
+  // 버튼 '프레임' 이름 = show* prop 이름 → BOOLEAN이 버튼을 통째로 끈다(빈 껍데기가 남지 않는다).
+  // 안쪽 라벨 텍스트 레이어 이름 = string prop 이름(resetLabel · searchLabel · searchingLabel).
+  const reset = btn(ctx, '초기화', 'outline', 'resetLabel')
+  reset.name = 'showReset'
+  footer.appendChild(reset)
+  // loading이면 확인 버튼 문구가 searchingLabel로 바뀐다 — 레이어 이름도 그 prop 이름이어야
+  // TEXT 속성 두 개(searchLabel · searchingLabel)가 각자 붙는다.
+  const search = btn(ctx, loading ? '검색 중…' : '검색', 'primary', loading ? 'searchingLabel' : 'searchLabel')
+  search.name = 'showSearch'
+  if (loading) (search as SceneNode & MinimalBlendMixin).opacity = 0.6 // 처리 중 = 비활성
+  footer.appendChild(search)
   c.appendChild(footer)
   return c
 }
 
 // ══ DS/CrudDialog ════════════════════════════════════════════════════
-// 축: mode(create|edit|delete). delete는 danger(경고 + 빨강 확인 버튼).
+// 축: mode(create|edit|delete) × loading(false|true) — React prop 이름 그대로.
+// delete는 danger(경고 + 빨강 확인 버튼). loading이면 확인 버튼이 loadingLabel로 바뀌고 흐려진다.
 function renderCrudDialog(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const mode = combo.mode || 'create'
+  const loading = combo.loading === 'true'
   const isDelete = mode === 'delete'
   const w = isDelete ? 380 : 460
   const title = isDelete ? '삭제할까요?' : mode === 'edit' ? '수정' : '등록'
@@ -1193,21 +1203,23 @@ function renderCrudDialog(ctx: Ctx, combo: Record<string, string>): ComponentNod
     danger.primaryAxisSizingMode = 'FIXED'
     danger.counterAxisAlignItems = 'MIN'
     danger.itemSpacing = 12
-    const ib = fixedFrame('danger icon', 'HORIZONTAL', 36, 36)
+    // 레이어 이름은 CSS 클래스 이름(dangerIcon · dangerText · description · warning) 그대로.
+    // showIcon(BOOLEAN)은 아이콘 상자에, icon(INSTANCE_SWAP)은 그 안의 아이콘 인스턴스에 붙는다.
+    const ib = fixedFrame('dangerIcon', 'HORIZONTAL', 36, 36)
     ib.primaryAxisAlignItems = 'CENTER'
     ib.counterAxisAlignItems = 'CENTER'
     ib.cornerRadius = 10
     bindFillVar(ctx, ib, 'color/error/100', tintHex(VARIANT_HEX.error))
-    ib.appendChild(icon('_Icon/AlertCircle', 'Danger Icon', 20, VARIANT_HEX.error))
+    ib.appendChild(icon('_Icon/AlertCircle', 'icon', 20, VARIANT_HEX.error))
     danger.appendChild(ib)
-    const dtext = autoFrame('danger text', 'VERTICAL')
+    const dtext = autoFrame('dangerText', 'VERTICAL')
     dtext.layoutGrow = 1
     dtext.itemSpacing = 4
     const d1 = boundText(ctx, '선택한 상품 3건을 삭제합니다.', 14, 'color/text', INK)
     d1.name = 'description'
     dtext.appendChild(d1)
     const d2 = boundText(ctx, '삭제한 데이터는 되돌릴 수 없습니다.', 12, 'color/error', VARIANT_HEX.error)
-    d2.name = 'Warning'
+    d2.name = 'warning' // showWarning(BOOLEAN) + warningText(TEXT)가 같은 레이어에 붙는다
     dtext.appendChild(d2)
     danger.appendChild(dtext)
     body.appendChild(danger)
@@ -1229,16 +1241,24 @@ function renderCrudDialog(ctx: Ctx, combo: Record<string, string>): ComponentNod
   footer.paddingTop = footer.paddingBottom = 14
   footer.paddingLeft = footer.paddingRight = 20
   bindFillVar(ctx, footer, 'color/bgSubtle', SURFACE)
-  footer.appendChild(btn(ctx, '취소', 'outline', 'Cancel Label'))
-  footer.appendChild(btn(ctx, confirm, isDelete ? 'error' : 'primary', 'Confirm Label'))
+  footer.appendChild(btn(ctx, '취소', 'outline', 'cancelLabel'))
+  // loading이면 확인 버튼 문구가 loadingLabel이 된다 — 레이어 이름을 그 prop 이름으로 둬야
+  // confirmLabel·loadingLabel 두 TEXT 속성이 각자 붙는다(한 레이어에 TEXT 2개는 불가).
+  const cf = btn(ctx, loading ? '처리 중…' : confirm, isDelete ? 'error' : 'primary', loading ? 'loadingLabel' : 'confirmLabel')
+  if (loading) (cf as SceneNode & MinimalBlendMixin).opacity = 0.6
+  footer.appendChild(cf)
   c.appendChild(footer)
   return c
 }
 
 // ══ DS/DropZone ══════════════════════════════════════════════════════
-// 축: state(idle|dragging). 점선 테두리 + 안내 문구.
+// 축: state(idle|dragging) × compact × disabled.
+//   state는 React의 prop이 아니라 컴포넌트 내부 상태(useState)다 — Figma엔 '드래그 중' 그림이 필요해
+//   축으로 남기고 ALLOWLIST에 사유를 적었다. compact·disabled는 React prop 이름 그대로다.
 function renderDropZone(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const dragging = combo.state === 'dragging'
+  const compact = combo.compact === 'true'
+  const disabled = combo.disabled === 'true'
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
   c.primaryAxisSizingMode = 'AUTO'
@@ -1246,8 +1266,8 @@ function renderDropZone(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   c.resize(420, c.height)
   c.primaryAxisAlignItems = 'CENTER'
   c.counterAxisAlignItems = 'CENTER'
-  c.itemSpacing = 8
-  c.paddingTop = c.paddingBottom = 28
+  c.itemSpacing = compact ? 4 : 8
+  c.paddingTop = c.paddingBottom = compact ? 14 : 28
   c.paddingLeft = c.paddingRight = 20
   c.cornerRadius = 12
   if (dragging) bindFillVar(ctx, c, 'color/primary/50', tintHex(ACCENT, 0.92))
@@ -1256,8 +1276,16 @@ function renderDropZone(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   c.strokeWeight = dragging ? 2 : 1
   c.strokeAlign = 'INSIDE'
   c.dashPattern = [6, 6]
+  if (disabled) (c as SceneNode & MinimalBlendMixin).opacity = 0.5 // bindTokens가 opacity/50에 바인딩
 
-  c.appendChild(icon('_Icon/Upload', 'Upload Icon', 28, dragging ? ACCENT : SUB))
+  c.appendChild(icon('_Icon/Upload', 'Upload Icon', compact ? 20 : 28, dragging ? ACCENT : SUB))
+  // 안내 문구는 idle/dragging이 서로 다른 prop이다(label · draggingLabel) → 레이어 이름을 변형마다
+  // 다르게 줘야 TEXT 속성 둘이 각자 붙는다. 예전엔 둘 다 'label'이라 한 속성에 묶여
+  // dragging 변형의 '여기에 놓으세요'가 idle 문구로 덮여 버렸다.
+  // showLabel(BOOLEAN)은 두 변형을 한 번에 꺼야 하므로 이름이 같은 래퍼(hug·투명)에 붙인다.
+  const labelWrap = autoFrame('showLabel', 'HORIZONTAL')
+  labelWrap.counterAxisAlignItems = 'CENTER'
+  labelWrap.itemSpacing = 0
   const label = boundText(
     ctx,
     dragging ? '여기에 놓으세요' : '파일을 끌어다 놓거나 클릭해서 선택하세요',
@@ -1266,17 +1294,19 @@ function renderDropZone(ctx: Ctx, combo: Record<string, string>): ComponentNode 
     dragging ? ACCENT : INK,
     true,
   )
-  label.name = 'label'
-  c.appendChild(label)
+  label.name = dragging ? 'draggingLabel' : 'label'
+  labelWrap.appendChild(label)
+  c.appendChild(labelWrap)
   const hint = boundText(ctx, 'PNG, JPG · 파일당 최대 10MB', 12, 'color/secondary', SUB)
   hint.name = 'hint'
   c.appendChild(hint)
-  // 파일 선택 버튼 — 드롭이 안 되는 환경(클릭 업로드)용.
-  // 버튼 프레임과 라벨 레이어 이름을 같게 두면 BOOLEAN 'Show Action'이 둘 다 끈다
-  // → 껐을 때 빈 버튼 껍데기가 남지 않는다(ON/OFF 규약).
-  const action = btn(ctx, '파일 선택', 'outline', 'Action Label', 'sm')
-  action.name = 'Action'
-  c.appendChild(action)
+  // 파일 선택 버튼 — 드롭이 안 되는 환경(클릭 업로드)용. React DropZone엔 이 버튼의 문구 prop이 없다
+  // (영역 전체가 클릭 대상이다) → TEXT 속성으로 열지 않는다. 데모 문구로만 둔다.
+  if (!compact) {
+    const action = btn(ctx, '파일 선택', 'outline', 'Action Label', 'sm')
+    action.name = 'Action'
+    c.appendChild(action)
+  }
   return c
 }
 
@@ -1297,9 +1327,9 @@ function stepDot(ctx: Ctx, state: StepState): FrameNode {
   d.counterAxisAlignItems = 'CENTER'
   d.cornerRadius = 999
   if (state === 'done') {
-    // 완료 = success solid 면 + on-color 체크
+    // 완료 = success solid 면 + on-color 체크. 레이어 이름 = React prop 이름(doneIcon) → INSTANCE_SWAP.
     bindSolidFill(ctx, d, 'success')
-    d.appendChild(iconOn(ctx, '_Icon/Check', 'Check', 12, 'success'))
+    d.appendChild(iconOn(ctx, '_Icon/Check', 'doneIcon', 12, 'success'))
   } else if (state === 'current') {
     bindFillVar(ctx, d, 'color/bg', WHITE)
     bindStrokeVar(ctx, d, 'color/primary', ACCENT)
@@ -1316,6 +1346,22 @@ function stepDot(ctx: Ctx, state: StepState): FrameNode {
   }
   return d
 }
+/**
+ * 단계의 시각·담당자 줄. 텍스트 레이어 이름은 TEXT 속성 이름과 **똑같아야** 한다('Step 1 Meta')
+ * — 예전엔 레이어가 'Step Meta 1'이라 속성 이름과 어긋나 규약 §6(레이어=클래스/prop 이름) 위반이었다.
+ * showMeta(BOOLEAN)는 4단계를 한 번에 꺼야 하는데 텍스트 레이어 이름은 단계마다 달라서 붙일 수 없다
+ * → 이름이 같은 래퍼(CSS 클래스 이름 'meta', hug·투명)를 두고 거기에 붙인다.
+ */
+function metaRow(ctx: Ctx, at: string, i: number): FrameNode {
+  const wrap = autoFrame('meta', 'HORIZONTAL')
+  wrap.counterAxisAlignItems = 'CENTER'
+  wrap.itemSpacing = 0
+  const t = boundText(ctx, at, 11, 'color/secondary/400', MUTED)
+  t.name = `Step ${i + 1} Meta`
+  wrap.appendChild(t)
+  return wrap
+}
+
 /** 연결선 — 이 단계가 done일 때만 채워진다. */
 function connector(ctx: Ctx, done: boolean, w: number, h: number): FrameNode {
   const line = fixedFrame('connector', 'HORIZONTAL', w, h)
@@ -1352,9 +1398,7 @@ function renderStatusTimeline(ctx: Ctx, combo: Record<string, string>): Componen
       const lb = boundText(ctx, step.label, 13, strong ? 'color/text' : 'color/secondary/400', strong ? INK : MUTED, strong)
       lb.name = 'Step ' + (i + 1)
       text.appendChild(lb)
-      const at = boundText(ctx, step.at, 11, 'color/secondary/400', MUTED)
-      at.name = 'Step Meta ' + (i + 1)
-      text.appendChild(at)
+      text.appendChild(metaRow(ctx, step.at, i))
       col.appendChild(text)
       c.appendChild(col)
     } else {
@@ -1376,9 +1420,7 @@ function renderStatusTimeline(ctx: Ctx, combo: Record<string, string>): Componen
       const lb = boundText(ctx, step.label, 13, strong ? 'color/text' : 'color/secondary/400', strong ? INK : MUTED, strong)
       lb.name = 'Step ' + (i + 1)
       text.appendChild(lb)
-      const at = boundText(ctx, step.at + ' · 운영자', 11, 'color/secondary/400', MUTED)
-      at.name = 'Step Meta ' + (i + 1)
-      text.appendChild(at)
+      text.appendChild(metaRow(ctx, step.at + ' · 운영자', i))
       r.appendChild(text)
       c.appendChild(r)
     }
@@ -1399,8 +1441,10 @@ const TODO_ITEMS: Array<[string, string, string, string]> = [
   ['신규 회원', '8', '_Icon/UserPlus', 'secondary'],
 ]
 
-function renderTodoSummary(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+function renderTodoSummary(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const w = 1200
+  const sm = combo.size === 'sm' // 사이드 위젯용 — 패딩·글자를 한 단 줄인다
+  const framed = combo.framed !== 'false' // 카드 크롬(기본 true = 기존 모양)
 
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
@@ -1408,32 +1452,40 @@ function renderTodoSummary(ctx: Ctx, _combo: Record<string, string>): ComponentN
   c.counterAxisSizingMode = 'FIXED'
   c.resize(w, c.height)
   c.itemSpacing = 0
-  c.cornerRadius = 12
-  c.clipsContent = true
-  bindFillVar(ctx, c, 'color/bg', WHITE)
-  bindStrokeVar(ctx, c, 'color/border', BORDER)
-  c.strokeWeight = 1
-  c.strokeAlign = 'INSIDE'
+  if (framed) {
+    c.cornerRadius = 12
+    c.clipsContent = true
+    bindFillVar(ctx, c, 'color/bg', WHITE)
+    bindStrokeVar(ctx, c, 'color/border', BORDER)
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  } else {
+    // 이미 카드(PageSection) 안에 들어갈 때 — 보더가 이중으로 겹치지 않게 껍데기를 벗긴다.
+    c.fills = []
+    c.strokes = []
+  }
 
-  // 헤더 — 제목 + 총 건수 배지 / 우측 기준 시각
-  const head = autoFrame('head', 'HORIZONTAL')
+  // 헤더 — 제목 + 총 건수 배지 / 우측 기준 시각.
+  // 레이어 이름은 CSS 클래스 이름(header · totalBadge) 그대로 → showHeader / showTotalBadge가 붙는다.
+  const head = autoFrame('header', 'HORIZONTAL')
   head.layoutAlign = 'STRETCH'
   head.primaryAxisSizingMode = 'FIXED'
   head.counterAxisAlignItems = 'CENTER'
   head.itemSpacing = 8
-  head.paddingTop = head.paddingBottom = 16
-  head.paddingLeft = head.paddingRight = 20
+  head.paddingTop = head.paddingBottom = sm ? 12 : 16
+  head.paddingLeft = head.paddingRight = sm ? 14 : 20
   bottomBorder(ctx, head)
-  const title = boundText(ctx, '오늘의 할일', 15, 'color/text', INK, true)
+  const title = boundText(ctx, '오늘의 할일', sm ? 14 : 15, 'color/text', INK, true)
   title.name = 'title'
   head.appendChild(title)
-  // 칩 프레임 이름을 텍스트 레이어와 같게 둔다 → 자동 생성되는 'Show Total'이 칩째 끈다(빈 껍데기가 남지 않는다).
+  // 총건수는 total(number) prop이라 TEXT 속성이 될 수 없다(규약 §2d와 같은 이유) — 데모 값으로 둔다.
   const totalChip = badge(ctx, '38건', 'primary', 'Total')
-  totalChip.name = 'Total'
+  totalChip.name = 'totalBadge'
   head.appendChild(totalChip)
   const spacer = autoFrame('spacer', 'HORIZONTAL')
   spacer.layoutGrow = 1
   head.appendChild(spacer)
+  // '기준 시각'은 React TodoSummary에 대응 prop이 없다 — TEXT 속성으로 열지 않고 데모 문구로만 둔다.
   const updated = boundText(ctx, '2026-07-13 09:41 기준', 12, 'color/secondary/400', MUTED)
   updated.name = 'Updated'
   head.appendChild(updated)
@@ -1448,9 +1500,9 @@ function renderTodoSummary(ctx: Ctx, _combo: Record<string, string>): ComponentN
     const cell = autoFrame('Todo ' + (i + 1), 'VERTICAL')
     cell.layoutGrow = 1
     cell.counterAxisSizingMode = 'FIXED'
-    cell.itemSpacing = 8
-    cell.paddingTop = cell.paddingBottom = 20
-    cell.paddingLeft = cell.paddingRight = 20
+    cell.itemSpacing = sm ? 4 : 8
+    cell.paddingTop = cell.paddingBottom = sm ? 14 : 20
+    cell.paddingLeft = cell.paddingRight = sm ? 14 : 20
     if (i < TODO_ITEMS.length - 1) rightBorder(ctx, cell)
 
     const top = autoFrame('top', 'HORIZONTAL')
@@ -1471,10 +1523,14 @@ function renderTodoSummary(ctx: Ctx, _combo: Record<string, string>): ComponentN
     bot.primaryAxisSizingMode = 'FIXED'
     bot.counterAxisAlignItems = 'CENTER'
     bot.itemSpacing = 4
-    const cnt = boundText(ctx, count, 24, 'color/text', INK, true)
+    const cnt = boundText(ctx, count, sm ? 20 : 24, 'color/text', INK, true)
     cnt.name = 'Count ' + (i + 1)
     bot.appendChild(cnt)
-    bot.appendChild(boundText(ctx, '건', 12, 'color/secondary/400', MUTED))
+    // 단위('건')는 6칸이 모두 같은 문구다 = 코드의 단일 countUnit prop.
+    // 레이어 이름을 prop 이름으로 통일하면 TEXT 속성 하나가 6칸을 한꺼번에 바꾼다.
+    const unit = boundText(ctx, '건', 12, 'color/secondary/400', MUTED)
+    unit.name = 'countUnit'
+    bot.appendChild(unit)
     const gap = autoFrame('gap', 'HORIZONTAL')
     gap.layoutGrow = 1
     bot.appendChild(gap)
@@ -1488,13 +1544,17 @@ function renderTodoSummary(ctx: Ctx, _combo: Record<string, string>): ComponentN
 }
 
 // ══ DS/ActivityLog ═══════════════════════════════════════════════════
-// 최근 활동 — 타입별 아이콘 칩 + 문장 + 상대 시각(+ 안 읽음 점).
-function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
-  const items: Array<[string, string, string, string, boolean]> = [
-    ['_Icon/MessageSquare', 'primary', '김디자인님이 문의를 등록했습니다', '3분 전', true],
-    ['_Icon/Cart', 'success', '이개발님이 주문을 처리했습니다', '1시간 전', false],
-    ['_Icon/Package', 'secondary', '박기획님이 상품을 수정했습니다', '2시간 전', false],
-    ['_Icon/UserPlus', 'warning', '신규 회원이 가입했습니다', '1일 전', false],
+// 축: compact(false|true) × timeFormat(relative|absolute) — React prop 이름 그대로.
+// 최근 활동 — 타입별 아이콘 칩 + 문장 + 시각(+ 안 읽음 점). 각 조각은 show* BOOLEAN으로 끈다.
+function renderActivityLog(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const compact = combo.compact === 'true'
+  const absolute = combo.timeFormat === 'absolute'
+  // [아이콘, 톤, 문장, 상대 시각, 절대 시각, 안 읽음]
+  const items: Array<[string, string, string, string, string, boolean]> = [
+    ['_Icon/MessageSquare', 'primary', '김디자인님이 문의를 등록했습니다', '3분 전', '2026-07-13 09:38', true],
+    ['_Icon/Cart', 'success', '이개발님이 주문을 처리했습니다', '1시간 전', '2026-07-13 08:41', false],
+    ['_Icon/Package', 'secondary', '박기획님이 상품을 수정했습니다', '2시간 전', '2026-07-13 07:22', false],
+    ['_Icon/UserPlus', 'warning', '신규 회원이 가입했습니다', '1일 전', '2026-07-12 16:05', false],
   ]
 
   const c = figma.createComponent()
@@ -1502,8 +1562,8 @@ function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentN
   c.primaryAxisSizingMode = 'AUTO'
   c.counterAxisSizingMode = 'FIXED'
   c.resize(380, c.height)
-  c.itemSpacing = 4
-  c.paddingTop = c.paddingBottom = 16
+  c.itemSpacing = compact ? 0 : 4
+  c.paddingTop = c.paddingBottom = compact ? 12 : 16
   c.paddingLeft = c.paddingRight = 16
   c.cornerRadius = 12
   bindFillVar(ctx, c, 'color/bg', WHITE)
@@ -1511,6 +1571,7 @@ function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentN
   c.strokeWeight = 1
   c.strokeAlign = 'INSIDE'
 
+  // 레이어 이름 = CSS 클래스 이름(head · viewAll · icon · time · dot) → show* BOOLEAN이 이름으로 붙는다.
   const head = autoFrame('head', 'HORIZONTAL')
   head.layoutAlign = 'STRETCH'
   head.primaryAxisSizingMode = 'FIXED'
@@ -1520,30 +1581,33 @@ function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentN
   const title = boundText(ctx, '최근 활동', 15, 'color/text', INK, true)
   title.name = 'title'
   head.appendChild(title)
-  const viewAll = autoFrame('view all', 'HORIZONTAL')
+  const viewAll = autoFrame('viewAll', 'HORIZONTAL')
   viewAll.counterAxisAlignItems = 'CENTER'
   viewAll.itemSpacing = 2
   const va = boundText(ctx, '전체보기', 12, 'color/primary', ACCENT, true)
-  va.name = 'View All'
+  va.name = 'viewAllLabel' // = React string prop 이름
   viewAll.appendChild(va)
-  viewAll.appendChild(icon('_Icon/ChevronRight', 'View All Icon', 14, ACCENT))
+  viewAll.appendChild(icon('_Icon/ChevronRight', 'viewAllIcon', 14, ACCENT)) // = ReactNode prop 이름
   head.appendChild(viewAll)
   c.appendChild(head)
 
-  items.forEach(([iconKey, tone, sentence, at, unread], i) => {
+  items.forEach(([iconKey, tone, sentence, rel, abs, unread], i) => {
     const toneHex = VARIANT_HEX[tone] ?? ACCENT
     const r = autoFrame('activity', 'HORIZONTAL')
     r.layoutAlign = 'STRETCH'
     r.primaryAxisSizingMode = 'FIXED'
     r.counterAxisAlignItems = 'CENTER'
     r.itemSpacing = 10
-    r.paddingTop = r.paddingBottom = 8
+    r.paddingTop = r.paddingBottom = compact ? 5 : 8
 
-    const chip = fixedFrame('chip', 'HORIZONTAL', 28, 28)
+    // 칩 프레임 이름이 'icon'이라 showIcon(BOOLEAN)이 칩째 끈다(빈 껍데기가 남지 않는다).
+    const chip = fixedFrame('icon', 'HORIZONTAL', 28, 28)
     chip.primaryAxisAlignItems = 'CENTER'
     chip.counterAxisAlignItems = 'CENTER'
     chip.cornerRadius = 8
     bindFillVar(ctx, chip, `color/${tone}/100`, tintHex(toneHex))
+    // 타입별 아이콘(typeIcons)은 Partial<Record<type, ReactNode>> 맵이라 단일 INSTANCE_SWAP으로
+    // 표현할 수 없다(하나로 묶으면 4줄이 전부 같은 아이콘이 된다) — ALLOWLIST 참조.
     chip.appendChild(icon(iconKey, 'Activity Icon ' + (i + 1), 15, toneHex))
     r.appendChild(chip)
 
@@ -1553,12 +1617,14 @@ function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentN
     const s = boundText(ctx, sentence, 13, 'color/text', INK)
     s.name = 'Activity ' + (i + 1)
     body.appendChild(s)
-    body.appendChild(boundText(ctx, at, 11, 'color/secondary/400', MUTED))
+    const time = boundText(ctx, absolute ? abs : rel, 11, 'color/secondary/400', MUTED)
+    time.name = 'time'
+    body.appendChild(time)
     r.appendChild(body)
 
     if (unread) {
       const dot = figma.createEllipse()
-      dot.name = 'Unread'
+      dot.name = 'dot'
       dot.resize(6, 6)
       bindFillVar(ctx, dot, 'color/primary', ACCENT)
       r.appendChild(dot)
@@ -1570,21 +1636,29 @@ function renderActivityLog(ctx: Ctx, _combo: Record<string, string>): ComponentN
 
 // ══ DS/MemoBox ═══════════════════════════════════════════════════════
 // 관리자 메모 — Textarea + 글자수 카운터 + 저장 버튼.
-function renderMemoBox(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
+function renderMemoBox(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const w = 420
+  const saving = combo.saving === 'true' // 저장 중 — 입력·버튼을 잠근다
+  const framed = combo.framed !== 'false' // 카드 크롬(기본 true = 기존 모양)
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
   c.primaryAxisSizingMode = 'AUTO'
   c.counterAxisSizingMode = 'FIXED'
   c.resize(w, c.height)
   c.itemSpacing = 12
-  c.paddingTop = c.paddingBottom = 16
-  c.paddingLeft = c.paddingRight = 16
-  c.cornerRadius = 12
-  bindFillVar(ctx, c, 'color/bg', WHITE)
-  bindStrokeVar(ctx, c, 'color/border', BORDER)
-  c.strokeWeight = 1
-  c.strokeAlign = 'INSIDE'
+  c.paddingTop = c.paddingBottom = framed ? 16 : 0
+  c.paddingLeft = c.paddingRight = framed ? 16 : 0
+  if (framed) {
+    c.cornerRadius = 12
+    bindFillVar(ctx, c, 'color/bg', WHITE)
+    bindStrokeVar(ctx, c, 'color/border', BORDER)
+    c.strokeWeight = 1
+    c.strokeAlign = 'INSIDE'
+  } else {
+    // PageSection 같은 카드 '안'에 넣을 때 — 껍데기를 벗겨 카드가 이중으로 겹치지 않게 한다.
+    c.fills = []
+    c.strokes = []
+  }
 
   const head = autoFrame('head', 'VERTICAL')
   head.layoutAlign = 'STRETCH'
@@ -1610,6 +1684,7 @@ function renderMemoBox(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
   bindStrokeVar(ctx, editor, 'color/border', BORDER)
   editor.strokeWeight = 1
   editor.strokeAlign = 'INSIDE'
+  if (saving) (editor as SceneNode & MinimalBlendMixin).opacity = 0.5 // 저장 중 = 입력 잠금
   const ph = boundText(ctx, '고객 응대 시 참고할 내용을 남겨 주세요.', 13, 'color/secondary/400', MUTED)
   ph.name = 'placeholder'
   editor.appendChild(ph)
@@ -1620,11 +1695,17 @@ function renderMemoBox(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
   footer.primaryAxisSizingMode = 'FIXED'
   footer.primaryAxisAlignItems = 'SPACE_BETWEEN'
   footer.counterAxisAlignItems = 'CENTER'
+  // 글자수 카운터의 '문구'는 React에 prop이 없다(maxLength·value에서 계산된다) → TEXT 속성으로 열지 않고
+  // ON/OFF만 연다. 레이어 이름 = 그 BOOLEAN prop 이름(showCounter) — CSS엔 카운터 클래스가 없다
+  // (공용 Textarea 안에 있다)라 N6의 '바인딩된 레이어는 prop 이름 허용'을 따른다.
   const counter = boundText(ctx, '0/500', 12, 'color/secondary/400', MUTED)
-  counter.name = 'Counter'
+  counter.name = 'showCounter'
   footer.appendChild(counter)
-  const save = btn(ctx, '저장', 'primary', 'Save Label', 'sm')
-  save.insertChild(0, iconOn(ctx, '_Icon/Save', 'Save Icon', 14, 'primary')) // solid 버튼 위 아이콘 = on-color
+  // 저장 버튼 문구는 saving 여부에 따라 서로 다른 prop이다(saveLabel · savingLabel).
+  const save = btn(ctx, saving ? '저장 중…' : '저장', 'primary', saving ? 'savingLabel' : 'saveLabel', 'sm')
+  if (saving) (save as SceneNode & MinimalBlendMixin).opacity = 0.6
+  // solid 버튼 위 아이콘 = on-color. 레이어 이름 = ReactNode prop 이름(saveIcon) → INSTANCE_SWAP.
+  save.insertChild(0, iconOn(ctx, '_Icon/Save', 'saveIcon', 14, 'primary'))
   footer.appendChild(save)
   c.appendChild(footer)
   return c
@@ -1648,6 +1729,8 @@ const DL_MAX = DL_ROWS.length
 function renderDefinitionList(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const w = 460
   const flush = combo.frame === 'flush' // 이미 카드 안에 놓일 때 — 보더가 이중으로 겹치지 않게
+  const divider = combo.divider !== 'false' // 행 사이 구분선(기본 true = 기존 모양)
+  const rowH = combo.density === 'compact' ? 36 : 44
 
   const c = figma.createComponent()
   c.layoutMode = 'VERTICAL'
@@ -1669,14 +1752,14 @@ function renderDefinitionList(ctx: Ctx, combo: Record<string, string>): Componen
     r.layoutAlign = 'STRETCH'
     r.primaryAxisSizingMode = 'FIXED'
     r.counterAxisSizingMode = 'FIXED'
-    r.resize(w, 44)
+    r.resize(w, rowH)
     r.counterAxisAlignItems = 'CENTER'
     r.paddingLeft = r.paddingRight = 16
     r.itemSpacing = 12
     // 마지막 행에만 선이 없다 — 행을 끄면 프레임째 사라지므로 빈 구분선이 남지 않는다.
-    if (i < DL_MAX - 1) bottomBorder(ctx, r)
+    if (divider && i < DL_MAX - 1) bottomBorder(ctx, r)
 
-    const lb = fixedFrame('label', 'HORIZONTAL', 120, 44)
+    const lb = fixedFrame('label', 'HORIZONTAL', 120, rowH)
     lb.counterAxisAlignItems = 'CENTER'
     const lt = boundText(ctx, label, 13, 'color/secondary', SUB)
     lt.name = 'Label ' + (i + 1)
@@ -1765,8 +1848,12 @@ const ADMIN_CATEGORY: CategoryDef = {
             ],
             bools: [
               { prop: 'showBreadcrumb', layer: 'showBreadcrumb', def: true },
-              { prop: 'Show Actions', layer: 'Show Actions', def: true },
-              { prop: 'Show User', layer: 'Show User', def: true },
+              // showAvatar — React AdminTopbar의 show* prop 이름 그대로(규약 §3).
+              { prop: 'showAvatar', layer: 'showAvatar', def: true },
+              // 'Show Actions'/'Show User'는 React에 짝이 없다 — 코드에선 actions/user prop을 '안 넘기면'
+              // 사라지는데 Figma엔 '속성 없음'이 없어 BOOLEAN으로만 표현된다. ALLOWLIST에 사유를 적었다.
+              { prop: 'Show Actions', layer: 'actions', def: true },
+              { prop: 'Show User', layer: 'user', def: true },
             ],
           },
         ),
@@ -1792,25 +1879,32 @@ const ADMIN_CATEGORY: CategoryDef = {
           [
             { name: 'density', values: ['comfortable', 'compact'] },
             { name: 'frame', values: ['card', 'flush'] },
+            // striped — React AdminTable의 유니온/불리언 prop 이름 그대로(규약 §2).
+            { name: 'striped', values: ['false', 'true'] },
           ],
           (c) => renderAdminTable(ctx, c),
           {
-            // 텍스트 속성 이름은 'Row Title N'이어야 한다 — buildSet이 텍스트마다 'Show <이름>'을 자동으로 붙이므로
-            // 'Row N'으로 두면 자동 생성된 'Show Row N'(제목 텍스트만 숨김)이 아래 행 단위 토글과 이름이 겹쳐
-            // 행을 꺼도 빈 행이 남는다.
+            // 행 제목은 rows[] 배열 데이터를 인덱스로 편 것이다(prop이 아니다) — verify-naming ALLOWLIST 참조.
             texts: TBL_ROWS.map((r, i) => ({
               prop: `Row Title ${i + 1}`,
               layer: `Row Title ${i + 1}`,
               def: r[1],
             })),
             bools: [
-              ...TBL_DEF.filter((col) => col.layer !== 'Title').map((col) => ({
+              // 열 단위 ON/OFF = columnVisibility. 상품명 열은 항상 켜 둔다(제외 필터가 'Title'이라
+              // 소문자 레이어와 안 맞아 여태 'Show title'이 새어 나왔다).
+              ...TBL_DEF.filter((col) => col.layer !== 'title').map((col) => ({
                 prop: `Show ${col.layer}`,
                 layer: col.layer,
                 def: true,
               })),
               // 행 단위 ON/OFF — 5행보다 짧은 목록도 빈 행 없이 만든다.
               ...TBL_ROWS.map((_, i) => ({ prop: `Show Row ${i + 1}`, layer: `Row ${i + 1}`, def: true })),
+            ],
+            // 행 액션 아이콘 — React의 ReactNode prop 이름 그대로(뭉뚱그린 'Icon' 금지, 규약 §5).
+            swaps: [
+              { prop: 'editIcon', layer: 'editIcon', defKey: '_Icon/Edit' },
+              { prop: 'deleteIcon', layer: 'deleteIcon', defKey: '_Icon/Trash2' },
             ],
           },
         ),
@@ -1826,7 +1920,10 @@ const ADMIN_CATEGORY: CategoryDef = {
       key: 'AdminCard',
       setName: 'DS/AdminCard',
       eyebrow: 'MOLECULE · ADMIN',
-      desc: '카드형 목록의 한 장. 16:9 썸네일 + 배지 오버레이 + 가격 강조 + 상태 토글/수정/삭제 액션 바.',
+      desc:
+        '카드형 목록의 한 장. 썸네일(16:9 · compact는 4:3) + 배지 오버레이 + 대표값 강조 + 상태 토글/수정/삭제 액션 바. ' +
+        'active(판매중/중지) · density · appearance는 React prop과 같은 이름의 축이고, ' +
+        '썸네일·보조 메타는 showThumbnail / showSubMeta로 끕니다.',
       build: (ctx, page) =>
         buildSet(
           ctx,
@@ -1834,75 +1931,141 @@ const ADMIN_CATEGORY: CategoryDef = {
           'DS/AdminCard',
           [
             { name: 'selected', values: ['false', 'true'] },
-            { name: 'soldout', values: ['false', 'true'] },
+            // 'true'를 앞에 둔다 → 기본 변형이 '판매중'으로 남아 기존 모양이 유지된다.
+            { name: 'active', values: ['true', 'false'] },
+            { name: 'density', values: ['comfortable', 'compact'] },
+            { name: 'appearance', values: ['outline', 'elevated', 'plain'] },
           ],
           (c) => renderAdminCard(ctx, c),
           {
             texts: [
               { prop: 'title', layer: 'title', def: '프리미엄 원목 책상' },
-              { prop: 'Price', layer: 'Price', def: '₩129,000' },
+              { prop: 'subtitle', layer: 'subtitle', def: '가구 · 서재' },
+              { prop: 'activeLabel', layer: 'activeLabel', def: '판매중' },
+              { prop: 'inactiveLabel', layer: 'inactiveLabel', def: '중지' },
+            ],
+            bools: [
+              { prop: 'showThumbnail', layer: 'media', def: true },
+              { prop: 'showSubMeta', layer: 'subMeta', def: true },
             ],
           },
         ),
       states: [
         { caption: '기본', props: {} },
         { caption: '선택됨', props: { selected: 'true' } },
-        { caption: '품절', props: { soldout: 'true' } },
-        { caption: '선택 + 품절', props: { selected: 'true', soldout: 'true' } },
+        { caption: '중지(품절)', props: { active: 'false' } },
+        { caption: 'Compact (4:3)', props: { density: 'compact' } },
+        { caption: 'Elevated', props: { appearance: 'elevated' } },
       ],
     },
     {
       key: 'ViewSwitch',
       setName: 'DS/ViewSwitch',
       eyebrow: 'ATOM · ADMIN',
-      desc: '목록 보기 방식 전환(카드형 / 게시물형). 선택된 쪽만 흰 배경 + primary 라벨. showLabel 속성으로 라벨을 껐다 켤 수 있습니다(꺼지면 아이콘만).',
-      build: (ctx, page) => {
-        const set = buildSet(ctx, page, 'DS/ViewSwitch', [{ name: 'value', values: ['card', 'board'] }], (c) => renderViewSwitch(ctx, c))
-        addTextProp(set, 'Card Label', 'Card Label', '카드형')
-        addTextProp(set, 'Board Label', 'Board Label', '게시물형')
-        // showLabel — D1(ViewSwitch.tsx)과 1:1 대응하는 이름. 두 옵션의 라벨을 하나의 속성으로 함께 껐다 켠다
-        // (buildSet의 texts 자동 "Show <prop>"은 항목별로 따로 생겨 Storybook의 단일 showLabel과 어긋나 쓰지 않는다).
-        const showLabelId = set.addComponentProperty('showLabel', 'BOOLEAN', true)
-        for (const n of set.findAll((x) => x.name === 'Card Label' || x.name === 'Board Label')) {
-          n.componentPropertyReferences = { ...(n.componentPropertyReferences || {}), visible: showLabelId }
-        }
-        return set
-      },
+      desc:
+        '목록 보기 방식 전환(카드형 / 게시물형). 선택된 쪽만 흰 배경 + primary 라벨. ' +
+        'size(sm·md·lg)와 orientation(가로·세로 레일)은 React prop과 같은 이름의 축이고, ' +
+        'showLabel 속성으로 라벨을 껐다 켤 수 있습니다(꺼지면 아이콘만).',
+      // 속성은 전부 buildSet의 props 스펙으로 넘긴다 — 예전처럼 addComponentProperty를 밖에서 직접
+      // 부르면 정적 추출기(scripts/lib/figma-sets.mjs)가 못 봐서 검증에서 통째로 빠진다.
+      build: (ctx, page) =>
+        buildSet(
+          ctx,
+          page,
+          'DS/ViewSwitch',
+          [
+            { name: 'value', values: ['card', 'board'] },
+            { name: 'size', values: ['sm', 'md', 'lg'] },
+            { name: 'orientation', values: ['horizontal', 'vertical'] },
+          ],
+          (c) => renderViewSwitch(ctx, c),
+          {
+            // 옵션 라벨 문구는 labels.options(Partial<Record<value,string>>) — 키마다 다른 맵이라
+            // 단일 TEXT 속성으로 표현할 수 없다. 그래서 문구는 열지 않고 ON/OFF만 연다.
+            bools: [{ prop: 'showLabel', layer: 'label', def: true }],
+          },
+        ),
       states: [
         { caption: '카드형', props: {} },
         { caption: '게시물형', props: { value: 'board' } },
+        { caption: 'Small', props: { size: 'sm' } },
+        { caption: '세로 레일', props: { orientation: 'vertical' } },
       ],
     },
     {
       key: 'SearchPanel',
       setName: 'DS/SearchPanel',
       eyebrow: 'ORGANISM · ADMIN',
-      desc: '목록 상단 다중 조건 검색. 라벨 상단형 필드 4개(텍스트·셀렉트·기간·상태)와 [초기화][검색] 버튼.',
+      desc:
+        '목록 상단 다중 조건 검색. 라벨 상단형 필드 4개(텍스트·셀렉트·기간·상태)와 [초기화][검색] 버튼. ' +
+        'appearance=plain은 이미 카드 안에 놓일 때 껍데기를 벗기고, loading이면 검색 버튼이 searchingLabel로 바뀝니다.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/SearchPanel', [{ name: 'state', values: ['default'] }], (c) => renderSearchPanel(ctx, c), {
-          texts: [
-            { prop: 'Search', layer: 'Search', def: '검색' },
-            { prop: 'Reset', layer: 'Reset', def: '초기화' },
+        buildSet(
+          ctx,
+          page,
+          'DS/SearchPanel',
+          [
+            { name: 'loading', values: ['false', 'true'] },
+            { name: 'appearance', values: ['card', 'plain'] },
           ],
-        }),
-      states: [{ caption: '기본 (4필드)', props: {} }],
+          (c) => renderSearchPanel(ctx, c),
+          {
+            texts: [
+              { prop: 'searchLabel', layer: 'searchLabel', def: '검색' },
+              { prop: 'searchingLabel', layer: 'searchingLabel', def: '검색 중…' },
+              { prop: 'resetLabel', layer: 'resetLabel', def: '초기화' },
+            ],
+            bools: [
+              { prop: 'showLabels', layer: 'label', def: true },
+              { prop: 'showReset', layer: 'showReset', def: true },
+              { prop: 'showSearch', layer: 'showSearch', def: true },
+            ],
+          },
+        ),
+      states: [
+        { caption: '기본 (4필드)', props: {} },
+        { caption: 'Loading', props: { loading: 'true' } },
+        { caption: 'Plain (카드 안)', props: { appearance: 'plain' } },
+      ],
     },
     {
       key: 'CrudDialog',
       setName: 'DS/CrudDialog',
       eyebrow: 'ORGANISM · ADMIN',
-      desc: '등록·수정·삭제 확인 모달. delete는 경고 아이콘 + 빨강 확인 버튼(danger), create/edit는 폼 본문.',
+      desc:
+        '등록·수정·삭제 확인 모달. delete는 경고 아이콘 + 빨강 확인 버튼(danger), create/edit는 폼 본문. ' +
+        'loading이면 확인 버튼이 loadingLabel로 바뀌고, 경고 문구·아이콘은 showWarning / showIcon으로 끕니다.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/CrudDialog', [{ name: 'mode', values: ['create', 'edit', 'delete'] }], (c) => renderCrudDialog(ctx, c), {
-          texts: [
-            { prop: 'title', layer: 'title', def: '등록' },
-            { prop: 'Confirm', layer: 'Confirm', def: '등록' },
+        buildSet(
+          ctx,
+          page,
+          'DS/CrudDialog',
+          [
+            { name: 'mode', values: ['create', 'edit', 'delete'] },
+            { name: 'loading', values: ['false', 'true'] },
           ],
-        }),
+          (c) => renderCrudDialog(ctx, c),
+          {
+            texts: [
+              { prop: 'title', layer: 'title', def: '등록' },
+              { prop: 'description', layer: 'description', def: '선택한 상품 3건을 삭제합니다.' },
+              { prop: 'warningText', layer: 'warning', def: '삭제한 데이터는 되돌릴 수 없습니다.' },
+              { prop: 'confirmLabel', layer: 'confirmLabel', def: '등록' },
+              { prop: 'cancelLabel', layer: 'cancelLabel', def: '취소' },
+              { prop: 'loadingLabel', layer: 'loadingLabel', def: '처리 중…' },
+            ],
+            bools: [
+              { prop: 'showWarning', layer: 'warning', def: true },
+              { prop: 'showIcon', layer: 'dangerIcon', def: true },
+            ],
+            swaps: [{ prop: 'icon', layer: 'icon', defKey: '_Icon/AlertCircle' }],
+          },
+        ),
       states: [
         { caption: 'Create', props: {} },
         { caption: 'Edit', props: { mode: 'edit' } },
         { caption: 'Delete (danger)', props: { mode: 'delete' } },
+        { caption: 'Delete · 처리 중', props: { mode: 'delete', loading: 'true' } },
       ],
     },
     {
@@ -1910,19 +2073,34 @@ const ADMIN_CATEGORY: CategoryDef = {
       setName: 'DS/DropZone',
       eyebrow: 'MOLECULE · ADMIN',
       desc:
-        '파일 드래그&드롭 영역. dragging이면 테두리·배경이 primary로 바뀌고 문구가 "여기에 놓으세요"로 바뀝니다. ' +
-        "[파일 선택] 버튼은 'Show Action'으로 끕니다. 포트폴리오/상품 등록 화면의 업로드 영역이 이 인스턴스입니다.",
+        '파일 드래그&드롭 영역. dragging이면 테두리·배경이 primary로 바뀌고 문구가 draggingLabel로 바뀝니다. ' +
+        'compact는 한 줄짜리(폼 안 좁은 칸), disabled는 흐려진 잠금 상태이고 안내 문구는 showLabel로 끕니다. ' +
+        '포트폴리오/상품 등록 화면의 업로드 영역이 이 인스턴스입니다.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/DropZone', [{ name: 'state', values: ['idle', 'dragging'] }], (c) => renderDropZone(ctx, c), {
-          texts: [
-            { prop: 'label', layer: 'label', def: '파일을 끌어다 놓거나 클릭해서 선택하세요' },
-            { prop: 'hint', layer: 'hint', def: 'PNG, JPG · 파일당 최대 10MB' },
-            { prop: 'Action', layer: 'Action', def: '파일 선택' },
+        buildSet(
+          ctx,
+          page,
+          'DS/DropZone',
+          [
+            { name: 'state', values: ['idle', 'dragging'] },
+            { name: 'compact', values: ['false', 'true'] },
+            { name: 'disabled', values: ['false', 'true'] },
           ],
-        }),
+          (c) => renderDropZone(ctx, c),
+          {
+            texts: [
+              { prop: 'label', layer: 'label', def: '파일을 끌어다 놓거나 클릭해서 선택하세요' },
+              { prop: 'draggingLabel', layer: 'draggingLabel', def: '여기에 놓으세요' },
+              { prop: 'hint', layer: 'hint', def: 'PNG, JPG · 파일당 최대 10MB' },
+            ],
+            bools: [{ prop: 'showLabel', layer: 'showLabel', def: true }],
+          },
+        ),
       states: [
         { caption: 'Idle', props: {} },
         { caption: 'Dragging', props: { state: 'dragging' } },
+        { caption: 'Compact', props: { compact: 'true' } },
+        { caption: 'Disabled', props: { disabled: 'true' } },
       ],
     },
     {
@@ -1940,12 +2118,16 @@ const ADMIN_CATEGORY: CategoryDef = {
           [{ name: 'direction', values: ['horizontal', 'vertical'] }],
           (c) => renderStatusTimeline(ctx, c),
           {
+            // 레이어 이름 = 속성 이름(규약 §6). 단계 라벨·시각은 steps[] 배열 데이터를 인덱스로 편 것이라
+            // prop이 아니다 — verify-naming ALLOWLIST에 사유를 적었다.
             texts: flatProps(
               STEPS.map((s, i): TextProp[] => [
                 { prop: `Step ${i + 1}`, layer: `Step ${i + 1}`, def: s.label },
-                { prop: `Step ${i + 1} Meta`, layer: `Step Meta ${i + 1}`, def: s.at },
+                { prop: `Step ${i + 1} Meta`, layer: `Step ${i + 1} Meta`, def: s.at },
               ]),
             ),
+            bools: [{ prop: 'showMeta', layer: 'meta', def: true }],
+            swaps: [{ prop: 'doneIcon', layer: 'doneIcon', defKey: '_Icon/Check' }],
           },
         ),
       states: [
@@ -1961,49 +2143,116 @@ const ADMIN_CATEGORY: CategoryDef = {
         '대시보드 상단 "오늘의 할일" 카드. 헤더(제목·총 건수·기준 시각) + 6칸 분할 행(아이콘·라벨·건수·chevron). ' +
         "칸 단위 ON/OFF는 'Show Todo 1'…'Show Todo 6'이고, 대시보드 화면이 이 세트의 인스턴스입니다.",
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/TodoSummary', [{ name: 'state', values: ['default'] }], (c) => renderTodoSummary(ctx, c), {
-          texts: [
-            { prop: 'title', layer: 'title', def: '오늘의 할일' },
-            { prop: 'Total', layer: 'Total', def: '38건' },
-            { prop: 'Updated', layer: 'Updated', def: '2026-07-13 09:41 기준' },
-            ...flatProps(
-              TODO_ITEMS.map((it, i): TextProp[] => [
-                { prop: `Label ${i + 1}`, layer: `Label ${i + 1}`, def: it[0] },
-                { prop: `Count ${i + 1}`, layer: `Count ${i + 1}`, def: it[1] },
-              ]),
-            ),
+        buildSet(
+          ctx,
+          page,
+          'DS/TodoSummary',
+          [
+            { name: 'size', values: ['md', 'sm'] }, // 'md'가 앞 = 기본 변형이 기존 모양
+            { name: 'framed', values: ['true', 'false'] },
           ],
-          bools: TODO_ITEMS.map((_, i) => ({ prop: `Show Todo ${i + 1}`, layer: `Todo ${i + 1}`, def: true })),
-        }),
-      states: [{ caption: '기본', props: {} }],
+          (c) => renderTodoSummary(ctx, c),
+          {
+            texts: [
+              { prop: 'title', layer: 'title', def: '오늘의 할일' },
+              { prop: 'countUnit', layer: 'countUnit', def: '건' },
+              // 라벨·건수는 items[] 배열 데이터를 인덱스로 편 것이다(prop이 아니다) — ALLOWLIST 참조.
+              ...flatProps(
+                TODO_ITEMS.map((it, i): TextProp[] => [
+                  { prop: `Label ${i + 1}`, layer: `Label ${i + 1}`, def: it[0] },
+                  { prop: `Count ${i + 1}`, layer: `Count ${i + 1}`, def: it[1] },
+                ]),
+              ),
+            ],
+            bools: [
+              { prop: 'showHeader', layer: 'header', def: true },
+              { prop: 'showTotalBadge', layer: 'totalBadge', def: true },
+              // 칸 단위 ON/OFF — items[] 배열의 가시성이라 React엔 짝이 되는 show* prop이 없다(ALLOWLIST).
+              ...TODO_ITEMS.map((_, i) => ({ prop: `Show Todo ${i + 1}`, layer: `Todo ${i + 1}`, def: true })),
+            ],
+          },
+        ),
+      states: [
+        { caption: '기본', props: {} },
+        { caption: 'Small', props: { size: 'sm' } },
+        { caption: 'Framed 해제 (카드 안)', props: { framed: 'false' } },
+      ],
     },
     {
       key: 'ActivityLog',
       setName: 'DS/ActivityLog',
       eyebrow: 'MOLECULE · ADMIN',
-      desc: '최근 활동 로그. 타입별 아이콘 칩(문의·주문·상품·회원) + 문장 + 상대 시각, 안 읽은 항목엔 primary 점.',
+      desc:
+        '최근 활동 로그. 타입별 아이콘 칩(문의·주문·상품·회원) + 문장 + 시각, 안 읽은 항목엔 primary 점. ' +
+        'timeFormat=absolute는 감사 로그처럼 "언제 정확히"가 근거가 되는 화면용이고, ' +
+        '제목 줄·아이콘·시각·미읽음 점은 showHeader / showIcon / showTime / showUnreadDot으로 각각 끕니다.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/ActivityLog', [{ name: 'state', values: ['default'] }], (c) => renderActivityLog(ctx, c), {
-          texts: [{ prop: 'title', layer: 'title', def: '최근 활동' }],
-        }),
-      states: [{ caption: '기본', props: {} }],
+        buildSet(
+          ctx,
+          page,
+          'DS/ActivityLog',
+          [
+            { name: 'compact', values: ['false', 'true'] },
+            { name: 'timeFormat', values: ['relative', 'absolute'] },
+          ],
+          (c) => renderActivityLog(ctx, c),
+          {
+            texts: [
+              { prop: 'title', layer: 'title', def: '최근 활동' },
+              { prop: 'viewAllLabel', layer: 'viewAllLabel', def: '전체보기' },
+            ],
+            bools: [
+              { prop: 'showHeader', layer: 'head', def: true },
+              { prop: 'showIcon', layer: 'icon', def: true },
+              { prop: 'showTime', layer: 'time', def: true },
+              { prop: 'showUnreadDot', layer: 'dot', def: true },
+            ],
+            swaps: [{ prop: 'viewAllIcon', layer: 'viewAllIcon', defKey: '_Icon/ChevronRight' }],
+          },
+        ),
+      states: [
+        { caption: '기본', props: {} },
+        { caption: 'Compact', props: { compact: 'true' } },
+        { caption: '절대 시각', props: { timeFormat: 'absolute' } },
+      ],
     },
     {
       key: 'MemoBox',
       setName: 'DS/MemoBox',
       eyebrow: 'MOLECULE · ADMIN',
-      desc: '관리자 메모 카드. 고객에게 보이지 않는 내부 메모 + 글자수 카운터 + 저장 버튼.',
+      desc:
+        '관리자 메모 카드. 고객에게 보이지 않는 내부 메모 + 글자수 카운터 + 저장 버튼. ' +
+        'saving이면 입력·버튼이 잠기고 문구가 savingLabel로 바뀌며, framed를 끄면 이미 카드 안에 넣을 수 있습니다.',
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/MemoBox', [{ name: 'state', values: ['default'] }], (c) => renderMemoBox(ctx, c), {
-          texts: [
-            { prop: 'title', layer: 'title', def: '관리자 메모' },
-            { prop: 'description', layer: 'description', def: '고객에게 노출되지 않습니다.' },
-            { prop: 'placeholder', layer: 'placeholder', def: '고객 응대 시 참고할 내용을 남겨 주세요.' },
-            { prop: 'Counter', layer: 'Counter', def: '0/500' },
-            { prop: 'Save', layer: 'Save', def: '저장' },
+        buildSet(
+          ctx,
+          page,
+          'DS/MemoBox',
+          [
+            { name: 'saving', values: ['false', 'true'] },
+            { name: 'framed', values: ['true', 'false'] }, // 'true'가 앞 = 기본 변형이 기존 모양
           ],
-        }),
-      states: [{ caption: '기본', props: {} }],
+          (c) => renderMemoBox(ctx, c),
+          {
+            texts: [
+              { prop: 'title', layer: 'title', def: '관리자 메모' },
+              { prop: 'description', layer: 'description', def: '고객에게 노출되지 않습니다.' },
+              { prop: 'placeholder', layer: 'placeholder', def: '고객 응대 시 참고할 내용을 남겨 주세요.' },
+              { prop: 'saveLabel', layer: 'saveLabel', def: '저장' },
+              { prop: 'savingLabel', layer: 'savingLabel', def: '저장 중…' },
+            ],
+            bools: [
+              { prop: 'showHeader', layer: 'head', def: true },
+              { prop: 'showCounter', layer: 'showCounter', def: true },
+            ],
+            swaps: [{ prop: 'saveIcon', layer: 'saveIcon', defKey: '_Icon/Save' }],
+          },
+        ),
+      states: [
+        { caption: '기본', props: {} },
+        { caption: '저장 중', props: { saving: 'true' } },
+        { caption: 'Framed 해제 (카드 안)', props: { framed: 'false' } },
+      ],
     },
     {
       key: 'DefinitionList',
@@ -2017,7 +2266,12 @@ const ADMIN_CATEGORY: CategoryDef = {
           ctx,
           page,
           'DS/DefinitionList',
-          [{ name: 'frame', values: ['card', 'flush'] }],
+          [
+            { name: 'frame', values: ['card', 'flush'] },
+            // divider·density는 React prop 이름 그대로. 기본값을 앞에 둬 기존 모양을 지킨다.
+            { name: 'divider', values: ['true', 'false'] },
+            { name: 'density', values: ['comfortable', 'compact'] },
+          ],
           (c) => renderDefinitionList(ctx, c),
           {
             texts: flatProps(

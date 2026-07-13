@@ -42,6 +42,10 @@ import {
   WHITE,
 } from './foundations'
 import { iconInstance, ICON_COMPONENTS } from './icon-vec'
+import { buildSet, addTextProp, addBoolProp, addSwapProp, type Axis, type PropSpec } from './lib/build-set'
+import { propKeys } from './lib/build-set'
+// site-screens.ts가 './site'에서 propKeys를 가져간다 — 정본은 lib/build-set.ts, 여기선 경로만 유지한다.
+export { propKeys }
 import type { PresetName } from '../presets'
 
 // 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14)·Admin(15)·Layout(16)·Screens(17) 다음 번호.
@@ -349,56 +353,8 @@ function topBorder(ctx: Ctx, node: FrameNode | ComponentNode, varName: string) {
   node.strokeBottomWeight = 0
 }
 
-// ── 컴포넌트 속성 헬퍼 (출처: categories.ts) ─────────────────────────
-// 레이어 name과 layer가 정확히 같아야 붙는다. 실패는 조용히 무시된다.
-function addTextProp(set: ComponentSetNode, prop: string, layer: string, def: string) {
-  try {
-    const id = set.addComponentProperty(prop, 'TEXT', def)
-    for (const n of set.findAll((x) => x.type === 'TEXT' && x.name === layer)) {
-      ;(n as TextNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), characters: id }
-    }
-  } catch {
-    /* 이미 있거나 대상 없음 */
-  }
-}
-function addBoolProp(set: ComponentSetNode, prop: string, layer: string, def: boolean) {
-  try {
-    const id = set.addComponentProperty(prop, 'BOOLEAN', def)
-    for (const n of set.findAll((x) => x.name === layer)) {
-      n.componentPropertyReferences = { ...(n.componentPropertyReferences || {}), visible: id }
-    }
-  } catch {
-    /* skip */
-  }
-}
-function addSwapProp(set: ComponentSetNode, prop: string, layer: string, defKey: string) {
-  const comp = ICON_COMPONENTS.get(defKey)
-  if (!comp) return
-  try {
-    const id = set.addComponentProperty(prop, 'INSTANCE_SWAP', comp.id)
-    for (const n of set.findAll((x) => x.type === 'INSTANCE' && x.name === layer)) {
-      ;(n as InstanceNode).componentPropertyReferences = { ...(n.componentPropertyReferences || {}), mainComponent: id }
-    }
-  } catch {
-    /* skip */
-  }
-}
-/**
- * 표시 이름 → 실제 프로퍼티 키('Label#12:3') 매핑.
- * TEXT·INSTANCE_SWAP 속성은 setProperties에 이 전체 키가 필요하다(베리언트 축은 이름 그대로).
- */
-export function propKeys(set: ComponentSetNode): Record<string, string> {
-  const map: Record<string, string> = {}
-  try {
-    for (const key of Object.keys(set.componentPropertyDefinitions)) map[key.split('#')[0]] = key
-  } catch {
-    /* skip */
-  }
-  return map
-}
 
-// ── 제네릭 베리언트 세트 빌더 (출처: categories.ts buildSet) ─────────
-type Axis = { name: string; values: string[] }
+// 베리언트 세트 빌더 + 속성 헬퍼는 lib/build-set.ts가 정본이다(사본 금지).
 type State = {
   caption: string
   props: Record<string, string>
@@ -408,11 +364,6 @@ type State = {
   swaps?: Record<string, string>
   /** 문서에서 인스턴스를 얹을 면 — 투명 헤더처럼 배경이 없는 변형용 */
   backdrop?: 'subtle'
-}
-type PropSpec = {
-  texts?: Array<{ prop: string; layer: string; def: string }>
-  bools?: Array<{ prop: string; layer: string; def: boolean }>
-  swaps?: Array<{ prop: string; layer: string; defKey: string }>
 }
 type ComponentDoc = {
   key: string
@@ -424,46 +375,6 @@ type ComponentDoc = {
 }
 type CategoryDef = { pageName: string; title: string; subtitle: string; docs: ComponentDoc[] }
 
-// 세트는 페이지에 만들고(소스), 문서에는 인스턴스를 배치한다.
-function buildSet(
-  ctx: Ctx,
-  page: PageNode,
-  setName: string,
-  axes: Axis[],
-  render: (combo: Record<string, string>) => ComponentNode,
-  props?: PropSpec,
-): ComponentSetNode {
-  let combos: Record<string, string>[] = [{}]
-  for (const axis of axes) {
-    const next: Record<string, string>[] = []
-    for (const c of combos) for (const v of axis.values) next.push({ ...c, [axis.name]: v })
-    combos = next
-  }
-  const variants = combos.map((combo) => {
-    const comp = render(combo)
-    comp.name = axes.map((a) => `${a.name}=${combo[a.name]}`).join(', ')
-    page.appendChild(comp)
-    return comp
-  })
-  const set = figma.combineAsVariants(variants, page)
-  set.name = setName
-  set.layoutMode = 'HORIZONTAL'
-  set.layoutWrap = 'WRAP'
-  set.itemSpacing = 20
-  set.counterAxisSpacing = 20
-  set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid('#FBFCFE')]
-
-  if (props) {
-    // TEXT마다 `Show <prop>` 불리언을 자동 생성하지 않는다 — 대응하는 React prop이 없는 "유령 속성"이라
-    // 규약 §3(BOOLEAN 이름 = show* prop 이름 그대로)을 기계적으로 위반한다. 텍스트 on/off가 필요하면
-    // 코드에 show* prop을 만들고 props.bools에 명시적으로 선언하라.
-    props.texts?.forEach((t) => addTextProp(set, t.prop, t.layer, t.def))
-    props.bools?.forEach((b) => addBoolProp(set, b.prop, b.layer, b.def))
-    props.swaps?.forEach((s) => addSwapProp(set, s.prop, s.layer, s.defKey))
-  }
-  return set
-}
 
 // ── 문서 안 변형 아이템(인스턴스 + 캡션). 출처: categories.ts variantItem ──
 // 확장점 두 가지(이 파일 소유):
@@ -657,12 +568,15 @@ function checkBox(ctx: Ctx, checked: boolean, name = 'Checkbox'): FrameNode {
 }
 
 // ══ DS/SiteHeader ════════════════════════════════════════════════════
-// 축: transparent(false|true) — theme 축은 없다(라이트 단일).
-// 좌 브랜드 / 우 메뉴 5개(활성=굵게 + 그린 밑줄) / 우 [1:1 문의].
+// 축: transparent(false|true) · sticky(false|true) — 둘 다 React 유니온/불리언 prop 이름 그대로.
+// 좌 브랜드 / 우 메뉴 5개(활성=굵게 + 그린 밑줄) / 우 [1:1 문의] / 햄버거(모바일).
 const HEADER_W = 960
 
 function renderSiteHeader(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const transparent = combo.transparent === 'true'
+  // sticky는 position:sticky + z-index만 바꾼다(SiteHeader.module.css .sticky) — 정지 이미지에서
+  // 시각차가 없다. 그래도 축으로 둔다: React prop이므로 규약상 축 이름이 있어야 하고,
+  // 디자이너가 "이 헤더는 스크롤 고정"이라는 의도를 변형으로 선언할 수 있어야 한다.
 
   const c = figma.createComponent()
   c.layoutMode = 'HORIZONTAL'
@@ -686,7 +600,7 @@ function renderSiteHeader(ctx: Ctx, combo: Record<string, string>): ComponentNod
   c.appendChild(brand)
 
   // 메뉴 — 우측으로 밀어 액션 앞에 붙인다(margin-left:auto와 같은 효과).
-  const nav = autoFrame('Nav', 'HORIZONTAL')
+  const nav = autoFrame('nav', 'HORIZONTAL')
   nav.counterAxisAlignItems = 'CENTER'
   nav.itemSpacing = 20
   nav.primaryAxisAlignItems = 'MAX'
@@ -715,11 +629,34 @@ function renderSiteHeader(ctx: Ctx, combo: Record<string, string>): ComponentNod
     nav.appendChild(it)
   })
 
-  const actions = autoFrame('Actions', 'HORIZONTAL')
+  // actions 슬롯(ReactNode) — 레퍼런스에서는 [1:1 문의] 버튼이 들어온다.
+  // 레이어 이름은 CSS 클래스 그대로(.actions). 버튼 자체는 데모 내용이라 속성으로 열지 않는다
+  // (React actions는 문자열이 아니라 노드 슬롯이다 — TEXT 속성으로 표현하면 거짓말이 된다).
+  const actions = autoFrame('actions', 'HORIZONTAL')
   actions.counterAxisAlignItems = 'CENTER'
   actions.itemSpacing = 8
   actions.appendChild(siteBtn(ctx, '1:1 문의', 'Action Label'))
   c.appendChild(actions)
+
+  // 햄버거(showMenuButton + menuIcon) — 출처: SiteHeader.module.css .hamburger
+  // CSS가 max-width:767px에서만 .hamburger를 보여준다 → 이 세트의 프레임 폭(960)에서는 감춰진 상태가
+  // 실제 렌더와 일치한다. 그래서 레이어를 visible=false로 만들고 BOOLEAN 기본값도 false다.
+  // (React 기본값은 showMenuButton=true지만 그건 '모바일에서 보인다'는 뜻이지 데스크톱 바에 나온다는
+  //  뜻이 아니다. 여기서 true로 두면 nav·actions·햄버거가 동시에 보이는, 실제로는 존재하지 않는 그림이 된다.)
+  const hamburger = autoFrame('hamburger', 'HORIZONTAL')
+  hamburger.counterAxisAlignItems = 'CENTER'
+  hamburger.primaryAxisAlignItems = 'CENTER'
+  hamburger.paddingTop = hamburger.paddingBottom = 8
+  hamburger.paddingLeft = hamburger.paddingRight = 8
+  hamburger.cornerRadius = 8
+  fillV(ctx, hamburger, V_BG)
+  strokeV(ctx, hamburger, V_BORDER)
+  hamburger.strokeWeight = 1
+  hamburger.strokeAlign = 'INSIDE'
+  // 기본 아이콘은 lucide Menu — React의 `menuIcon ?? <Menu size={20} />`와 같은 기본값.
+  hamburger.appendChild(icon(ctx, '_Icon/Menu', 'menuIcon', 20, V_TEXT))
+  hamburger.visible = false
+  c.appendChild(hamburger)
   return c
 }
 
@@ -771,17 +708,21 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
   })
   top.appendChild(links)
 
+  // SNS 슬롯 — React `social`은 아이콘 여러 개를 담는 ReactNode 슬롯이지만 Figma의 INSTANCE_SWAP은
+  // 인스턴스 '하나'를 가리킨다. 그래서 첫 아이콘만 레이어 이름을 prop 이름('social')으로 주어 스왑
+  // 속성을 열고, 나머지 둘은 데모 데이터로 남긴다(인스턴스 안에서 개별 스왑은 Figma가 기본 지원한다).
   const social = autoFrame('Social', 'HORIZONTAL')
   social.counterAxisAlignItems = 'CENTER'
   social.itemSpacing = 12
   FOOTER_SOCIAL.forEach((key, i) => {
-    social.appendChild(icon(ctx, key, 'Social ' + (i + 1), 18, V_SUB))
+    social.appendChild(icon(ctx, key, i === 0 ? 'social' : 'Social ' + (i + 1), 18, V_SUB))
   })
   top.appendChild(social)
   c.appendChild(top)
 
-  // 회사 정보 — 상호·대표·사업자번호·주소·전화·이메일
-  const company = autoFrame('Company', 'HORIZONTAL')
+  // 회사 정보 — 상호·대표·사업자번호·주소·전화·이메일. 레이어 = CSS 클래스(.company),
+  // showCompany BOOLEAN이 이 프레임 하나를 통째로 켜고 끈다.
+  const company = autoFrame('company', 'HORIZONTAL')
   company.layoutAlign = 'STRETCH'
   company.primaryAxisSizingMode = 'FIXED'
   company.layoutWrap = 'WRAP'
@@ -799,13 +740,21 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
   })
   c.appendChild(company)
 
-  // 카피라이트
-  const bottom = autoFrame('bottom', 'HORIZONTAL')
+  // 카피라이트 — showDivider(기본 true)가 저작권 줄 '위 구분선'을 켜고 끈다.
+  // BOOLEAN 속성은 '레이어의 표시/숨김'만 할 수 있다 → 프레임 stroke(border-top)로는 끌 수가 없어
+  // 구분선을 실제 레이어(1px 사각형, 이름은 CSS 클래스 .bottomDivider)로 분리했다.
+  // 세로 스택 + itemSpacing 16 = 기존 'border-top + paddingTop:16'과 같은 그림이다(모양 변화 없음).
+  const bottom = autoFrame('bottom', 'VERTICAL')
   bottom.layoutAlign = 'STRETCH'
-  bottom.primaryAxisSizingMode = 'FIXED'
-  bottom.counterAxisAlignItems = 'CENTER'
-  bottom.paddingTop = 16
-  topBorder(ctx, bottom, V_BORDER)
+  bottom.counterAxisSizingMode = 'FIXED'
+  bottom.primaryAxisSizingMode = 'AUTO'
+  bottom.itemSpacing = 16
+  const rule = figma.createRectangle()
+  rule.name = 'bottomDivider'
+  rule.resize(W - 40, 1) // 좌우 패딩 20*2를 뺀 폭 — STRETCH가 다시 잡아준다
+  fillV(ctx, rule, V_BORDER)
+  bottom.appendChild(rule)
+  rule.layoutAlign = 'STRETCH'
   const cr = boundText(ctx, '© 2026 SPACE PLANNING Inc. All rights reserved.', 11, V_SUB)
   cr.name = 'copyright'
   bottom.appendChild(cr)
@@ -814,11 +763,14 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
 }
 
 // ══ DS/ProductCard ═══════════════════════════════════════════════════
-// 축: ratio(3x4|1x1|4x3) × soldOut(false|true) = 6변형(theme 축이 사라져 12 → 6).
+// 축: ratio × soldOut × variant × currency = 4×2×2×2 = 32변형.
+// ratio 값 4종은 React의 ProductCardRatio = Extract<MediaRatio, '3x4'|'1x1'|'4x3'|'16x9'> 그대로다
+// (16x9가 빠져 있어 채웠다 — 축 값 집합은 코드 유니온과 정확히 같아야 한다).
 // 카드는 흰 판이고 놓이는 면도 흰색이라 "라이트 아일랜드" 개념 자체가 없다 —
 // 컴포넌트 루트가 곧 카드다(예전엔 다크 섹션 면을 흉내내는 바깥 프레임이 한 겹 더 있었다).
 const CARD_W = 240
-const RATIO_H: Record<string, number> = { '3x4': 320, '1x1': 240, '4x3': 180 }
+// 높이 = CARD_W(240) × 비율. 16x9 → 240 × 9/16 = 135.
+const RATIO_H: Record<string, number> = { '3x4': 320, '1x1': 240, '4x3': 180, '16x9': 135 }
 
 function renderProductCard(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const soldOut = combo.soldOut === 'true'
@@ -901,8 +853,10 @@ function renderProductCard(ctx: Ctx, combo: Record<string, string>): ComponentNo
   priceRow.itemSpacing = 8
   priceRow.paddingTop = 4
   // 흰 판 위 "글자"라 장식용 -500(2.1:1)이 아니라 --site-accent-text(-800)를 쓴다.
+  // 레이어 이름 = CSS 클래스(.price). React `price`는 number라 Figma에 대응 속성 타입이 없다 —
+  // 포맷된 문자열을 TEXT 속성으로 열되 이름은 코드 prop 그대로 'price'다(사유는 ALLOWLIST).
   const price = boundText(ctx, symbol ? '₩38,000' : '38,000원', 19, V_ACCENT_TEXT, true)
-  price.name = 'Price'
+  price.name = 'price'
   priceRow.appendChild(price)
   body.appendChild(priceRow)
 
@@ -926,15 +880,22 @@ function renderSortBar(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
   c.paddingTop = c.paddingBottom = 12
   c.fills = []
 
-  const total = autoFrame('Total', 'HORIZONTAL')
+  // 좌측 "전체 6개…" — 출처: SortBar.tsx <p className={styles.total}>{totalLabel} <strong className={styles.count}>…</strong>{totalSuffix}</p>
+  const total = autoFrame('total', 'HORIZONTAL')
   total.counterAxisAlignItems = 'CENTER'
   total.itemSpacing = 4
   const label = boundText(ctx, '전체', 13, V_SUB)
   label.name = 'totalLabel'
   total.appendChild(label)
+  // 레이어는 CSS 클래스(.count), 속성 이름은 코드 prop(total: number) 그대로.
   const count = boundText(ctx, '6개', 13, V_TEXT, true)
-  count.name = 'Count'
+  count.name = 'count'
   total.appendChild(count)
+  // totalSuffix — 개수 뒤 문구(예: '의 상품이 있습니다.'). React 기본값이 ''이라 레이어도 빈 글자로 둔다
+  // (기본 상태에서는 아무것도 그려지지 않아 지금 문서의 모양이 그대로 유지된다).
+  const suffix = boundText(ctx, '', 13, V_SUB)
+  suffix.name = 'totalSuffix'
+  total.appendChild(suffix)
   c.appendChild(total)
   total.layoutGrow = 1 // 컨트롤을 우측으로 민다(margin-left:auto)
 
@@ -948,12 +909,19 @@ function renderSortBar(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
 }
 
 // ══ DS/SiteSection ═══════════════════════════════════════════════════
-// 축: tone(plain|subtle) — theme 축의 자리를 대체한다. 다크 반전이 아니라 면 교차가 위계를 만든다.
-// 영문 대형 헤드라인 + 한글 서브 + 구분선(+그린 세그먼트) + 콘텐츠 슬롯.
+// 축: tone(plain|subtle) · align(start|center) · accent(success|primary) · divider(false|true).
+// theme 축은 없다 — 다크 반전이 아니라 면 교차(tone)가 위계를 만든다.
+// maxWidth·padding 축은 일부러 뺐다(사유는 아래 buildSet 주석 + verify-naming ALLOWLIST).
 function renderSiteSection(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const subtle = combo.tone === 'subtle'
   // align: start=좌측(목록·어드민형 섹션·기본값) / center=가운데(페이지 히어로).
   const center = combo.align === 'center'
+  // accent: 강조색 패밀리 선택(React 기본값 success = 레퍼런스의 그린).
+  // 색은 여기서도 변수 이름으로만 고른다 — raw hex는 hexOf() 폴백에만 쓰인다.
+  const accentTone = combo.accent === 'primary' ? 'primary' : TONE
+  const vAccent = `color/${accentTone}/500` // 선·면(장식) — --site-accent
+  // divider: 제목 아래 구분선 + 강조 세그먼트(React 기본값 false).
+  const hasDivider = combo.divider === 'true'
   const W = 960
   const innerW = W - 48
 
@@ -973,14 +941,15 @@ function renderSiteSection(ctx: Ctx, combo: Record<string, string>): ComponentNo
   header.primaryAxisSizingMode = 'AUTO'
   header.itemSpacing = 8
   header.counterAxisAlignItems = center ? 'CENTER' : 'MIN'
+  // 레이어 이름 = CSS Module 클래스 이름(.title/.subtitle) 그대로 — TEXT 속성이 여기에 바인딩된다.
   const title = boundText(ctx, 'PORTFOLIO', 40, V_TEXT, true)
-  title.name = 'Title'
+  title.name = 'title'
   title.layoutAlign = 'STRETCH'
   title.textAutoResize = 'HEIGHT'
   if (center) title.textAlignHorizontal = 'CENTER'
   header.appendChild(title)
   const subtitle = boundText(ctx, '공간의 쓰임에서 출발한 프로젝트를 모았습니다.', 13, V_SUB)
-  subtitle.name = 'Subtitle'
+  subtitle.name = 'subtitle'
   subtitle.layoutAlign = 'STRETCH'
   subtitle.textAutoResize = 'HEIGHT'
   if (center) subtitle.textAlignHorizontal = 'CENTER'
@@ -989,41 +958,43 @@ function renderSiteSection(ctx: Ctx, combo: Record<string, string>): ComponentNo
 
   // 구분선 + 강조 세그먼트(출처: SiteSection.module.css .divider::after — 48×2 accent).
   // center에서는 세그먼트도 가운데에 선다 — 규칙선을 좌우 두 조각으로 나눠 세그먼트를 사이에 끼운다.
-  const divider = fixedFrame('Divider', 'HORIZONTAL', innerW, 2)
-  divider.counterAxisAlignItems = 'CENTER'
-  divider.itemSpacing = 0
-  const seg = figma.createRectangle()
-  seg.name = 'Accent Segment'
-  seg.resize(48, 2)
-  fillV(ctx, seg, V_ACCENT)
-  if (center) {
-    const lineLeft = figma.createRectangle()
-    lineLeft.name = 'Rule Left'
-    lineLeft.resize(1, 1)
-    fillV(ctx, lineLeft, V_BORDER)
-    divider.appendChild(lineLeft)
-    lineLeft.layoutGrow = 1
-    divider.appendChild(seg)
-    const lineRight = figma.createRectangle()
-    lineRight.name = 'Rule Right'
-    lineRight.resize(1, 1)
-    fillV(ctx, lineRight, V_BORDER)
-    divider.appendChild(lineRight)
-    lineRight.layoutGrow = 1
-  } else {
-    divider.appendChild(seg)
-    const line = figma.createRectangle()
-    line.name = 'Rule'
-    line.resize(innerW - 48, 1)
-    fillV(ctx, line, V_BORDER)
-    divider.appendChild(line)
-    line.layoutGrow = 1
+  if (hasDivider) {
+    const divider = fixedFrame('divider', 'HORIZONTAL', innerW, 2)
+    divider.counterAxisAlignItems = 'CENTER'
+    divider.itemSpacing = 0
+    const seg = figma.createRectangle()
+    seg.name = 'Accent Segment'
+    seg.resize(48, 2)
+    fillV(ctx, seg, vAccent)
+    if (center) {
+      const lineLeft = figma.createRectangle()
+      lineLeft.name = 'Rule Left'
+      lineLeft.resize(1, 1)
+      fillV(ctx, lineLeft, V_BORDER)
+      divider.appendChild(lineLeft)
+      lineLeft.layoutGrow = 1
+      divider.appendChild(seg)
+      const lineRight = figma.createRectangle()
+      lineRight.name = 'Rule Right'
+      lineRight.resize(1, 1)
+      fillV(ctx, lineRight, V_BORDER)
+      divider.appendChild(lineRight)
+      lineRight.layoutGrow = 1
+    } else {
+      divider.appendChild(seg)
+      const line = figma.createRectangle()
+      line.name = 'Rule'
+      line.resize(innerW - 48, 1)
+      fillV(ctx, line, V_BORDER)
+      divider.appendChild(line)
+      line.layoutGrow = 1
+    }
+    c.appendChild(divider)
+    divider.layoutAlign = 'STRETCH'
   }
-  c.appendChild(divider)
-  divider.layoutAlign = 'STRETCH'
 
-  // 콘텐츠 슬롯 — 페이지 본문이 들어갈 빈 프레임(점선)
-  const slot = fixedFrame('Content', 'VERTICAL', innerW, 160)
+  // children 슬롯 — 페이지 본문이 들어갈 빈 프레임(점선). 이름은 규약 §7의 'content'.
+  const slot = fixedFrame('content', 'VERTICAL', innerW, 160)
   slot.primaryAxisAlignItems = 'CENTER'
   slot.counterAxisAlignItems = 'CENTER'
   slot.itemSpacing = 8
@@ -1218,6 +1189,12 @@ const SITE_CATEGORY: CategoryDef = {
       desc:
         '프론트 전 페이지의 뼈대. 영문 대형 헤드라인 + 한글 서브카피 + 구분선(그린 세그먼트) + 콘텐츠 슬롯. 다크 반전이 없어진 자리를 tone 축이 대신합니다 — ' +
         'plain(흰색)과 subtle(아주 옅은 회색)을 교차시켜 섹션 리듬을 만듭니다. align(start·center) 축은 목록형 섹션(좌측)과 페이지 히어로(가운데)를 구분합니다.',
+      // 축 = React 유니온/불리언 prop 이름·값 그대로. 4축 = 2×2×2×2 = 16변형.
+      // maxWidth(lg|xl|full)·padding(md|lg|none)은 일부러 축으로 만들지 않았다:
+      //   넣는 순간 16 → 48 → 144변형으로 곱해져 세트가 문서로서 못 읽힌다(권장 상한 40).
+      //   둘 다 '본문 폭·여백' 치수라 그림이 거의 같아 변형당 정보량이 0에 가깝다 → ALLOWLIST에 사유 등록.
+      // accent 값 순서는 success 먼저 = React 기본값(=지금 문서의 그린). 값 '집합'만 코드와 같으면 되고
+      // 순서는 검사에서 무시되므로, 기본 변형이 현재 모양을 유지하도록 골랐다.
       build: (ctx, page) =>
         buildSet(
           ctx,
@@ -1226,19 +1203,26 @@ const SITE_CATEGORY: CategoryDef = {
           [
             { name: 'tone', values: ['plain', 'subtle'] },
             { name: 'align', values: ['start', 'center'] },
+            { name: 'accent', values: ['success', 'primary'] },
+            { name: 'divider', values: ['false', 'true'] },
           ],
           (c) => renderSiteSection(ctx, c),
           {
+            // title·subtitle은 React에서 ReactNode(<Highlight>로 일부 단어만 강조하려고)지만,
+            // 세트에서 그려지는 실체는 텍스트 레이어 하나다 → TEXT 속성이 유일하게 쓸모 있는 표현이다.
+            // (INSTANCE_SWAP은 아이콘 컴포넌트만 기본값으로 받을 수 있어 헤드라인을 표현할 수 없다.)
             texts: [
-              { prop: 'Title', layer: 'Title', def: 'PORTFOLIO' },
-              { prop: 'Subtitle', layer: 'Subtitle', def: '공간의 쓰임에서 출발한 프로젝트를 모았습니다.' },
+              { prop: 'title', layer: 'title', def: 'PORTFOLIO' },
+              { prop: 'subtitle', layer: 'subtitle', def: '공간의 쓰임에서 출발한 프로젝트를 모았습니다.' },
             ],
           },
         ),
+      // divider 기본값은 코드와 같은 false다 → 문서 3장은 divider='true'를 명시해 지금까지의 그림
+      // (구분선 + 그린 세그먼트)을 그대로 유지한다.
       states: [
-        { caption: 'Plain (흰 면)', props: {} },
-        { caption: 'Subtle (옅은 회색 면)', props: { tone: 'subtle' } },
-        { caption: 'Center (히어로)', props: { align: 'center' } },
+        { caption: 'Plain (흰 면)', props: { divider: 'true' } },
+        { caption: 'Subtle (옅은 회색 면)', props: { tone: 'subtle', divider: 'true' } },
+        { caption: 'Center (히어로)', props: { align: 'center', divider: 'true' } },
       ],
     },
     {
@@ -1249,6 +1233,10 @@ const SITE_CATEGORY: CategoryDef = {
         '프론트 GNB. 좌 브랜드 / 우 메뉴 5개(활성 메뉴는 굵게 + 그린 밑줄) / 우 [1:1 문의]. ' +
         'transparent는 배경·보더 없이 히어로 위에 얹히는 변형이라 문서에서는 옅은 회색 면 위에 올려 배경이 비치는 것을 보여줍니다. ' +
         'active(1~5)는 현재 페이지 메뉴 — 19. Site Screens의 5화면이 이 축으로 자기 메뉴를 켭니다.',
+      // 축: transparent · sticky(둘 다 React 불리언 prop) + active(아래 사유). 2×2×5 = 20변형.
+      // active는 React prop이 아니다 — 대응물은 `value`(선택된 메뉴 값, string)인데 "어느 메뉴가
+      // 굵고 밑줄인가"는 문자열이 아니라 시각 상태라 Figma에선 축으로만 표현된다. 19. Site Screens의
+      // 5개 화면이 이 축으로 자기 메뉴를 켠다 → 지우면 화면 조립이 깨진다. ALLOWLIST에 사유 등록.
       build: (ctx, page) =>
         buildSet(
           ctx,
@@ -1256,14 +1244,19 @@ const SITE_CATEGORY: CategoryDef = {
           'DS/SiteHeader',
           [
             { name: 'transparent', values: ['false', 'true'] },
+            { name: 'sticky', values: ['false', 'true'] },
             { name: 'active', values: ['1', '2', '3', '4', '5'] },
           ],
           (c) => renderSiteHeader(ctx, c),
           {
-            texts: [
-              { prop: 'Brand', layer: 'brand', def: BRAND },
-              { prop: 'Action', layer: 'Action', def: '1:1 문의' },
-            ],
+            // brand는 ReactNode(로고 슬롯)지만 세트에서 그려지는 실체는 워드마크 텍스트 하나다 → TEXT.
+            // 예전의 'Action' TEXT 속성은 지웠다: 대응 prop인 `actions`는 문자열이 아니라 버튼이 들어오는
+            // 노드 슬롯이고, 게다가 layer:'Action'은 존재하지 않는 레이어라 아무 데도 안 붙는 죽은 속성이었다.
+            texts: [{ prop: 'brand', layer: 'brand', def: BRAND }],
+            // showMenuButton — 레이어(.hamburger) 표시/숨김. 기본 false인 이유는 renderSiteHeader 주석 참고.
+            bools: [{ prop: 'showMenuButton', layer: 'hamburger', def: false }],
+            // menuIcon — 햄버거 아이콘 교체(React 기본값 lucide Menu와 같은 아이콘).
+            swaps: [{ prop: 'menuIcon', layer: 'menuIcon', defKey: '_Icon/Menu' }],
           },
         ),
       states: [
@@ -1279,14 +1272,16 @@ const SITE_CATEGORY: CategoryDef = {
       desc:
         '고객용 상품 카드(어드민 AdminCard와 다른 물건). 3:4 세로 상품컷이 기본인 흰 카드. 가격은 흰 면 기준 그린(success-800) bold이고, ' +
         '품절이면 어두운 딤이 아니라 흰 베일 + 중앙 배지입니다(라이트 전용). variant(card·plain) × currency(won·symbol) 축이 추가됐습니다. ' +
-        '텍스트 속성: Brand · Name · Description · Price.',
+        '텍스트 속성: brand · name · description · price(코드 prop 이름 그대로).',
+      // 축 4개 = 4×2×2×2 = 32변형. accent(primary|success)는 다섯 번째 축이 되면 64변형이라 뺐다
+      // (권장 상한 40 초과) — 기본값 success만 그린다. ALLOWLIST에 사유 등록.
       build: (ctx, page) =>
         buildSet(
           ctx,
           page,
           'DS/ProductCard',
           [
-            { name: 'ratio', values: ['3x4', '1x1', '4x3'] },
+            { name: 'ratio', values: ['3x4', '1x1', '4x3', '16x9'] },
             { name: 'soldOut', values: ['false', 'true'] },
             { name: 'variant', values: ['card', 'plain'] },
             { name: 'currency', values: ['won', 'symbol'] },
@@ -1297,7 +1292,9 @@ const SITE_CATEGORY: CategoryDef = {
               { prop: 'brand', layer: 'brand', def: '스페이스플래닝' },
               { prop: 'name', layer: 'name', def: '라운드 화분 · 라이트그레이' },
               { prop: 'description', layer: 'description', def: '실내 식물에 맞춘 배수형 화분' },
-              { prop: 'Price', layer: 'Price', def: '38,000원' },
+              // price: number → Figma엔 숫자 속성 타입이 없어 '포맷된 문자열'을 TEXT로 연다.
+              // 이름만은 코드 prop 그대로 'price'다(임의 이름 'Price' 금지).
+              { prop: 'price', layer: 'price', def: '38,000원' },
             ],
           },
         ),
@@ -1317,11 +1314,15 @@ const SITE_CATEGORY: CategoryDef = {
       setName: 'DS/SortBar',
       eyebrow: 'MOLECULE · SITE',
       desc: '목록 상단 정렬 바. 좌측 "전체 6개"(개수만 굵게), 우측 Select 2개(최신순 · 서비스별). 바 자체는 면을 깔지 않고 섹션 면 위에 그대로 얹힙니다.',
+      // state=default는 React prop이 아니라 Figma의 구조적 요구다 — 컴포넌트 세트는 베리언트 속성이
+      // 최소 1개 있어야 성립하는데 SortBar에는 유니온/불리언 prop이 하나도 없다. ALLOWLIST에 사유 등록.
       build: (ctx, page) =>
         buildSet(ctx, page, 'DS/SortBar', [{ name: 'state', values: ['default'] }], (c) => renderSortBar(ctx, c), {
           texts: [
             { prop: 'totalLabel', layer: 'totalLabel', def: '전체' },
-            { prop: 'Count', layer: 'Count', def: '6개' },
+            // total: number → price와 같은 이유로 TEXT. 레이어는 CSS 클래스(.count), 이름은 prop 그대로.
+            { prop: 'total', layer: 'count', def: '6개' },
+            { prop: 'totalSuffix', layer: 'totalSuffix', def: '' },
           ],
         }),
       states: [{ caption: '기본', props: {} }],
@@ -1331,6 +1332,7 @@ const SITE_CATEGORY: CategoryDef = {
       setName: 'DS/SiteFooter',
       eyebrow: 'ORGANISM · SITE',
       desc: '프론트 푸터. 본문과의 구분은 색 반전이 아니라 면 교차입니다 — 옅은 회색 면(color/bgSubtle) + 상단 보더. 브랜드 + 메뉴 링크 + SNS 3개 / 회사정보 6항목(상호·대표·사업자번호·주소·전화·이메일) / 카피라이트.',
+      // state=default — SortBar와 같은 구조적 이유(축이 될 prop이 없다). ALLOWLIST에 사유 등록.
       build: (ctx, page) =>
         buildSet(
           ctx,
@@ -1340,9 +1342,17 @@ const SITE_CATEGORY: CategoryDef = {
           (c) => renderSiteFooter(ctx, c),
           {
             texts: [
-              { prop: 'Brand', layer: 'brand', def: BRAND },
+              // brand는 ReactNode 슬롯이지만 세트가 그리는 실체는 워드마크 텍스트 하나다(SiteHeader와 동일).
+              { prop: 'brand', layer: 'brand', def: BRAND },
               { prop: 'copyright', layer: 'copyright', def: '© 2026 SPACE PLANNING Inc. All rights reserved.' },
             ],
+            // show* 불리언 = 레이어 표시/숨김. 기본값은 React 기본값(둘 다 true)과 같다.
+            bools: [
+              { prop: 'showCompany', layer: 'company', def: true },
+              { prop: 'showDivider', layer: 'bottomDivider', def: true },
+            ],
+            // social — SNS 아이콘 슬롯. 첫 아이콘이 스왑 대상이다(renderSiteFooter 주석 참고).
+            swaps: [{ prop: 'social', layer: 'social', defKey: '_Icon/Globe' }],
           },
         ),
       states: [{ caption: '기본', props: {} }],
