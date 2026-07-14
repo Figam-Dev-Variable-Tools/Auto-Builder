@@ -123,8 +123,10 @@ async function handleGenerate(msg: GenerateMsg) {
   }
 
   // ── 생성 순서 계약 ────────────────────────────────────────────────
-  // 화면(17 Admin Screens · 19 Site Screens)은 컴포넌트 세트(15 Admin · 18 Site)의 **인스턴스로 조립**된다.
-  // 따라서 반드시 컴포넌트 → 화면 순으로 돌려야 한다(아래 블록 순서 = 15 → 16 → 17 → 18 → 19).
+  // 화면(17 Admin Pages · siteScreens)은 컴포넌트 세트(15 Admin Component · 18 Client Pages)의
+  // **인스턴스로 조립**된다. 오너 확정(2026-07 개편)으로 siteScreens는 더 이상 별도 페이지(옛 19번)를
+  // 만들지 않고 18에 이어 그린다 — 그래도 site(18) 블록 뒤에 돌아야 하는 건 그대로다.
+  // 따라서 반드시 컴포넌트 → 화면 순으로 돌려야 한다(아래 블록 순서 = 15 → 16 → 17 → 18 → siteScreens).
   // 순서를 바꾸면 세트가 아직 없어 화면이 직접 그리기로 내려가고, 컴포넌트 수정이 화면에 전파되지 않는다.
   // 화면 스코프만 켠 경우엔 기존 페이지에서 세트를 입양하지만, 그것도 없으면 직접 그리므로 미리 알린다.
   if (msg.scope.screens && !msg.scope.admin) {
@@ -140,14 +142,14 @@ async function handleGenerate(msg: GenerateMsg) {
     )
   }
 
-  // 어드민 3종. 페이지 번호 순(Admin 15 → Layout 16 → Admin Screens 17)으로 돌려 탭이 순번대로 쌓이게 한다.
+  // 어드민 3종. 페이지 번호 순(Admin Component 15 → Layout 16 → Admin Pages 17)으로 돌려 탭이 순번대로 쌓이게 한다.
   // 각각 독립 try/catch — 하나가 죽어도 나머지 스코프는 계속 생성한다.
   if (msg.scope.admin) {
     try {
       status('info', '어드민 컴포넌트 — 컴포넌트 세트(베리언트) + 문서 생성 중…')
       const warnings = await generateAdmin(msg.typography.fontFamily, msg.colors, msg.preset)
       warnings.forEach((w) => status('warn', w))
-      status('info', "'15. System - Admin' 페이지 생성 완료.")
+      status('info', "'15. System - Admin Component' 페이지 생성 완료.")
     } catch (e) {
       status('error', `어드민 컴포넌트 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
@@ -170,32 +172,33 @@ async function handleGenerate(msg: GenerateMsg) {
       status('info', '어드민 화면 14종 — 컴포넌트 인스턴스로 조립 중… 시간이 걸립니다.')
       const warnings = await generateScreens(msg.typography.fontFamily, msg.colors, msg.preset)
       warnings.forEach((w) => status('warn', w))
-      status('info', "'17. System - Admin Screens' 페이지 생성 완료 (14화면).")
+      status('info', "'17. System - Admin Pages' 페이지 생성 완료 (14화면).")
     } catch (e) {
       status('error', `어드민 화면 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  // 프론트(사이트) 2종. 어드민과 마찬가지로 페이지 번호 순(Site 18 → Site Screens 19)으로 돌린다.
+  // 프론트(사이트) 2종. 오너 확정(2026-07 개편)으로 SortBar·InfoCard 세트는 15(Admin Component)에,
+  // 화면 5종은 별도 페이지 없이 18에 이어 그린다 — 그래도 site → siteScreens 순서는 그대로 지킨다.
   // 각각 독립 try/catch — 하나가 죽어도 나머지 스코프는 계속 생성한다.
   if (msg.scope.site) {
     try {
       status('info', '프론트 컴포넌트 — 컴포넌트 세트(베리언트) + 문서 생성 중…')
       const warnings = await generateSite(msg.typography.fontFamily, msg.colors, msg.preset)
       warnings.forEach((w) => status('warn', w))
-      status('info', "'18. System - Site' 페이지 생성 완료.")
+      status('info', "'18. System - Client Pages' 페이지 생성 완료.")
     } catch (e) {
       status('error', `프론트 컴포넌트 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  // 19는 18의 세트를 인스턴스로 조립한다 → 위 site 블록 뒤에 와야 한다.
+  // 화면은 18의 세트를 인스턴스로 조립하고, 18페이지에 바로 이어 그린다 → 위 site 블록 뒤에 와야 한다.
   if (msg.scope.siteScreens) {
     try {
       status('info', '프론트 화면 5종 — 컴포넌트 인스턴스로 조립 중… 시간이 걸립니다.')
       const warnings = await generateSiteScreens(msg.typography.fontFamily, msg.colors, msg.preset)
       warnings.forEach((w) => status('warn', w))
-      status('info', "'19. System - Site Screens' 페이지 생성 완료 (5화면).")
+      status('info', "'18. System - Client Pages'에 프론트 화면 5종 추가 완료.")
     } catch (e) {
       status('error', `프론트 화면 실패: ${e instanceof Error ? e.message : String(e)}`)
     }

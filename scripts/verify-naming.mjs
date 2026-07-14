@@ -45,6 +45,9 @@ const ALLOWLIST = [
     ['Chip', 'removeLabel'], // × 버튼의 이름
     ['DropZone', 'labels.upload'], // 드롭 영역(role=button)의 이름
     ['DropZone', 'labels.uploadMultiple'],
+    // InputBase.tsx:13 — "눈에 보이는 라벨이 없을 때의 접근성 이름". 세트는 항상 label TEXT를 그리므로
+    // ariaLabel이 실제로 쓰이는 그림(라벨 없는 인스턴스)은 문서화 범위 밖이다.
+    ['InputBase', 'ariaLabel'],
   ].map(([component, code]) => ({
     component,
     kind: 'text-missing',
@@ -201,13 +204,17 @@ const ALLOWLIST = [
       '다섯 번째 축이 되면 32 → 64변형(권장 상한 40 초과). 가격 글자색만 바뀌는 축이라 기본값 success(레퍼런스의 그린)만 그린다.',
     owner: 'sb.hong',
   },
+  // 2026-07: DS/EraTimeline 생성기가 실제로 ratio 축을 세웠다(site.ts:1463, ERA_RATIOS 4값) —
+  // 위에서 "아직 안 세운 축(deferred)"이라던 axis-missing 면제는 해소돼 지웠다(E-ALLOWLIST-STALE로
+  // 확인). 남은 것은 대표 4값 축소(코드 10값 유니온 → 축 4값)뿐이라 axis-values로 옮긴다 — 아래 (10)
+  // ImageCard.ratio와 값까지 동일한 선례를 그대로 따르는 **영구** 면제다(변형 예산, 재설계로 해소되지 않음).
   {
     component: 'EraTimeline',
-    kind: 'axis-missing',
-    figma: null,
-    code: 'ratio',
+    kind: 'axis-values',
+    figma: 'ratio: [1x1|16x9|4x3|21x9]',
+    code: 'ratio: [1x1|4x3|3x2|16x9|21x9|4x5|3x4|9x16|2x1|auto]',
     reason:
-      'ratio는 MediaRatio 10값 유니온이라 축으로 세우면 columns(3) × accent(2) × ratio(10) = 60변형이 된다(권장 상한 40 초과). 이미지 프레임의 종횡비만 바뀌는 축이라 변형마다 정보량이 거의 없다 — 기본값 1x1만 그린다. ImageCard·ProductCard의 ratio도 같은 사유로 축이 아니다.',
+      "ratio(MediaRatio 10값 유니온, EraTimeline.tsx:30)를 대표 4값(ERA_RATIOS, site.ts:1112-1115)으로 세웠다 — columns(3)×accent(2)×ratio(4)=24변형(상한 54 이내), 10값 전부면 60변형으로 초과한다. ImageCard의 기존 axis-values 면제(아래 (10), categories-data-kr-media.ts, 10값→CARD_RATIOS 4값)와 값까지 동일한 선례를 그대로 따른다.",
     owner: 'sb.hong',
   },
 
@@ -230,16 +237,14 @@ const ALLOWLIST = [
     owner: 'sb.hong',
   },
 
-  // (8) children 슬롯 — N7이 현재 구조에서 충족 불가.
-  {
-    component: 'SiteSection',
-    kind: 'slot-missing',
-    figma: null,
-    code: 'children',
-    reason:
-      'children 슬롯에 대응하는 Figma 속성 타입이 없다. N7 판정은 buildSet 선언(texts/bools/swaps)의 layer만 보므로 렌더 함수의 name="content" 프레임(renderSiteSection에 있다)을 볼 수 없다 — 바인딩할 속성이 없는 한 구조적으로 충족 불가다. children을 받는 12개 컴포넌트가 같은 이유로 baseline에 있다(검사기 수정은 scripts/ 배치 소관).',
-    owner: 'sb.hong',
-  },
+  // (8) [삭제됨] SiteSection.children의 slot-missing 면제 — **해소됐다**(2026-07).
+  //     N7이 buildSet 선언(texts/bools/swaps)뿐 아니라 render 콜백이 가리키는 실제 렌더 함수
+  //     본문까지 따라가 name='content' 프레임(자리표시 · 속성에 안 묶여도 됨)을 찾도록 확장되면서
+  //     renderSiteSection의 `fixedFrame('content', …)`가 잡혔다(scripts/lib/figma-sets.mjs의
+  //     detectContentFrame). 아래 (10)·(12)의 CrudDialog·DropZone·Upload·Drawer·AdminShell은
+  //     같은 확장을 적용해도 여전히 남는다 — 그 렌더 함수들엔 'content'라는 이름의 노드 자체가
+  //     없다(각각 body·dropzone 컴포넌트 전체·header+nav 목록·main으로 이름 붙어 있다, 직접 확인함).
+  //     즉 이 5개는 검사기 한계가 아니라 생성기가 그 프레임에 'content' 이름을 붙이지 않은 것이다.
 
   // ══ B4 어드민 세트 — figma-plugin/src/generators/admin.ts ═══════════════════════════
   // 아래 예외는 전부 "코드에 이름을 지어내지 않으려면 Figma 쪽에 표현 수단이 없다"는 한 가지 뿌리에서 나온다.
@@ -445,17 +450,22 @@ const ALLOWLIST = [
     }),
   ),
 
-  // (10) children 슬롯 — N7이 현재 검사 구조에서 충족 불가(SiteSection과 같은 사유).
+  // (10) children 슬롯 — N7은 이제 render 콜백이 가리키는 렌더 함수 본문까지 따라가 name='content'
+  //      프레임(자리표시여도 인정)을 찾는다(scripts/lib/figma-sets.mjs의 detectContentFrame, 2026-07).
+  //      SiteSection은 그걸로 해소됐다(위 (8) 참고) — 그러나 아래 셋은 렌더 함수 자체에 'content'라는
+  //      이름의 노드가 없다(renderCrudDialog는 'body', renderDropZone은 컴포넌트 루트 자체,
+  //      renderUpload은 'dropzone' — 직접 확인함). 그러니 지금 이 면제의 진짜 근거는 "검사기가 못 본다"가
+  //      아니라 "생성기가 그 프레임에 'content' 이름을 붙이지 않았다"다 — figma-plugin 소관(scripts/ 밖).
   ...[
-    ['CrudDialog', 'create/edit 모드의 폼 본문'],
-    ['DropZone', '기본 아이콘·라벨 대신 그릴 내용'],
-    ['Upload', '드롭존 안내 영역(아이콘·문구) 커스텀'],
-  ].map(([component, what]) => ({
+    ['CrudDialog', 'create/edit 모드의 폼 본문', "renderCrudDialog의 본문 프레임 이름은 'body'다"],
+    ['DropZone', '기본 아이콘·라벨 대신 그릴 내용', "renderDropZone은 children을 담을 별도 프레임이 없다 — 컴포넌트 루트 자체가 안내 아이콘·문구를 직접 그린다"],
+    ['Upload', '드롭존 안내 영역(아이콘·문구) 커스텀', "renderUpload의 드롭존 프레임 이름은 'dropzone'이다"],
+  ].map(([component, what, detail]) => ({
     component,
     kind: 'slot-missing',
     figma: null,
     code: 'children',
-    reason: `children(${what})에 대응하는 Figma 속성 타입이 없다. N7 판정은 buildSet 선언(texts/bools/swaps)의 layer만 보므로 렌더 함수의 프레임 이름을 볼 수 없다 — 바인딩할 속성이 없는 한 구조적으로 충족 불가다(검사기 수정은 scripts/ 배치 소관).`,
+    reason: `children(${what})에 대응하는 Figma 속성 타입이 없다. ${detail} — N7이 render 콜백을 따라가도 'content' 이름의 노드를 못 찾는다(있으면 잡힌다, SiteSection이 그 증거다). 그 프레임의 이름을 'content'로 바꾸는 것은 렌더 함수 변경이라 figma-plugin 소관이다(scripts/ 배치 밖).`,
     owner: 'sb.hong',
   })),
 
@@ -474,6 +484,9 @@ const ALLOWLIST = [
     ['Textarea', 'value', 'placeholder'],
     ['Select', 'placeholder', 'value'],
     ['Autocomplete', 'placeholder', 'value'],
+    // DS/InputBase도 placeholder를 그린다(categories-core.ts:1229 — 'name@example.com'). value는 필수
+    // prop(InputBaseProps.value: string, InputBase.tsx:14)이지만 세트가 그리는 상태는 빈 입력이다.
+    ['InputBase', 'value', 'placeholder'],
   ].map(([component, code, opened]) => ({
     component,
     kind: 'text-missing',
@@ -509,6 +522,51 @@ const ALLOWLIST = [
       '이 세트는 후보가 있는 상태(제안 목록 3개)를 그린다 — "검색 결과 없음" UI 자체가 없어 문구를 담을 레이어가 없다(ActivityLog.emptyText 예외와 같은 사유).',
     owner: 'sb.hong',
   },
+
+  // (1b) DS/InputBase — size(3)×error(2)×success(2)×disabled(2) = 24변형(categories-core.ts:1218-1224).
+  //      나머지 boolean/union prop 5개를 하나씩 검토했다(직접 CSS·렌더 확인, 추측 없음):
+  //      type·inputMode는 그림에 전혀 관여하지 않는다(순수 HTML 속성) → **영구**. fullWidth는
+  //      renderInputBase가 항상 고정폭(FIELD_W)으로 그려 컨텍스트 종속 축이라 격리 인스턴스에서
+  //      그림이 안 바뀐다(ImageCard.fill과 같은 사유) → **영구**. readOnly·required는 실제로 그림이
+  //      바뀌지만(.readOnly 배경·.required 별표) 지금 24변형에 하나만 더해도 48로 상한을 넘는다 → **연기**.
+  {
+    component: 'InputBase',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'type',
+    reason:
+      "InputBase.tsx:102 — <input type={type}>에 속성값으로만 쓰이고 className 분기가 없다(styles.field/inputWrap 어디에도 안 걸린다). text·email·search·tel은 정적 프레임에서 그림이 완전히 같고, password의 마스킹은 브라우저 렌더링이지 CSS가 아니라 Figma가 재현할 수단이 없다.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'InputBase',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'inputMode',
+    reason:
+      'InputBase.tsx:103 — <input inputMode={inputMode}>에 속성값으로만 쓰인다(모바일 가상 키보드 힌트). CSS에 전혀 관여하지 않아 6값 모두 그림이 완전히 같다(TimePicker.minuteStep과 같은 사유).',
+    owner: 'sb.hong',
+  },
+  {
+    component: 'InputBase',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'fullWidth',
+    reason:
+      "InputBase.module.css:205 — .fullWidth { width:100%; max-width:none } 는 부모가 폭을 정하는 컨텍스트 종속 효과인데, categories-core.ts의 renderInputBase는 c.resize(FIELD_W, …)로 격리된 인스턴스를 항상 고정폭으로 그린다 — 부모가 없어 100%가 곧 고정폭과 같은 그림이 된다(ImageCard.fill 예외와 같은 사유: '그리드 셀 폭을 꽉 채운다는 컨텍스트 종속 동작이라 격리된 컴포넌트의 외형이 바뀌지 않는다').",
+    owner: 'sb.hong',
+  },
+  ...[
+    ['readOnly', 'InputBase.module.css:111 — .readOnly { background: var(--ds-color-bgSubtle) } 로 실제 그림이 바뀐다(disabled와 배경은 같고 글자색만 다르다)'],
+    ['required', 'InputBase.tsx:90-94 — required면 라벨 옆에 * 표시가 실제로 더 그려진다(label이 있을 때만)'],
+  ].map(([code, effect]) => ({
+    component: 'InputBase',
+    kind: 'axis-missing',
+    figma: null,
+    code,
+    reason: `${effect} — no-op이 아니라 진짜 다섯 번째 축 후보인데, 지금 24변형(size×error×success×disabled)에 하나만 더해도 48로 권장 상한(40)을 넘는다. 표현 불가가 아니라 변형 예산 재설계가 필요한 경우라 연기(deferred)로 분류한다.`,
+    owner: 'sb.hong',
+  })),
 
   // (2) 화면에 글자로 그려지지 않는 문자열 — 바인딩할 텍스트 레이어가 존재할 수 없다.
   ...[
@@ -557,26 +615,10 @@ const ALLOWLIST = [
     owner: 'sb.hong',
   })),
 
-  // (5) children(ReactNode) 슬롯이지만 세트가 그리는 실체는 '텍스트 한 줄'이다 →
-  //     규약 §7이 정한 슬롯 이름 `content`로 TEXT를 열었다(SiteSection.title 예외와 같은 부류).
-  {
-    component: 'Callout',
-    kind: 'text-extra',
-    figma: 'content',
-    code: null,
-    reason:
-      'CalloutProps.children(본문)이다. INSTANCE_SWAP 기본값은 아이콘 컴포넌트만 가능해 노드 슬롯을 담을 수 없고, 세트가 그리는 실체는 텍스트 한 줄이라 TEXT가 유일하게 쓸모 있는 표현이다. 이름은 규약 §7의 슬롯 이름 content 그대로다(이 TEXT가 N7의 content 레이어도 함께 만족시킨다).',
-    owner: 'sb.hong',
-  },
-  {
-    component: 'Highlight',
-    kind: 'text-extra',
-    figma: 'content',
-    code: null,
-    reason:
-      'HighlightProps.children(강조할 글자)이다. Callout.content와 완전히 같은 사유 — 세트가 그리는 실체는 텍스트 한 줄이고, 이름은 규약 §7의 슬롯 이름 content 그대로다. 근본 원인은 ds-props.mjs가 children을 code.slot으로만 분류하고 code.text에 넣지 않아 N4가 이 TEXT를 "여분"으로 오판하는 것이다(파서 한계이지 규약 위반이 아니다).',
-    owner: 'sb.hong',
-  },
+  // (5) [삭제됨] Callout.content · Highlight.content 의 text-extra 면제 2건.
+  //     children 슬롯을 '텍스트 한 줄'로 그리며 §7대로 이름을 content로 지은 것이라 애초에 위반이
+  //     아니었다 — 파서(classifyProps)가 children을 code.slot으로만 분류해 오판한 것이었다.
+  //     ds-props.mjs의 optionalText가 그 이름을 정당한 것으로 인정하면서 면제가 불필요해졌다.
 
   // (6) 코드에 없는 축 = React에선 prop이 아니라 컴포넌트 내부 상태(useState)다.
   //     그러나 그 그림(열린 목록·검증 결과)은 문서에 반드시 필요하다 — DropZone의 state 축 예외와 같은 사유.
@@ -687,19 +729,9 @@ const ALLOWLIST = [
     owner: 'sb.hong',
   })),
 
-  // (3) children 슬롯을 그리는 텍스트 레이어 — 규약 §7이 슬롯 이름을 'content'로 못박았는데
-  //     classifyProps는 children을 code.slot으로 따로 분류해 code.text에 넣지 않는다. 즉 §7대로 이름을
-  //     지을수록 N4는 "여분 TEXT"라고 부른다. 지우면 본문을 인스턴스마다 바꿀 수단이 사라지고
-  //     N7(content 레이어)도 다시 깨진다 — 규약을 지킨 대가로 생기는 위반이라 예외로 둔다.
-  ...['Card', 'Modal', 'Popover', 'BottomSheet'].map((component) => ({
-    component,
-    kind: 'text-extra',
-    figma: 'content',
-    code: null,
-    reason:
-      'children 슬롯(§7 → 레이어 이름 content)을 그리는 텍스트 레이어에 붙인 TEXT 속성이다. 검사기가 children을 code.slot으로 따로 분류해 code.text에 넣지 않으므로 규약대로 이름 지을수록 text-extra가 된다. 지우면 N7(content 레이어)이 다시 깨진다.',
-    owner: 'sb.hong',
-  })),
+  // (3) [삭제됨] Card·Modal·Popover·BottomSheet 의 content text-extra 면제 4건.
+  //     위 categories-core.ts 배치의 (5)와 같은 사유로 없앴다 — 규약(§7)을 지킨 이름을 파서가
+  //     오판한 것이었고, ds-props.mjs의 optionalText가 이를 인정하면서 면제가 불필요해졌다.
 
   // (4) 이 Figma 세트가 아예 그리지 않는 UI의 속성 — 선언하면 어떤 레이어에도 안 붙는 유령 속성이 된다.
   ...[
@@ -841,14 +873,16 @@ const ALLOWLIST = [
     owner: 'sb.hong',
   })),
 
-  // (12) children 슬롯 — N7이 현재 검사 구조에서 충족 불가(SiteSection·CrudDialog와 같은 사유).
+  // (12) children 슬롯 — N7은 render 콜백을 따라가 'content' 이름의 프레임도 인정하지만
+  //      (위 (10) 참고), renderDrawer는 내비 항목을 'nav' 프레임 반복으로 그릴 뿐 'content'라는
+  //      이름의 노드가 없다(직접 확인함) — 검사기가 아니라 생성기 쪽의 공백이다(figma-plugin 소관).
   {
     component: 'Drawer',
     kind: 'slot-missing',
     figma: null,
     code: 'children',
     reason:
-      'children(드로어 본문)에 대응하는 Figma 속성 타입이 없다. Card·Modal·Popover·BottomSheet는 본문이 텍스트 한 줄이라 TEXT를 content 레이어에 걸어 N7을 채웠지만, Drawer의 본문은 내비 목록(아이콘+라벨 행)이라 걸 텍스트 레이어가 하나로 정해지지 않는다. N7 판정은 buildSet 선언의 layer만 보므로 렌더 함수의 프레임 이름은 보이지 않는다(검사기 수정은 scripts/ 배치 소관).',
+      "children(드로어 본문)에 대응하는 Figma 속성 타입이 없다. Card·Modal·Popover·BottomSheet는 본문이 텍스트 한 줄이라 TEXT를 content 레이어에 걸어 N7을 채웠지만, Drawer의 본문은 내비 목록(아이콘+라벨 행)이라 걸 텍스트 레이어가 하나로 정해지지 않는다. N7이 render 콜백을 따라가도 renderDrawer엔 'content' 이름의 노드가 없다(반복되는 'nav' 프레임뿐) — 그 이름을 붙이는 것은 렌더 함수 변경이라 figma-plugin 소관이다(scripts/ 배치 밖).",
     owner: 'sb.hong',
   },
 
@@ -952,14 +986,16 @@ const ALLOWLIST = [
     owner: 'sb.hong',
   })),
 
-  // (5) children 슬롯 — N7이 현재 검사 구조에서 충족 불가(SiteSection과 같은 사유).
+  // (5) children 슬롯 — N7은 render 콜백을 따라가 'content' 프레임도 인정하지만(위 admin.ts 배치
+  //     (10) 참고), renderTplAdminShell엔 그 이름의 노드가 없다(본문 블록은 'main' — 직접 확인함).
+  //     검사기가 아니라 생성기 쪽의 공백이다(figma-plugin 소관).
   {
     component: 'AdminShell',
     kind: 'slot-missing',
     figma: null,
     code: 'children',
     reason:
-      'children(셸 본문)에 대응하는 Figma 속성 타입이 없다. N7 판정은 buildSet 선언(texts/bools/swaps)의 layer만 보므로 렌더 함수의 프레임 이름을 볼 수 없다 — 바인딩할 속성이 없는 한 구조적으로 충족 불가다(검사기 수정은 scripts/ 배치 소관).',
+      "children(셸 본문)에 대응하는 Figma 속성 타입이 없다. N7이 render 콜백을 따라가도 renderTplAdminShell엔 'content' 이름의 노드가 없다(본문 블록 이름은 'main') — 그 이름을 붙이는 것은 렌더 함수 변경이라 figma-plugin 소관이다(scripts/ 배치 밖).",
     owner: 'sb.hong',
   },
 
@@ -1064,6 +1100,13 @@ const ALLOWLIST = [
       'ratio: [1x1|4x3|3x2|16x9|21x9|4x5|3x4|9x16|2x1|auto]',
       '10값을 다 그리면 72 → 180변형이다(권장 상한 40). 4축 곱이라 비율만 대표 4값(16x9·4x3·1x1·21x9)으로 줄였다 — DS/Image·Video·YouTube·ImageSlide는 축이 하나뿐이라 10값을 전부 그린다.',
     ],
+    [
+      'ImageCard',
+      'axis-values',
+      'scrim: [gradient|none]',
+      'scrim: [gradient|solid|none]',
+      '변형 축소(72→48): ratio(4)×layout(2)×align(3)×scrim(3)=72에서 scrim을 대표 2값(gradient·none)으로 줄여 4×2×3×2=48(상한 54 이내). scrim=solid는 gradient와 시각적으로 유사한 하단-어둡게 처리라 대표에서 뺐다(ratio 10→4 축소와 같은 원칙). Storybook Overlay Matrix 스토리는 3값 전부 보여주므로 커버리지 손실은 Figma 세트 한정이다. 근거: categories-data-kr-media.ts:2341-2345.',
+    ],
   ].map(([component, kind, figma, code, reason]) => ({ component, kind, figma, code, reason, owner: 'sb.hong' })),
 
   // (11) EmptyState.kind(axis-missing) 면제는 **제거됐다**(2026-07).
@@ -1071,6 +1114,228 @@ const ALLOWLIST = [
   //      kind별로 뜻이 같은 lucide 아이콘을 인스턴스로 꽂는 방식으로 축이 실제로 세워졌다
   //      (categories-data-kr-media.ts: kind 8값 × compact = 16변형, icon INSTANCE_SWAP이 여전히 그림을 덮어쓴다 —
   //       React의 `icon ?? <Placeholder kind=…>`와 같은 우선순위).
+
+  // ══ (12) 2026-07 admin.ts 세트 배치 — RowActions·ListToolbar·ToolbarActions·FormSection·
+  //     FieldRow·Placeholder·ContextMenu·AttachmentList·CategoryTree·OptionRows·GroupPanel·
+  //     MobilePreview·MainVisualUploader·AnalyticsTable·FormAnchorNav·RichTextEditor·AdminChart.
+  //     전부 위 (1)~(10)에 이미 있는 부류(접근성 이름·공유 텍스트 레이어·화면에 안 그려지는 값·
+  //     ReactNode 액션/아이콘 묶음 슬롯·내부 상태 축·변형 폭발)의 반복이다 — 새 사유가 아니다.
+
+  // (12a) 접근성 이름(aria-label/툴팁) — 화면에 글자로 그려지지 않는다. Breadcrumb.ariaLabel·
+  //       SearchField.ariaLabel과 같은 사유.
+  ...[
+    ['RowActions', 'labels.group', 'Tooltip/aria-label로만 쓰이는 행 액션 그룹의 이름(RowActions.tsx) — 버튼엔 아이콘만 있다.'],
+    ['RowActions', 'labels.view', '상세보기 버튼의 Tooltip/aria-label.'],
+    ['RowActions', 'labels.edit', '수정 버튼의 Tooltip/aria-label.'],
+    ['RowActions', 'labels.delete', '삭제 버튼의 Tooltip/aria-label.'],
+    ['ListToolbar', 'sort.ariaLabel', '정렬 Select 트리거의 접근성 이름(ListToolbar.tsx:59) — 선택된 옵션 라벨이 곧 화면에 보이는 글자다.'],
+    ['ToolbarActions', 'labels.toolbar', "role=\"toolbar\"의 접근성 이름(ToolbarActions.tsx:17, aria-label={L.toolbar}) — 화면에 글자로 그려지지 않는다."],
+    ['FieldRow', 'htmlFor', '라벨↔컨트롤을 잇는 DOM id 문자열(FieldRow.tsx:23) — 접근성 배선용이라 화면에 글자로 그려지지 않는다.'],
+  ].map(([component, code, reason]) => ({ component, kind: 'text-missing', figma: null, code, reason, owner: 'sb.hong' })),
+
+  // (12b) 같은 텍스트 레이어를 공유하는 두 번째 통로 — 상위 개별 prop이나 다른 필드가 이미 그
+  //       레이어를 열었다(SearchField.value/placeholder · MemoBox.labels.* 예외와 같은 사유).
+  {
+    component: 'ListToolbar',
+    kind: 'text-missing',
+    figma: null,
+    code: 'search.value',
+    reason:
+      '검색 입력값과 플레이스홀더는 SearchField 안에서 같은 텍스트 레이어를 공유한다(ListToolbar.tsx:272,276) — 세트는 placeholder 쪽(상위 searchPlaceholder)을 그린다. SearchField.value/placeholder 면제(위 (1))와 같은 사유.',
+    owner: 'sb.hong',
+  },
+  {
+    component: 'ListToolbar',
+    kind: 'text-missing',
+    figma: null,
+    code: 'search.placeholder',
+    reason:
+      "최상위 'searchPlaceholder'(admin.ts에 이미 TEXT로 열려 있다)와 같은 문구를 가리키는 두 번째 통로다 — 코드가 `search.placeholder ?? resolvedPlaceholder`로 푼다(ListToolbar.tsx:230-232,276). MemoBox.labels.* 예외와 같은 사유.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'ListToolbar',
+    kind: 'text-missing',
+    figma: null,
+    code: 'labels.total.prefix',
+    reason:
+      "최상위 'totalLabel'(admin.ts에 이미 TEXT로 열려 있다, def:'총')과 같은 문구를 가리키는 두 번째 통로다(ListToolbar.tsx:115,234 — @deprecated totalLabel이 labels.total.prefix보다 우선). MemoBox.labels.* 예외와 같은 사유.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'ListToolbar',
+    kind: 'text-missing',
+    figma: null,
+    code: 'labels.total.unit',
+    reason:
+      "최상위 'totalUnit'(admin.ts에 이미 TEXT로 열려 있다, def:'건')과 같은 문구를 가리키는 두 번째 통로다(ListToolbar.tsx:120-122,235). MemoBox.labels.* 예외와 같은 사유.",
+    owner: 'sb.hong',
+  },
+  ...[
+    ['FormSection', 'labels.toggle.label', "최상위 'toggleLabel'(admin.ts에 이미 TEXT로 열려 있다, def:'사용')과 같은 문구의 두 번째 통로(FormSection.tsx:48,117)."],
+    ['FormSection', 'labels.toggle.on', "최상위 'onLabel'(admin.ts에 이미 TEXT로 열려 있다, def:'ON')과 같은 문구의 두 번째 통로(FormSection.tsx:59,118)."],
+    ['FormSection', 'labels.toggle.off', "최상위 'offLabel'(admin.ts에 이미 TEXT로 열려 있다, def:'OFF')과 같은 문구의 두 번째 통로(FormSection.tsx:64,119)."],
+  ].map(([component, code, reason]) => ({
+    component,
+    kind: 'text-missing',
+    figma: null,
+    code,
+    reason: reason + ' MemoBox.labels.* 예외와 같은 사유 — 세트는 개별 prop 쪽을 이미 열었다.',
+    owner: 'sb.hong',
+  })),
+  {
+    component: 'FieldRow',
+    kind: 'text-missing',
+    figma: null,
+    code: 'error',
+    reason:
+      'description과 같은 메시지 자리를 공유한다 — 동시에 뜨지 않는다(FieldRow.tsx: "설명과 에러를 동시에 쌓지 않는다", admin.ts는 description을 연다). SearchField.value/placeholder류의 공유-텍스트-레이어 사유.',
+    owner: 'sb.hong',
+  },
+
+  // (12c) 화면에 글자로 그려지지 않는 값(강조는 배경/레일로 표현) — Sidebar.value와 같은 사유.
+  ...[
+    ['ListToolbar', 'sort.value', '선택된 정렬 옵션의 id(ListToolbar.tsx:53) — Select가 라벨을 보여줄 뿐 id 문자열 자체는 그려지지 않는다.'],
+    ['CategoryTree', 'value', '선택된 카테고리의 key(admin.ts 주석: "강조는 행 배경") — CategoryTree.tsx:18.'],
+    ['GroupPanel', 'value', '선택된 그룹의 key(GroupPanel.tsx:17) — 강조는 행 배경.'],
+    ['FormAnchorNav', 'activeKey', '선택된 섹션의 key(FormAnchorNav.tsx:16) — 강조는 좌측 레일.'],
+  ].map(([component, code, reason]) => ({ component, kind: 'text-missing', figma: null, code, reason, owner: 'sb.hong' })),
+
+  // (12d) rows/items가 비었을 때만 그려지는 EmptyState 문구 — 데모는 항상 비어있지 않은 목록을
+  //       그린다(하드코딩된 목 데이터, admin.ts의 renderAttachmentList/renderOptionRows 확인함).
+  //       MultiSelect.placeholder(위 (1))처럼 배열 자체가 Figma에 축으로 담기지 않아 '빈 목록'
+  //       상태가 어떤 조합으로도 나타나지 않는다 — permanent.
+  ...[
+    ['AttachmentList', 'emptyText', 'items가 비었을 때만 그려지는 빈 상태 문구(AttachmentList.tsx:47,112) — 데모는 하드코딩된 ATTACH_ITEMS(비지 않음)만 그린다.'],
+    ['OptionRows', 'emptyTitle', 'rows가 비었을 때만 그려지는 EmptyState 제목(OptionRows.tsx:46,72) — 데모는 rows.length>0만 그린다.'],
+    ['OptionRows', 'emptyDescription', 'rows가 비었을 때만 그려지는 EmptyState 설명(OptionRows.tsx:47,73).'],
+    ['AnalyticsTable', 'emptyText', 'rows가 비었을 때만 그려지는 EmptyState 제목(AnalyticsTable.tsx:82,194).'],
+    ['AnalyticsTable', 'emptyDescription', 'rows가 비었을 때만 그려지는 EmptyState 설명(AnalyticsTable.tsx:84,194).'],
+  ].map(([component, code, reason]) => ({ component, kind: 'text-missing', figma: null, code, reason, owner: 'sb.hong' })),
+
+  // (12e) 기타 — 화면에 안 그려지는 문자열.
+  {
+    component: 'Placeholder',
+    kind: 'text-missing',
+    figma: null,
+    code: 'className',
+    reason: 'CSS 클래스 문자열(src/shared/placeholders.tsx:34) — 스타일 훅일 뿐 화면에 글자로 그려지지 않는다.',
+    owner: 'sb.hong',
+  },
+
+  // (12f) ReactNode 액션/아이콘 묶음 슬롯 — AdminTopbar.actions·SearchPanel.actions(위 (3)) ·
+  //       ViewSwitch.icons·ActivityLog.typeIcons와 같은 사유. INSTANCE_SWAP 기본값은 아이콘
+  //       컴포넌트 하나만 가능해(addSwapProp: defKey → ICON_COMPONENTS) 버튼 묶음·아이콘 맵·문단은
+  //       담을 수 없다.
+  ...[
+    ['ListToolbar', 'actions', '우측 추가 액션 슬롯(버튼 묶음, ListToolbar.tsx:124).'],
+    ['ListToolbar', 'leadingActions', '좌측 선행 액션 슬롯(버튼 묶음, ListToolbar.tsx:133).'],
+    ['FormSection', 'actions', '헤더 우측 액션 슬롯(버튼 묶음, FormSection.tsx:56).'],
+    ['CategoryTree', 'tabs', '상단 탭 슬롯(버튼 묶음, CategoryTree.tsx:24).'],
+  ].map(([component, code, reason]) => ({ component, kind: 'swap-missing', figma: null, code, reason, owner: 'sb.hong' })),
+  {
+    component: 'FieldRow',
+    kind: 'swap-missing',
+    figma: null,
+    code: 'requiredMark',
+    reason:
+      "장식 문자('*') 슬롯(FieldRow.tsx:31, 기본값 '*'). 대부분 화면이 문자 그대로 쓰고, INSTANCE_SWAP 기본값은 아이콘 컴포넌트만 될 수 있어 단일 문자를 표현할 방법이 없다.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'GroupPanel',
+    kind: 'swap-missing',
+    figma: null,
+    code: 'footnote',
+    reason: '하단 설명 문단 슬롯(ReactNode, GroupPanel.tsx:23,104) — 문단은 INSTANCE_SWAP으로 표현 못 한다.',
+    owner: 'sb.hong',
+  },
+  {
+    component: 'MobilePreview',
+    kind: 'swap-missing',
+    figma: null,
+    code: 'statusIcons',
+    reason:
+      '신호·와이파이·배터리 3개 아이콘 묶음(MobilePreview.tsx:25) — INSTANCE_SWAP 하나로는 여러 아이콘을 표현할 수 없다(ViewSwitch.icons·ActivityLog.typeIcons와 같은 사유).',
+    owner: 'sb.hong',
+  },
+
+  // (12g) 내부 상태(useState/파생값) 축 — 코드 prop이 아니지만 그림이 갈려 문서화에 필요하다.
+  //       DropZone.state(위 (4))와 같은 사유.
+  {
+    component: 'ContextMenu',
+    kind: 'axis-extra',
+    figma: 'open',
+    code: null,
+    reason:
+      '메뉴가 열린 상태는 내부 useState라 React prop이 아니다(admin.ts 주석: "Select.open과 같은 사유") — 열린 메뉴 그림 없이는 문서가 될 수 없다.',
+    owner: 'sb.hong',
+  },
+  {
+    component: 'RichTextEditor',
+    kind: 'axis-extra',
+    figma: 'state',
+    code: null,
+    reason:
+      "value/placeholder 그림이 갈리는 내부 상태(입력값이 비었는지 여부, admin.ts 주석: 'DropZone.state와 같은 사유') — 값이 채워졌는지는 React prop이 아니라 value 문자열의 파생 상태다.",
+    owner: 'sb.hong',
+  },
+
+  // (12h) 축이 될 prop이 하나도 없는 컴포넌트 — 위 (4) SortBar/SiteFooter/Card/Divider와 같은 사유.
+  {
+    component: 'MainVisualUploader',
+    kind: 'axis-extra',
+    figma: 'state',
+    reason:
+      '코드에 유니온·불리언 축이 하나도 없다(전부 show* BOOLEAN이거나 배열·콜백·number·string, MainVisualUploader.tsx 확인함) — Figma 컴포넌트 세트는 베리언트 속성이 최소 1개 있어야 성립한다(SortBar·SiteFooter 예외와 같은 사유).',
+    owner: 'sb.hong',
+  },
+
+  // (12i) 변형 폭발 / 중복 축.
+  {
+    component: 'AnalyticsTable',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'dense',
+    reason:
+      "density의 구 API 동의어다(AnalyticsTable.tsx:159, 코드가 `dense ?? density === 'compact'`로 푼다). 축으로 같이 세우면 dense×density 조합에 모순 상태(dense=true·density=comfortable 등)만 늘어나는 의미 없는 중복 축이다.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'AdminChart',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'orientation',
+    reason:
+      "kind='bar'에만 영향한다(AdminChart.tsx:140 prop 선언, 357 분기 — donut/line/area에는 영향 없음). kind×stacked×legendPosition만으로 이미 24변형(admin.ts 확인함)인데 orientation까지 더하면 48변형(권장 상한 40 초과)이고, 그중 75%(donut·line·area)는 orientation 두 값의 그림이 완전히 같은 중복 변형이 된다 — Textarea.autoResize·EmailField.validate와 같은 '비용 대비 정보량 0' 사유.",
+    owner: 'sb.hong',
+  },
+
+  // ══ (13) Button — disabled/fullWidth/iconOnly ══════════════════════════
+  // disabled는 더 이상 면제가 필요 없다: verify-naming이 이제 "show*가 아닌 이름의 boolean 축이라도
+  // Figma에 정확히 같은 이름의 진짜 BOOLEAN(실제 visible 바인딩)이 있으면 만족"으로 인정한다
+  // (위 N2/N3 로컬 보정, boolAxisSatisfiedByFigmaBool 참고) — categories-core.ts가 disabled를
+  // 반투명 오버레이 레이어의 visible에 직결 바인딩했기 때문에(renderImageCard의 Scrim과 같은 기법,
+  // categories-core.ts:1399-1407) 실제로 작동하는 진짜 구현이다. fullWidth·iconOnly는 같은 방식이
+  // 안 통한다 — 둘 다 축도 BOOLEAN도 만들지 않은 명목상 상태라 여기 남는다.
+  {
+    component: 'Button',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'fullWidth',
+    reason:
+      "폭 변경 축 — componentPropertyReferences가 'visible'·'characters'·'mainComponent' 세 필드만 바인딩해(figma-plugin/node_modules/@figma/plugin-typings/plugin-api.d.ts:6282-6285) 리사이즈를 BOOLEAN에도 축에도 못 묶는다. 축으로 세우면 54×2=108로 상한(54)을 넘긴다. SiteSection.maxWidth/padding(위 (6))과 같은 사유 — 축도 BOOLEAN도 만들지 않았다(완전 명목상). 근거: categories-core.ts:1399-1400.",
+    owner: 'sb.hong',
+  },
+  {
+    component: 'Button',
+    kind: 'axis-missing',
+    figma: null,
+    code: 'iconOnly',
+    reason:
+      "라벨 숨김 — BOOLEAN→visible 바인딩은 속성값을 그대로 대입하는 단방향뿐이라(lib/build-set.ts:58, `n.componentPropertyReferences = { visible: id }`에 반전 옵션이 없다) iconOnly=true일 때 label.visible=false를 만들 수 없다(직결하면 iconOnly=true→label.visible=true로 정반대 의미가 된다). leftIcon 레이어는 이미 showLeftIcon이 같은 visible 참조를 쓰고 있어 겹쳐 묶을 수도 없다(레이어당 visible 참조 1개 — componentPropertyReferences는 'visible' 키 하나에 속성 id 하나만 담는다, plugin-api.d.ts:6282-6285). 마스크 레이어 방식은 appearance(solid/outline/ghost)별 배경색이 달라 일반화 불가. 근거: categories-core.ts:1401-1407. 문서 'Icon Only' 예시는 showLeftIcon(true)+label 빈 문자열로 근사한다(states 배열, categories-core.ts:1425).",
+    owner: 'sb.hong',
+  },
 ]
 
 // ── 영구(permanent) / 연기(deferred) 분류 ───────────────────────────────
@@ -1198,6 +1463,23 @@ const DEFERRED = [
       '세트 몸통을 grid/inline/stacked 등 레이아웃별로 재설계(또는 별도 세트로 분리)하는 후속 배치가 실행되면 해소',
   })),
 
+  // (D2) DS/InputBase 변형 예산 — readOnly·required는 실제로 그림이 바뀌는 진짜 축 후보지만
+  //      지금 24변형(size×error×success×disabled)에 하나만 더해도 48로 상한(40)을 넘는다.
+  //      두 축을 함께 살리려면(48이 아니라) 기존 축 하나를 접어야 한다 — 예: error/success를
+  //      state 하나의 값으로 합치거나(정상·에러·성공은 상호 배타이므로 실제로 2축일 필요가 없다),
+  //      size를 문서 states로만 보여주고 축에서 빼는 식. 그 설계는 세트 재설계라 이 파일 소관 밖이다.
+  ...[
+    ['InputBase', 'readOnly'],
+    ['InputBase', 'required'],
+  ].map(([component, code]) => ({
+    component,
+    kind: 'axis-missing',
+    figma: null,
+    code,
+    blockedBy: 'figma-plugin DS/InputBase 변형 예산 재설계(예: error/success를 상호 배타 state 축 하나로 합쳐 여유를 만드는 등) — 아직 아무도 배정되지 않았다',
+    unblockedBy: '기존 축 수를 줄여 24×2=48이 40 이하가 되도록 재설계하거나, 세트당 상한 재검토가 이뤄지면 해소',
+  })),
+
   // (E) 파서 한계 — scripts/lib/ds-props.mjs가 TS Extract<> 타입 별칭을 union으로 해석하지 못한다.
   {
     component: 'ProductCard',
@@ -1207,26 +1489,35 @@ const DEFERRED = [
     unblockedBy: '파서가 Extract<MediaRatio, …> 별칭을 union으로 해석하도록 확장되면 자동 해소',
   },
 
-  // (F) N7 판정 한계 — verify-naming.mjs의 N7이 buildSet 선언(texts/bools/swaps)의 layer만 보고
-  //     렌더 함수의 name='content' 프레임은 보지 못한다(이 파일 자신의 한계).
-  ...['SiteSection', 'CrudDialog', 'DropZone', 'Upload', 'Drawer', 'AdminShell'].map((component) => ({
+  // (F) N7 판정 한계 — **부분 해소**(2026-07). verify-naming.mjs의 N7이 buildSet 선언
+  //     (texts/bools/swaps)의 layer만 보고 렌더 함수의 name='content' 프레임은 보지 못하던 것을
+  //     고쳤다: N7이 이제 buildSet의 render 콜백을 따라가 렌더 함수 본문의 name='content' 대입
+  //     또는 autoFrame/fixedFrame('content', …) 호출까지 찾는다(scripts/lib/figma-sets.mjs의
+  //     detectContentFrame). SiteSection은 그 확장으로 실제로 해소됐다(위 (8) 참고 — 면제가
+  //     사라졌다, DEFERRED 목록에서도 뺐다). 남은 다섯(CrudDialog·DropZone·Upload·Drawer·
+  //     AdminShell)은 검사기를 확장해도 여전히 막힌다 — **원인이 바뀌었다.** 그 렌더 함수들은
+  //     'content'라는 이름의 노드 자체를 만들지 않는다(각각 body·컴포넌트 루트·dropzone·nav 반복·
+  //     main으로 이름 붙어 있다, 직접 확인함). 그러니 지금은 scripts/ 소관(검사기 한계)이 아니라
+  //     figma-plugin 소관(그 프레임의 이름을 'content'로 바꾸는 렌더 함수 수정)이다 — blockedBy를
+  //     그렇게 정정한다. 검사기는 이미 그 이름만 붙으면 잡아줄 준비가 돼 있다(SiteSection이 증거).
+  ...['CrudDialog', 'DropZone', 'Upload', 'Drawer', 'AdminShell'].map((component) => ({
     component,
     kind: 'slot-missing',
     figma: null,
     code: 'children',
-    blockedBy: 'scripts/verify-naming.mjs N7 판정 로직(이 파일 자신)',
-    unblockedBy: "N7이 buildSet 선언뿐 아니라 렌더 함수의 name='content' 프레임도 읽도록 확장되면 해소",
+    blockedBy:
+      'figma-plugin 생성기(admin.ts/categories-core.ts/categories-nav-overlay.ts/categories-data-kr-media.ts)의 렌더 함수가 children 슬롯에 해당하는 프레임에 name=\'content\'를 붙이지 않았다 — scripts/verify-naming.mjs N7은 이미 그 이름을 인식할 수 있다(2026-07 확장, SiteSection이 실증).',
+    unblockedBy: "해당 렌더 함수가 그 프레임(또는 새 자리표시 프레임)의 이름을 'content'로 바꾸면 N7이 자동으로 인식해 해소된다 — 검사기 쪽 변경은 더 필요 없다.",
   })),
 
-  // (G) classifyProps 분류 한계 — children을 code.slot으로만 분류해 code.text 후보에 넣지 않는다.
-  //     그 결과 §7(content 레이어) 규약을 지킨 TEXT 속성이 오히려 'text-extra'로 잡힌다.
-  ...['Card', 'Modal', 'Popover', 'BottomSheet'].map((component) => ({
-    component,
-    kind: 'text-extra',
-    figma: 'content',
-    blockedBy: 'scripts/lib/ds-props.mjs classifyProps(children → code.slot 전용 분류)',
-    unblockedBy: 'classifyProps가 §7 content 레이어와 짝지어진 children을 code.text 후보로도 인정하도록 확장되면 해소',
-  })),
+  // (G) [해소됨] classifyProps 분류 한계 — children을 code.slot으로만 분류해 code.text 후보에 넣지
+  //     않던 것. 2026-07 파서 수정으로 해소됐다: classifyProps가 optionalText(=§7 슬롯 이름 content)를
+  //     "있으면 정당하지만 요구하지는 않는" TEXT 이름으로 실어 주고, N4가 여분 판정에서만 인정한다.
+  //     면제 6건(Callout·Highlight·Card·Modal·Popover·BottomSheet)이 함께 사라졌다.
+
+  // (H) [해소됨] EraTimeline.ratio — 2026-07, DS/EraTimeline 생성기가 실제로 ratio 축(대표 4값)을
+  //     세웠다(site.ts:1463). axis-missing deferred는 사라졌고, 남은 것은 axis-values(대표 4값 축소)
+  //     permanent 면제뿐이다 — 위 ALLOWLIST 항목 참고.
 ]
 
 // component·kind·figma·code 네 축으로 ALLOWLIST 항목과 DEFERRED 항목을 짝짓는다(ALLOWLIST
@@ -1321,8 +1612,22 @@ for (const spec of specs) {
   const codeAxisNames = code.axes.map((a) => a.name)
   const figAxisNames = spec.axes.map((a) => a.name)
 
+  // classifyProps는 show*로 시작하지 않는 boolean을 전부 "축 후보"로 분류한다(ds-props.mjs:352-353).
+  // 그런데 Figma의 BOOLEAN 속성 타입은 show* 접두사를 요구하지 않는다 — 이름이 곧 규약(§2)이므로
+  // 코드 prop과 정확히 같은 이름의 BOOLEAN(예: 'disabled')도 똑같이 정당한 표현이다. 그 축 이름과
+  // 정확히 같은 이름의 실재 BOOLEAN이 Figma에 있으면(진짜 바인딩 — visible 참조가 그 속성을 향한다,
+  // 겉치레 축 삭제가 아니다) 그 축은 "안 세운 것"이 아니라 "BOOLEAN으로 대신 세운 것"이므로 축
+  // 결여로 보고하지 않는다. (Button.disabled가 실제 사례 — categories-core.ts의 렌더 함수가 disabled
+  // BOOLEAN을 오버레이 레이어의 visible에 직결 바인딩한다.) 이 판단은 verify-naming 로컬 전용이다 —
+  // classifyProps 자체를 바꾸면 build-story-manifest.mjs/verify-mapping.mjs의 P3 매니페스트 왕복
+  // 동일성(components.ts는 disabled를 여전히 axis로 선언)이 깨진다.
+  const boolAxisNames = code.axes.filter((a) => setEq(a.values, ['false', 'true'])).map((a) => a.name)
+  const boolAxisSatisfiedByFigmaBool = boolAxisNames.filter((n) => spec.bools.some((b) => b.prop === n))
+
   // ── N2 §2: VARIANT 축 이름 = React prop 이름 그대로 ──
-  const axisMissing = codeAxisNames.filter((n) => !figAxisNames.includes(n))
+  const axisMissing = codeAxisNames.filter(
+    (n) => !figAxisNames.includes(n) && !boolAxisSatisfiedByFigmaBool.includes(n),
+  )
   const axisExtra = figAxisNames.filter((n) => !codeAxisNames.includes(n))
 
   // 이름만 다른 1:1 개명(예: Toast tone → variant)은 missing+extra 두 건이 아니라 한 건으로 보고한다.
@@ -1421,11 +1726,13 @@ for (const spec of specs) {
   }
 
   // ── N3 §3: BOOLEAN 속성 이름 = React show* prop 이름 그대로 ──
+  // boolAxisSatisfiedByFigmaBool(위 N2 참고)도 여기서 "이미 매칭된 이름"으로 합류시킨다 — 안 그러면
+  // 같은 축이 N2에서는 만족인데 N3에서는 figma 쪽만 있고 code 쪽은 없는 'bool-extra'로 다시 잡힌다.
   compareProps({
     ruleText: 'N3',
     kindPrefix: 'bool',
     figma: spec.bools.map((b) => ({ nameStr: b.prop, line: b.line })),
-    codeNames: code.booleans,
+    codeNames: [...code.booleans, ...boolAxisSatisfiedByFigmaBool],
     codeKindLabel: 'show* boolean prop',
   })
 
@@ -1442,11 +1749,16 @@ for (const spec of specs) {
   }
 
   // ── N4 §4: TEXT 속성 이름 = React prop 이름 그대로 (중첩은 점 표기) ──
+  // children 슬롯을 '텍스트 한 줄'로 그리는 세트는 그 레이어에 TEXT를 붙이고 이름을 §7의 'content'로
+  // 짓는 것이 규약이다(Callout·Highlight·Card·Modal·Popover·BottomSheet). 그 이름을 여분으로 잡으면
+  // 규약을 지킬수록 게이트가 빨개진다 — code.optionalText가 그 이름을 정당한 것으로 인정한다.
+  // 요구(missing)로는 넣지 않는다: children을 프레임으로 받는 세트의 몫은 N7(slot-missing)이다.
   compareProps({
     ruleText: 'N4',
     kindPrefix: 'text',
     figma: spec.texts.map((t) => ({ nameStr: t.prop, line: t.line })),
     codeNames: code.text,
+    optionalCodeNames: code.optionalText,
     codeKindLabel: 'string prop',
     // N4c — 배열 prop을 인덱스 TEXT로 전개한 것(Item 1 / Head 2)은 별도 kind로 표시한다.
     extraKind: (fname) => (isIndexed(fname) && code.lists.length ? 'text-from-list' : null),
@@ -1496,7 +1808,12 @@ for (const spec of specs) {
 
   // ── N7 §7: children 슬롯 = 'content' ──
   if (code.slot === 'content') {
-    const hasContentLayer = layerItems.some((it) => it.layer === 'content')
+    // content 레이어는 두 경로로 존재할 수 있다: (a) buildSet의 texts/bools/swaps 선언에 바인딩된
+    // 레이어(예: BottomSheet — children을 텍스트 한 줄로 그려 TEXT 속성을 그 레이어에 건다),
+    // (b) 렌더 함수가 그리는 빈 자리표시 프레임(예: SiteSection — 아무 속성에도 안 묶이지만
+    // name='content'로 "여기가 children 슬롯"이라고 표시한다). extractFigmaSets가 render 콜백을
+    // 따라가 (b)를 찾은 결과가 spec.hasContentFrame이다(scripts/lib/figma-sets.mjs의 detectContentFrame).
+    const hasContentLayer = layerItems.some((it) => it.layer === 'content') || spec.hasContentFrame
     // 슬롯을 TEXT 속성으로 잘못 선언했는지(§4b) 여부와 무관하게, content 레이어가 없으면 슬롯이 없는 것.
     if (!hasContentLayer && !spec.texts.some((t) => t.prop === 'content')) {
       V('N7', 'slot-missing', name, {
@@ -1510,10 +1827,17 @@ for (const spec of specs) {
     }
   }
 
-  /** 이름 집합 비교 공통 루틴 — 정확 일치가 판정, 정규화 매칭은 "개명이다"라고 알려줄 때만 쓴다. */
-  function compareProps({ ruleText, kindPrefix, figma, codeNames, codeKindLabel, extraKind, extraFix }) {
+  /**
+   * 이름 집합 비교 공통 루틴 — 정확 일치가 판정, 정규화 매칭은 "개명이다"라고 알려줄 때만 쓴다.
+   *
+   * optionalCodeNames — "Figma에 있으면 정당하지만 코드가 요구하지는 않는" 이름(현재는 §7의 content뿐).
+   * 여분(extra) 판정에서만 인정하고 누락(missing) 판정에는 넣지 않는다. 두 방향에 다 넣으면
+   * 슬롯을 텍스트로 그리지 않는 세트에 'content' 누락을 새로 씌우는데, 그 자리는 이미 N7이 본다.
+   */
+  function compareProps({ ruleText, kindPrefix, figma, codeNames, optionalCodeNames = [], codeKindLabel, extraKind, extraFix }) {
     const figNames = figma.map((f) => f.nameStr)
-    const unmatchedFig = figma.filter((f) => !codeNames.includes(f.nameStr))
+    const accepted = [...codeNames, ...optionalCodeNames]
+    const unmatchedFig = figma.filter((f) => !accepted.includes(f.nameStr))
     const unmatchedCode = codeNames.filter((c) => !figNames.includes(c))
 
     for (const f of unmatchedFig) {

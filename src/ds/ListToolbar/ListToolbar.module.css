@@ -94,3 +94,64 @@
     flex: 1 1 100%;
   }
 }
+
+/* ══ layout='site' — 구 SortBar 흡수 ══════════════════════════════════════
+   카드 크롬 없음(면·보더 없이 섹션 면 위에 그대로 얹힌다) — admin의 .toolbar와 별도 클래스다.
+   좌: "전체 N개" · 우: [leadingActions][Select…][actions](margin-left:auto로 우측 고정).
+   값은 SortBar.module.css 원본 그대로 옮겼다(픽셀 동일). */
+.siteBar {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-spacing-3);
+  flex-wrap: wrap;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--ds-spacing-3) 0;
+  font-family: var(--ds-font-family);
+  color: var(--ds-color-text);
+}
+
+.siteTotal {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ds-font-size-sm);
+  color: var(--ds-color-secondary);
+}
+
+.siteCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ds-font-weight-bold);
+  color: var(--ds-color-text);
+}
+
+.siteControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-2);
+  margin-left: auto;
+  min-width: 0;
+}
+
+/* Select(.field)는 max-width:320px의 세로 폼 필드다 — 바에서는 고정 폭으로 눌러 쓴다.
+   160px = '낮은 가격순'(최장 옵션) + 셰브런이 말줄임 없이 들어가는 폭(admin의 select width prop과 별도 축). */
+.siteSelect {
+  width: 160px;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .siteControls {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .siteSelect {
+    flex: 1 1 120px;
+    width: auto;
+  }
+}

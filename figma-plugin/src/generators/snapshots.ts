@@ -3,6 +3,13 @@
 // 쌓아, 각 용도별 컴포넌트/문서가 스토리북과 동일하게 보이도록 한다(faithful 복사).
 // 캡처 파이프라인: repo scripts/capture-snapshots.mjs (Playwright).
 
+import { boundPaint, solid } from './lib/bind'
+import { SUB } from './foundations'
+
+// 섹션 제목·컴포넌트 라벨 크기 — font/size/<px> 변수(tokens.ts)에 바인딩된다.
+const HEADING_SIZE = 28
+const LABEL_SIZE = 15
+
 export type SnapshotEntry = {
   id: string
   title: string
@@ -47,6 +54,17 @@ export async function generateSnapshots(baseUrl: string): Promise<string[]> {
 
   const boldFont = await loadLabelFont()
   const regularFont: FontName | null = boldFont ? { family: boldFont.family, style: 'Regular' } : null
+  // 오너: 폰트 크기도 전부 변수 — 토큰이 생성돼 있으면 섹션 제목·라벨 크기를 font/size/* 에 바인딩.
+  const vars = new Map((await figma.variables.getLocalVariablesAsync()).map((v) => [v.name, v]))
+  const bindFontSize = (node: TextNode, px: number) => {
+    const v = vars.get('font/size/' + px)
+    if (!v) return
+    try {
+      node.setBoundVariable('fontSize', v)
+    } catch {
+      /* skip */
+    }
+  }
 
   // 섹션별 그룹화
   const bySection = new Map<string, SnapshotEntry[]>()
@@ -79,7 +97,8 @@ export async function generateSnapshots(baseUrl: string): Promise<string[]> {
       const h = figma.createText()
       h.fontName = boldFont
       h.characters = section
-      h.fontSize = 28
+      h.fontSize = HEADING_SIZE
+      bindFontSize(h, HEADING_SIZE)
       h.x = X
       h.y = 40
       page.appendChild(h)
@@ -105,8 +124,12 @@ export async function generateSnapshots(baseUrl: string): Promise<string[]> {
         label.fontName = regularFont
         const suffix = s.name && s.name.toLowerCase() !== 'default' ? ` · ${s.name}` : ''
         label.characters = `${s.component}${suffix}`
-        label.fontSize = 15
-        label.fills = [{ type: 'SOLID', color: { r: 0.42, g: 0.45, b: 0.5 } }]
+        label.fontSize = LABEL_SIZE
+        bindFontSize(label, LABEL_SIZE)
+        // color/secondary — 다른 생성기의 캡션류 라벨과 같은 변수(categories-data-kr-media.ts:68 등).
+        // ctx 없이도 vars 맵(위에서 이미 로드)으로 바인딩 가능 — bindFillVar와 동일한 관용구.
+        const secondaryVar = vars.get('color/secondary')
+        label.fills = [secondaryVar ? boundPaint(secondaryVar) : solid(SUB)]
         label.x = X
         label.y = y
         page.appendChild(label)

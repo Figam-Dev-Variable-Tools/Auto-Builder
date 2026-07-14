@@ -230,6 +230,12 @@ export type AdminListPageProps<T> = {
   onTabAdd?: (label: string) => void
   /** 탭 필터 — 없으면 탭은 표시만 하고 rows를 좁히지 않는다(서버 필터 전제) */
   matchTab?: (row: T, tab: string) => boolean
+  /**
+   * 탭 배지 건수 계산에 쓰는 전체 행 — 미지정이면 rows를 그대로 쓴다.
+   * 화면이 셸이 모르는 축(브랜드 등)으로 rows를 이미 좁혀서 넘기는 경우(CategoryList의 브랜드 필터처럼)
+   * 탭 배지는 그 축과 무관하게 전체 기준이어야 한다 — 그 필터 전의 전체 집합을 여기로 넘긴다.
+   */
+  tabCountRows?: T[]
 
   /* ── 검색 ── */
   search?: AdminListSearchMode
@@ -318,6 +324,12 @@ export type AdminListPageProps<T> = {
   onPageSizeChange?: (size: number) => void
   pageSizeOptions?: number[]
   density?: 'compact' | 'comfortable'
+  /**
+   * AdminTable의 같은 prop을 그대로 통과시킨다 — 페이지 크기 Select·일괄 처리 바·페이지네이션이
+   * 셋 다 없을 때도 하단 footer 줄(32px)을 그릴지. 기본 true(= 지금 화면 그대로).
+   * false로 주는 화면은 셋 다 없을 때 그 빈 줄이 여백으로 남지 않고 접힌다.
+   */
+  showFooterWhenEmpty?: boolean
   /**
    * 빈 표 문구 (기본 AdminTable의 '데이터가 없습니다.').
    * @deprecated labels.empty.title을 쓴다(개별 prop이 이긴다).
@@ -479,6 +491,7 @@ export function AdminListPage<T>({
   onTabChange,
   onTabAdd,
   matchTab,
+  tabCountRows,
   search = 'panel',
   searchFields = [],
   searchValues,
@@ -520,6 +533,7 @@ export function AdminListPage<T>({
   onPageSizeChange,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
   density = 'compact',
+  showFooterWhenEmpty = true,
   emptyText,
   onEmptyAction,
   renderCard,
@@ -687,12 +701,15 @@ export function AdminListPage<T>({
     !on.pagination || serverPaged ? ordered : ordered.slice((current - 1) * size, current * size)
   const totalCount = total ?? ordered.length
 
-  // 탭 건수 — count를 주면 그 값(서버 총계), 아니면 matchTab으로 rows에서 센다
+  // 탭 건수 — count를 주면 그 값(서버 총계), 아니면 matchTab으로 센다.
+  // 기준 집합은 tabCountRows(미지정이면 rows) — rows가 셸 밖 축(브랜드 등)으로 이미 좁혀졌어도
+  // 탭 배지는 그 축과 무관한 전체 기준을 유지한다.
+  const tabCountBase = tabCountRows ?? rows
   const tabItems: CategoryTabItem[] = tabs.map((item) => ({
     ...item,
     count:
       item.count ??
-      (matchTab != null ? rows.filter((row) => matchTab(row, item.value)).length : undefined),
+      (matchTab != null ? tabCountBase.filter((row) => matchTab(row, item.value)).length : undefined),
   }))
 
   // ── 삭제 · 일괄 처리 ──────────────────────────────────────────────────
@@ -881,6 +898,7 @@ export function AdminListPage<T>({
       onColumnVisibilityChange={onColumnVisibilityChange}
       exportable={exportable && on.export}
       exportFilename={exportFilename}
+      showFooterWhenEmpty={showFooterWhenEmpty}
       loading={loading}
       emptyText={emptyTitle}
       emptyDescription={emptyDescription}

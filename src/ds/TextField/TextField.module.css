@@ -19,19 +19,22 @@
   background: var(--ds-color-bg);
   border: 1px solid var(--ds-color-border);
   border-radius: var(--ds-radius-md);
-  padding: 10px 12px;
+  /* 값은 InputBase.module.css의 --input-size-* 한 곳에서만 선언한다(두 컴포넌트가 같은 sm/md/lg 스케일을
+     쓰기 때문 — 중복 리터럴 방지). fallback은 InputBase 쪽 CSS가 어떤 이유로 로드되지 않았을 때도
+     기존 렌더가 깨지지 않도록 지금 값 그대로 넣어둔 것이다. */
+  padding: var(--input-size-md-py, 10px) var(--input-size-md-px, 12px);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* ── 크기 ── */
+/* ── 크기 — 값은 InputBase.module.css의 --input-size-* 참조(§주석 위 참고) ── */
 .sm .input {
   font-size: var(--ds-font-size-sm);
-  padding: 7px 10px;
+  padding: var(--input-size-sm-py, 7px) var(--input-size-sm-px, 10px);
 }
 
 .lg .input {
   font-size: var(--ds-font-size-lg);
-  padding: 13px 14px;
+  padding: var(--input-size-lg-py, 13px) var(--input-size-lg-px, 14px);
 }
 
 .input::placeholder {

@@ -1,7 +1,7 @@
 // 카테고리: Input · Selection · Action · Feedback.
 // categories.ts에서 기계적으로 분리(동작 변경 없음). 공용 부품은 categories-shared.ts.
 import { bindFillVar, bindOnFill, bindSolidFill, bindStrokeVar, boundText, type CategoryDef, FIELD_W, fieldRow, fixedFrame, inputShell, onHex, PAGE_ACTION, PAGE_FEEDBACK, PAGE_INPUT, PAGE_SELECTION, recolorIcon, recolorIconOn, recolorIconVar, tintHex, toneBase, VARIANT_HEX } from './categories-shared'
-import { ACCENT, autoFrame, BORDER, type Ctx, INK, MUTED, solid, SUB, SURFACE, txt, WHITE } from './foundations'
+import { ACCENT, autoFrame, BORDER, type Ctx, INK, MUTED, SUB, SURFACE, WHITE } from './foundations'
 import { iconInstance } from './icon-vec'
 import { buildSet, type PropSpec, type State } from './lib/build-set'
 import { onVarName, solidToneHex, solidVarName } from './tone'
@@ -49,6 +49,16 @@ type InputDef = {
   bools?: Array<{ prop: string; layer: string; def: boolean }>
   states: State[]
 }
+// DS/TextField 변형 수 — makeInputSet이 axes를 전부 false/true VARIANT로 곱한다:
+// size(3, sizeAxis) × error(2) × success(2) × disabled(2) × readOnly(2) = 48변형. 오너가 준 상한(세트당
+// 54)을 이미 밑돈다 — 그래서 축소하지 않았다. error/success는 보더·글자 '색'을 바꾸는 축이라
+// componentPropertyReferences(visible·characters·mainComponent 세 필드뿐)로는 BOOLEAN으로 내릴 수
+// 없고(Button.disabled의 오버레이 기법과 달리 "면 전체를 덮어 색을 가리는" 방식은 통과 가능하나, 그러면
+// disabled/readOnly와 같은 오버레이 레이어 3~4장이 서로 겹쳐 순서·해제 로직이 필요해진다), disabled·
+// readOnly는 내릴 수 있어도 renderInput은 8종 입력(TextField·EmailField·PasswordField·SearchField·
+// NumberField·CurrencyField·OtpField·Textarea)이 공유하는 단일 함수라 TextField 하나만 축을 빼면
+// 나머지 7종의 pixel-parity를 건드리지 않고는 disabled/readOnly 처리를 분기할 수 없다 — 그 7종은 이번
+// 배치의 소유 범위 밖이다(작업 보고 참고).
 const INPUTS: InputDef[] = [
   { key: 'TextField', setName: 'DS/TextField', label: '이메일', placeholder: 'name@example.com', eyebrow: 'MOLECULE · INPUT', desc: '라벨·설명·헬퍼텍스트를 지원하는 기본 한 줄 텍스트 입력.', helper: '업무용 이메일을 입력하세요.', affordance: {}, axes: ['error', 'success', 'disabled', 'readOnly'], sizeAxis: true, description: '회사 도메인 메일만 가입할 수 있어요.', counter: '0/50', bools: [{ prop: 'showDescription', layer: 'description', def: true }, { prop: 'showCounter', layer: 'counter', def: false }], states: [{ caption: 'Default', props: {} }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Success', props: { success: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'ReadOnly', props: { readOnly: 'true' } }] },
   { key: 'EmailField', setName: 'DS/EmailField', label: '이메일', placeholder: 'name@example.com', eyebrow: 'MOLECULE · INPUT', desc: '블러 시 이메일 형식을 검증해 에러/성공을 표시하는 입력.', helper: '가입에 사용할 이메일이에요.', affordance: {}, axes: ['error', 'success', 'disabled', 'required'], states: [{ caption: 'Default', props: {} }, { caption: 'Required', props: { required: 'true' } }, { caption: 'Error', props: { error: 'true' } }, { caption: 'Success', props: { success: 'true' } }, { caption: 'Disabled', props: { disabled: 'true' } }] },
@@ -100,7 +110,7 @@ function renderInput(ctx: Ctx, def: InputDef, combo: Record<string, string>): Co
   const labelText = boundText(ctx, def.label, 13, 'color/text', INK, true)
   labelText.name = 'label'
   labelRow.appendChild(labelText)
-  if (required) labelRow.appendChild(txt(ctx, '*', 13, '#F04452', true))
+  if (required) labelRow.appendChild(boundText(ctx, '*', 13, 'color/error/600', '#F04452', true))
   c.appendChild(labelRow)
 
   // 설명 줄(description) — 라벨과 입력 사이. showDescription BOOLEAN이 이 레이어를 켜고 끈다.
@@ -222,6 +232,103 @@ function makeInputSet(ctx: Ctx, def: InputDef, page: PageNode): ComponentSetNode
   const axes = def.axes.map((a) => ({ name: a, values: ['false', 'true'] }))
   if (def.sizeAxis) axes.unshift({ name: 'size', values: ['md', 'sm', 'lg'] })
   return buildSet(ctx, page, def.setName, axes, (combo) => renderInput(ctx, def, combo), props)
+}
+
+// ── DS/InputBase — 입력 박스 자체(오너 지시: "Input 박스 자체도 컴포넌트화, 오른쪽에 아이콘 넣을
+// 수 있게 베리언트화, 라벨 없이 가로 배치하는 구성도"). INPUTS(위 8종)와 별도 렌더 함수로 둔다 —
+// makeInputSet/renderInput을 공유하면 8종이 쓰는 축(readOnly·required 등)이 세트마다 달라 하나의
+// 함수로 합칠 수 없고, 억지로 합치면 기존 세트 모양이 깨진다(작업 보고 "8종 재사용" 참고).
+//
+// 변형 = size(3) × error(2) × success(2) × disabled(2) = 24(상한 이하로 지켰다).
+// InputBaseProps의 나머지 non-show boolean(readOnly·required·fullWidth)과 union(type·inputMode)은
+// 축에 넣지 않았다 — 전부 넣으면 3×2^6×5×6로 곱해져 세트가 무너진다. ds-props.mjs 분류상 이 prop들도
+// "코드 축"이라 verify-naming이 axis-missing으로 잡는다 — scripts/verify-naming.mjs ALLOWLIST에
+// InputBase 예외 등록이 필요하다(이 파일 소유권 밖이라 등록하지 않았다 — 작업 보고 참고).
+function renderInputBase(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const error = combo.error === 'true'
+  const success = combo.success === 'true'
+  const disabled = combo.disabled === 'true'
+  const size = combo.size || 'md'
+  // InputBase.module.css --input-size-*-py/px·--ds-font-size-* 값과 정확히 같다(그 CSS 상단 주석:
+  // "TextField와 같은 스케일을 쓴다" — renderInput의 sz와 동일 값이라 여기서도 같은 리터럴을 쓴다).
+  const sz: Record<string, { pv: number; ph: number; f: number; icon: number }> = {
+    sm: { pv: 7, ph: 10, f: 13, icon: 14 },
+    md: { pv: 10, ph: 12, f: 15, icon: 16 },
+    lg: { pv: 13, ph: 14, f: 17, icon: 18 },
+  }
+  const toneVar = error ? 'color/error' : success ? 'color/success' : null
+  const toneHex = error ? '#F04452' : success ? '#00C471' : null
+
+  const c = figma.createComponent()
+  c.layoutMode = 'VERTICAL'
+  c.counterAxisSizingMode = 'FIXED'
+  c.resize(FIELD_W, c.height)
+  c.primaryAxisSizingMode = 'AUTO'
+  c.itemSpacing = 6
+  c.fills = []
+  if (disabled) c.opacity = 0.45
+
+  // label — InputBaseProps.label은 optional이라 코드에서 생략하면 자리 자체가 안 남는다(라벨 없이
+  // 박스만 쓰는 구성, 오너가 지목한 것). Figma엔 "레이어 없음" 축이 없고 코드에 showLabel도 없어
+  // 축/BOOLEAN으로 열 수 없다 — 문서의 'Without Label' 상태가 texts:{label:''}로 근사한다.
+  const label = boundText(ctx, '이메일', 13, 'color/text', INK, true)
+  label.name = 'label'
+  c.appendChild(label)
+
+  const wrap = autoFrame('inputWrap', 'HORIZONTAL') // 레이어 이름 = CSS 클래스(.inputWrap)
+  wrap.counterAxisAlignItems = 'CENTER'
+  wrap.layoutAlign = 'STRETCH'
+  wrap.primaryAxisSizingMode = 'FIXED'
+  wrap.itemSpacing = 8
+  wrap.paddingTop = wrap.paddingBottom = sz[size].pv
+  wrap.paddingLeft = wrap.paddingRight = sz[size].ph
+  wrap.cornerRadius = 8
+  bindFillVar(ctx, wrap, disabled ? 'color/bgSubtle' : 'color/bg', disabled ? '#F5F7FA' : WHITE)
+  bindStrokeVar(ctx, wrap, toneVar ?? 'color/border', toneHex ?? BORDER)
+  wrap.strokeWeight = 1
+  wrap.strokeAlign = 'INSIDE'
+
+  // leading/trailing — 오너가 콕 집은 축(§본문 "오른쪽에 아이콘 넣을 수 있게"). ReactNode 슬롯이라
+  // 대응하는 show* prop이 코드에 없다(존재=표시, DS/Chip.leading·DS/Tag.remove와 같은 패턴) — 기본
+  // 숨김 + INSTANCE_SWAP만 연다. 문서에 보여주려면 디자이너가 레이어를 켜고 아이콘을 교체한다.
+  const leading = iconInstance('_Icon/Search', 'leading', sz[size].icon)
+  leading.visible = false
+  recolorIconVar(ctx, leading, 'color/secondary', MUTED)
+  wrap.appendChild(leading)
+
+  // 값/플레이스홀더 — 한 텍스트 레이어에 TEXT 속성 두 개를 붙일 수 없다(renderSelect와 같은 제약).
+  // placeholder만 연다(코드 8종 입력 필드와 같은 관례) — value는 text-missing 예외 대상(작업 보고 참고).
+  const val = boundText(ctx, 'name@example.com', sz[size].f, 'color/secondary', MUTED)
+  val.name = 'placeholder'
+  val.layoutGrow = 1
+  wrap.appendChild(val)
+
+  const trailing = iconInstance('_Icon/Dollar', 'trailing', sz[size].icon)
+  trailing.visible = false
+  recolorIconVar(ctx, trailing, 'color/secondary', MUTED)
+  wrap.appendChild(trailing)
+
+  c.appendChild(wrap)
+
+  const meta = autoFrame('meta', 'HORIZONTAL')
+  meta.layoutAlign = 'STRETCH'
+  meta.primaryAxisSizingMode = 'FIXED'
+  meta.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  meta.counterAxisAlignItems = 'MIN'
+  meta.itemSpacing = 8
+  const helper = boundText(ctx, '업무용 이메일을 입력하세요.', 12, toneVar ?? 'color/secondary', toneHex ?? SUB)
+  helper.name = 'helperText'
+  helper.layoutGrow = 1
+  helper.textAutoResize = 'HEIGHT'
+  meta.appendChild(helper)
+  // 글자수 카운터 — maxLength는 number라 TEXT 속성이 없다. 표시 여부만 showCounter BOOLEAN으로 연다.
+  const counter = boundText(ctx, '0/50', 12, 'color/secondary', SUB)
+  counter.name = 'counter'
+  counter.visible = false
+  meta.appendChild(counter)
+  c.appendChild(meta)
+
+  return c
 }
 
 // ══ SELECTION 계열 ════════════════════════════════════════════════════
@@ -391,9 +498,6 @@ function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   const variant = combo.variant || 'primary'
   const appearance = combo.appearance || 'solid'
   const size = combo.size || 'md'
-  const disabled = combo.disabled === 'true'
-  const fullWidth = combo.fullWidth === 'true'
-  const iconOnly = combo.iconOnly === 'true'
   const pad: Record<string, { v: number; h: number; f: number }> = {
     sm: { v: 7, h: 12, f: 13 },
     md: { v: 10, h: 16, f: 15 },
@@ -406,8 +510,7 @@ function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.counterAxisAlignItems = 'CENTER'
   c.itemSpacing = 6
   c.paddingTop = c.paddingBottom = pad[size].v
-  // iconOnly = 라벨 없는 정사각 버튼 → 좌우 패딩도 상하와 같은 값으로 squarify.
-  c.paddingLeft = c.paddingRight = iconOnly ? pad[size].v : pad[size].h
+  c.paddingLeft = c.paddingRight = pad[size].h
   c.cornerRadius = 8
   const toneHex = VARIANT_HEX[variant] ?? ACCENT
   // appearance: solid=solid 면(color/solid-*) + on-color 글자 / outline=투명+톤 보더+톤 글자 / ghost=투명+톤 글자
@@ -426,7 +529,6 @@ function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
       c.strokeAlign = 'INSIDE'
     }
   }
-  if (disabled) c.opacity = 0.45
   const ipx = pad[size].f + 2
   // 레거시 좌측 아이콘 슬롯(ButtonProps.showIcon/icon) — leftIcon이 없을 때만 왼쪽에 렌더된다.
   // 코드에 살아 있는 prop이라 Figma에도 있어야 한다. 레이어 이름은 CSS 클래스(.icon) 그대로.
@@ -435,29 +537,38 @@ function renderButton(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   recolorIconVar(ctx, legacy, fgVar, fgHex)
   c.appendChild(legacy)
   // 왼쪽 아이콘(기본 숨김, 토글 대상) — 아이콘도 글자와 같은 색 변수를 따라간다(currentColor와 동일).
-  // iconOnly 변형은 Storybook의 IconOnly 스토리(iconOnly + showLeftIcon 조합)와 같이 기본으로 보여준다 —
-  // 이 visible은 이 변형만의 기본값이고, "Show Left Icon" 공유 속성 바인딩은 인스턴스별로 계속 덮어쓸 수 있다.
   const li = iconInstance(ICON_DEFAULT, 'leftIcon', ipx)
-  li.visible = iconOnly
+  li.visible = false
   recolorIconVar(ctx, li, fgVar, fgHex)
   c.appendChild(li)
   const lbl = boundText(ctx, '버튼', pad[size].f, fgVar, fgHex, true)
   lbl.name = 'label'
-  // iconOnly = 라벨을 화면에서 감춘다(characters 자체는 남아 접근성 이름 역할을 계속한다).
-  lbl.visible = !iconOnly
   c.appendChild(lbl)
   // 오른쪽 아이콘(기본 숨김, 토글 대상)
   const ri = iconInstance('_Icon/ChevronRight', 'rightIcon', ipx)
   ri.visible = false
   recolorIconVar(ctx, ri, fgVar, fgHex)
   c.appendChild(ri)
-  // fullWidth = 폼 하단 제출 CTA처럼 부모 폭을 꽉 채운다 — 격리된 컴포넌트에서는 상한을 푸는 대신
-  // 넉넉한 고정 폭(400)으로 펼치고 내용을 가운데로 둔다(Storybook FullWidth 스토리와 같은 폭 축소판).
-  if (fullWidth) {
-    c.primaryAxisSizingMode = 'FIXED'
-    c.primaryAxisAlignItems = 'CENTER'
-    c.resize(400, c.height)
-  }
+  // disabled — opacity는 componentPropertyReferences 바인딩 대상이 아니다(visible·characters·mainComponent
+  // 세 필드뿐 — figma-plugin/node_modules/@figma/plugin-typings/plugin-api.d.ts:6282-6285). 그래서
+  // 버튼 전체를 덮는 반투명 흰 오버레이 레이어를 두고 '그 레이어의 visible'만 disabled BOOLEAN에 직접
+  // 묶는다 — 방향이 반전 없이 그대로 맞는다(disabled=true → 오버레이 visible=true). renderImageCard의
+  // Scrim과 같은 '덮는 레이어' 기법이다(categories-data-kr-media.ts:1653-1664 참고).
+  // 레이어 이름은 CSS 클래스가 없으니(React는 opacity라 이런 레이어가 없다) §6대로 바인딩된 prop
+  // 이름('disabled')을 그대로 쓴다 — N6(layer-not-css-class)를 ALLOWLIST 없이 통과한다.
+  const disabledOverlay = figma.createRectangle()
+  disabledOverlay.name = 'disabled'
+  bindFillVar(ctx, disabledOverlay, 'color/bg', WHITE)
+  disabledOverlay.fills = [{ ...((disabledOverlay.fills as readonly Paint[])[0] as SolidPaint), opacity: 0.55 }]
+  disabledOverlay.strokes = []
+  disabledOverlay.cornerRadius = 8
+  disabledOverlay.visible = false // 기본값(disabled=false) — BOOLEAN 바인딩 대상
+  c.appendChild(disabledOverlay)
+  disabledOverlay.layoutPositioning = 'ABSOLUTE'
+  disabledOverlay.constraints = { horizontal: 'STRETCH', vertical: 'STRETCH' }
+  disabledOverlay.x = 0
+  disabledOverlay.y = 0
+  disabledOverlay.resize(c.width, c.height)
   return c
 }
 function renderBadge(ctx: Ctx, combo: Record<string, string>): ComponentNode {
@@ -624,22 +735,24 @@ function renderSnackbar(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   c.paddingTop = c.paddingBottom = 12
   c.paddingLeft = c.paddingRight = 16
   c.cornerRadius = 8
-  c.fills = [solid('#191F28')]
+  // React(Snackbar.module.css .snackbar)는 --ds-color-text를 면으로 쓰는 역전 표면이다.
+  bindFillVar(ctx, c, 'color/text', INK)
   if (variant !== 'default') {
     const dot = figma.createEllipse()
     dot.resize(8, 8)
     // 레이어 = CSS 클래스(.success/.error) — 톤 점은 variant 축이 그린다.
     dot.name = variant === 'error' ? 'error' : 'success'
-    dot.fills = [solid(variant === 'error' ? '#FF6B76' : '#3DDC97')]
+    // 어두운 면 위라 밝은 셰이드(-400)를 쓴다 — React .success .icon/.error .icon과 같은 토큰.
+    bindFillVar(ctx, dot, variant === 'error' ? 'color/error/400' : 'color/success/400', variant === 'error' ? '#FF6B76' : '#3DDC97')
     c.appendChild(dot)
   }
-  const msg = txt(ctx, '링크를 복사했어요.', 13, WHITE)
+  const msg = boundText(ctx, '링크를 복사했어요.', 13, 'color/bg', WHITE)
   msg.name = 'message'
   msg.layoutGrow = 1
   c.appendChild(msg)
   // 액션 라벨 — 예전엔 `action` 축(코드에 없는 이름)으로 켜고 껐다. 코드는 actionLabel(string) 하나뿐이라
-  // TEXT 속성으로 열고 항상 그린다(축을 늘리지 않는다).
-  const act = txt(ctx, '실행 취소', 13, '#6C9BFF', true)
+  // TEXT 속성으로 열고 항상 그린다(축을 늘리지 않는다). React .action은 --ds-color-primary-300.
+  const act = boundText(ctx, '실행 취소', 13, 'color/primary/300', '#6C9BFF', true)
   act.name = 'action'
   c.appendChild(act)
   // 닫기(×) — showClose BOOLEAN이 켜고 끈다. React 기본값은 false라 기본 숨김.
@@ -666,10 +779,11 @@ function renderTooltip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
     left: 'M0 0 L0 12 L6 6 Z',
     right: 'M6 0 L6 12 L0 6 Z',
   }
+  // React(Tooltip.module.css .bubble/.arrow)는 둘 다 --ds-color-text를 면으로 쓴다.
   const tri = () => {
     const t = figma.createVector()
     t.vectorPaths = [{ windingRule: 'NONZERO', data: shape[p] }]
-    t.fills = [solid('#191F28')]
+    bindFillVar(ctx, t, 'color/text', INK)
     t.strokes = []
     return t
   }
@@ -677,10 +791,10 @@ function renderTooltip(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   bubble.paddingTop = bubble.paddingBottom = 6
   bubble.paddingLeft = bubble.paddingRight = 10
   bubble.cornerRadius = 6
-  bubble.fills = [solid('#191F28')]
+  bindFillVar(ctx, bubble, 'color/text', INK)
   // TooltipProps.content(string)가 말풍선 글자다. children(트리거)은 세트 밖이므로
-  // 규약 §7의 슬롯 이름 `content`를 이 텍스트 레이어가 가져간다.
-  const tipText = txt(ctx, '도움말 텍스트', 12, WHITE)
+  // 규약 §7의 슬롯 이름 `content`를 이 텍스트 레이어가 가져간다. React .bubble은 color: var(--ds-color-bg).
+  const tipText = boundText(ctx, '도움말 텍스트', 12, 'color/bg', WHITE)
   tipText.name = 'content'
   bubble.appendChild(tipText)
   const arrowFirst = p === 'bottom' || p === 'right'
@@ -840,8 +954,10 @@ function renderMultiSelect(ctx: Ctx, combo: Record<string, string>): ComponentNo
     chip.paddingTop = chip.paddingBottom = 3
     chip.paddingLeft = chip.paddingRight = 8
     chip.cornerRadius = 6
-    bindFillVar(ctx, chip, 'color/bgSubtle', SURFACE)
-    chip.appendChild(txt(ctx, t, 12, INK))
+    // React(MultiSelect.module.css .chip)는 color: var(--ds-color-primary) 위에 10% 프라이머리 틴트
+    // 배경이다(여기 있던 bgSubtle 면 + INK 글자는 토큰이 달랐다) — /50(90% 흰 틴트)이 10% 톤과 같다.
+    bindFillVar(ctx, chip, 'color/primary/50', '#EEF2FF')
+    chip.appendChild(boundText(ctx, t, 12, 'color/primary', ACCENT))
     chips.appendChild(chip)
   })
   row.appendChild(chips)
@@ -877,7 +993,7 @@ function renderSlider(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   pu.name = 'unit'
   pvRow.appendChild(pv)
   pvRow.appendChild(pu)
-  const spacer = txt(ctx, '', 13, SUB)
+  const spacer = boundText(ctx, '', 13, 'color/secondary', SUB)
   meta.appendChild(spacer)
   meta.appendChild(pvRow)
   // 트랙(플레인 프레임): fill + thumb 수동 배치
@@ -903,8 +1019,10 @@ function renderSlider(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   fill.y = 6
   const thumb = figma.createEllipse()
   thumb.resize(18, 18)
-  thumb.fills = [solid(WHITE)]
-  bindStrokeVar(ctx, thumb, 'color/primary', ACCENT)
+  // React(Slider.module.css .range::-webkit-slider-thumb)는 solid-primary 면 + bg 테두리다
+  // (여기 있던 흰 면 + primary 테두리는 반대였다).
+  bindFillVar(ctx, thumb, 'color/solid-primary', ACCENT)
+  bindStrokeVar(ctx, thumb, 'color/bg', WHITE)
   thumb.strokeWeight = 2
   track.appendChild(thumb)
   thumb.x = Math.min(FIELD_W - 18, Math.max(0, (FIELD_W * pct) / 100 - 9))
@@ -1080,7 +1198,9 @@ function renderCallout(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.paddingLeft = 14
   c.paddingRight = 16
   c.cornerRadius = 10
-  c.fills = [solid(tint)]
+  // React(Callout.module.css)는 color-mix(tone 8%, transparent) — 변수로 못 옮기는 혼합값이라
+  // 가장 가까운 이산 셰이드(<tone>/50, 90% 흰 틴트)에 바인딩한다.
+  bindFillVar(ctx, c, tvar + '/50', tint)
   bindStrokeVar(ctx, c, tvar, thex)
   c.strokeAlign = 'INSIDE'
   c.strokeTopWeight = c.strokeRightWeight = c.strokeBottomWeight = 0
@@ -1111,6 +1231,48 @@ export const INPUT_CATEGORY: CategoryDef = {
   subtitle:
     '텍스트 입력 계열 — 라벨·입력·헬퍼 규약을 공유하는 폼 필드. 각 컴포넌트의 상태 변형을 편집 가능한 Figma 컴포넌트로 렌더합니다.',
   docs: [
+    {
+      key: 'InputBase',
+      setName: 'DS/InputBase',
+      eyebrow: 'ATOM · INPUT',
+      desc:
+        '입력 박스 자체(라벨·헬퍼가 아니라 박스 중심) — TextField 등 8종이 공유하는 sm/md/lg 크기 스케일을 그대로 씁니다. ' +
+        'leading·trailing INSTANCE_SWAP으로 좌/우에 아이콘을 자유롭게 바꿔 끼울 수 있고, 라벨 없이 박스만 쓰는 구성도 지원합니다(Without Label 상태 참고).',
+      build: (ctx: Ctx, page: PageNode) =>
+        buildSet(
+          ctx,
+          page,
+          'DS/InputBase',
+          [
+            { name: 'size', values: ['md', 'sm', 'lg'] },
+            { name: 'error', values: ['false', 'true'] },
+            { name: 'success', values: ['false', 'true'] },
+            { name: 'disabled', values: ['false', 'true'] },
+          ],
+          (combo) => renderInputBase(ctx, combo),
+          {
+            texts: [
+              { prop: 'label', layer: 'label', def: '이메일' },
+              { prop: 'placeholder', layer: 'placeholder', def: 'name@example.com' },
+              { prop: 'helperText', layer: 'helperText', def: '업무용 이메일을 입력하세요.' },
+            ],
+            bools: [{ prop: 'showCounter', layer: 'counter', def: false }],
+            swaps: [
+              { prop: 'leading', layer: 'leading', defKey: '_Icon/Search' },
+              { prop: 'trailing', layer: 'trailing', defKey: '_Icon/Dollar' },
+            ],
+          },
+        ),
+      states: [
+        { caption: 'Default', props: {} },
+        { caption: 'Small', props: { size: 'sm' } },
+        { caption: 'Large', props: { size: 'lg' } },
+        { caption: 'Error', props: { error: 'true' } },
+        { caption: 'Success', props: { success: 'true' } },
+        { caption: 'Disabled', props: { disabled: 'true' } },
+        { caption: 'Without Label', props: {}, texts: { label: '' } },
+      ],
+    },
     ...INPUTS.map((def) => ({
       key: def.key,
       setName: def.setName,
@@ -1224,15 +1386,36 @@ export const ACTION_CATEGORY: CategoryDef = {
       key: 'Button',
       setName: 'DS/Button',
       eyebrow: 'ATOM · ACTION',
-      desc: '주요 액션을 실행하는 버튼. variant·size 축을 가집니다.',
+      desc: '주요 액션을 실행하는 버튼. variant·appearance·size 축을 가집니다(6×3×3=54변형 — 오너 지시로 축소, 아래 주석 참고).',
+      // 변형 축소(오너 지시: "432변형이면 세트가 사실상 못 쓴다"): variant(6)×appearance(3)×size(3)×
+      // disabled(2)×fullWidth(2)×iconOnly(2) = 432 → variant×appearance×size = 6×3×3 = **54**로 줄였다.
+      // 셋 다 code.ts의 classifyProps 규칙상 "show*가 아닌 boolean → VARIANT 축"이라 여기서 빼면
+      // verify-naming이 N2 axis-missing(디자인상 disabled/fullWidth/iconOnly 각각)을 낸다 — ALLOWLIST
+      // 등록 필요(scripts/** 소유 밖이라 등록하지 않았다, 작업 보고 참고). 세 축을 내린 방식은 서로 다르다:
+      //   · disabled — **진짜 BOOLEAN**이다. opacity는 componentPropertyReferences 바인딩 대상이 아니라서
+      //     (visible·characters·mainComponent 세 필드뿐) renderButton에 반투명 흰 오버레이 레이어를 새로
+      //     추가하고 그 레이어의 visible만 disabled에 직접 묶었다(renderImageCard의 Scrim과 같은 기법).
+      //     방향이 반전 없이 그대로 맞는다(disabled=true → 오버레이 visible=true) → 실시간 토글이 된다.
+      //     다만 BOOLEAN 이름이 show*가 아니라 N3(bool-extra) ALLOWLIST도 함께 필요하다.
+      //   · fullWidth — **명목상**이다. 폭 변경이라 어떤 BOOLEAN에도 못 묶는다(같은 세 필드 제약). 축도
+      //     BOOLEAN도 만들지 않았다 — SiteSection.maxWidth/padding과 같은 axis-missing 사유.
+      //   · iconOnly — **명목상**이다. "라벨 숨김"은 BOOLEAN=true일 때 label.visible=true가 되는 직결
+      //     바인딩만 가능해(반전 불가) label을 직접 숨길 수 없고, leftIcon은 이미 showLeftIcon이 같은
+      //     레이어의 visible을 쓰고 있어 겹쳐 묶을 수 없다(한 레이어는 visible 참조를 하나만 가진다).
+      //     안전하게 라벨을 가리는 방법(마스크 사각형)은 appearance별 배경색이 달라(solid는 톤, outline·
+      //     ghost는 투명) 일반화할 수 없어 채택하지 않았다 — 축도 BOOLEAN도 만들지 않는다(axis-missing).
+      //     문서의 "Icon Only" 예시는 기존 showLeftIcon(true) + label 텍스트 빈 값으로 근사한다
+      //     (InputBase의 'Without Label' 상태가 texts:{label:''}로 근사하는 것과 같은 관행).
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success', 'warning', 'neutral'] }, { name: 'appearance', values: ['solid', 'outline', 'ghost'] }, { name: 'size', values: ['md', 'sm', 'lg'] }, { name: 'disabled', values: ['false', 'true'] }, { name: 'fullWidth', values: ['false', 'true'] }, { name: 'iconOnly', values: ['false', 'true'] }], (c) => renderButton(ctx, c), {
+        buildSet(ctx, page, 'DS/Button', [{ name: 'variant', values: ['primary', 'secondary', 'error', 'success', 'warning', 'neutral'] }, { name: 'appearance', values: ['solid', 'outline', 'ghost'] }, { name: 'size', values: ['md', 'sm', 'lg'] }], (c) => renderButton(ctx, c), {
           texts: [{ prop: 'label', layer: 'label', def: '버튼' }],
           bools: [
             // 레거시 슬롯(showIcon/icon)도 코드에 살아 있다 — 빠뜨리면 Figma가 코드보다 좁아진다.
             { prop: 'showIcon', layer: 'icon', def: false },
             { prop: 'showLeftIcon', layer: 'leftIcon', def: false },
             { prop: 'showRightIcon', layer: 'rightIcon', def: false },
+            // disabled — 위 축소 주석 참고. show*가 아닌 이름이라 N3 ALLOWLIST 등록이 필요하다.
+            { prop: 'disabled', layer: 'disabled', def: false },
           ],
           swaps: [
             { prop: 'icon', layer: 'icon', defKey: ICON_DEFAULT },
@@ -1240,7 +1423,7 @@ export const ACTION_CATEGORY: CategoryDef = {
             { prop: 'rightIcon', layer: 'rightIcon', defKey: '_Icon/ChevronRight' },
           ],
         }),
-      states: [{ caption: 'Primary', props: { variant: 'primary' } }, { caption: 'Secondary', props: { variant: 'secondary' } }, { caption: 'Error', props: { variant: 'error' } }, { caption: 'Success', props: { variant: 'success' } }, { caption: 'Neutral', props: { variant: 'neutral' } }, { caption: 'Small', props: { size: 'sm' } }, { caption: 'Large', props: { size: 'lg' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'Full Width', props: { fullWidth: 'true' } }, { caption: 'Icon Only', props: { iconOnly: 'true' } }],
+      states: [{ caption: 'Primary', props: { variant: 'primary' } }, { caption: 'Secondary', props: { variant: 'secondary' } }, { caption: 'Error', props: { variant: 'error' } }, { caption: 'Success', props: { variant: 'success' } }, { caption: 'Neutral', props: { variant: 'neutral' } }, { caption: 'Small', props: { size: 'sm' } }, { caption: 'Large', props: { size: 'lg' } }, { caption: 'Disabled', props: { disabled: 'true' } }, { caption: 'Icon Only', props: { showLeftIcon: 'true' }, texts: { label: '' } }],
     },
     {
       key: 'Badge',

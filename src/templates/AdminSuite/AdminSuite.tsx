@@ -763,17 +763,24 @@ const MAIN_VISUAL_SECTIONS: MainVisualSectionOption[] = MAIN_VISUAL_TABS.map((ta
   label: tab.label,
 }))
 
+// ── 목데이터: 카테고리 브랜드(시공 파트너사) ────────────────────────────
+const CATEGORY_BRANDS: SelectOption[] = [
+  { value: '한샘', label: '한샘' },
+  { value: '리바트', label: '리바트' },
+  { value: '자체 브랜드', label: '자체 브랜드' },
+]
+
 // ── 목데이터: 카테고리 8건(CategoryList) ─────────────────────────────────
 const CATEGORIES: CategoryRow[] = [
-  { id: 'ct-01', order: 1, name: '주방', emoji: '🍳', description: '싱크대·상판·수납장 교체 시공', createdAt: '2026-01-12', updatedAt: '2026-06-30', createdBy: '홍성보', updatedBy: '김민수', active: true },
-  { id: 'ct-02', order: 2, name: '욕실', emoji: '🛁', description: '건식·습식 분리, 방수 재시공', createdAt: '2026-01-12', updatedAt: '2026-05-21', createdBy: '홍성보', updatedBy: '홍성보', active: true },
-  { id: 'ct-03', order: 3, name: '거실', emoji: '🛋️', description: '아트월·조명·바닥재', createdAt: '2026-02-03', updatedAt: '2026-02-03', createdBy: '이서준', updatedBy: '이서준', active: true },
-  { id: 'ct-04', order: 4, name: '침실', emoji: '🛏️', description: '붙박이장·도배·창호', createdAt: '2026-02-18', updatedAt: '2026-04-02', createdBy: '이서준', updatedBy: '박하윤', active: true },
-  { id: 'ct-05', order: 5, name: '전체 리모델링', emoji: '🏠', description: '샤시·배관·바닥까지 포함한 올수리', createdAt: '2026-03-04', updatedAt: '2026-07-01', createdBy: '김민수', updatedBy: '홍성보', active: true },
+  { id: 'ct-01', order: 1, name: '주방', emoji: '🍳', brand: '한샘', description: '싱크대·상판·수납장 교체 시공', childCount: 2, createdAt: '2026-01-12', updatedAt: '2026-06-30', createdBy: '홍성보', updatedBy: '김민수', active: true },
+  { id: 'ct-02', order: 2, name: '욕실', emoji: '🛁', brand: '리바트', description: '건식·습식 분리, 방수 재시공', childCount: 1, createdAt: '2026-01-12', updatedAt: '2026-05-21', createdBy: '홍성보', updatedBy: '홍성보', active: true },
+  { id: 'ct-03', order: 3, name: '거실', emoji: '🛋️', brand: '자체 브랜드', description: '아트월·조명·바닥재', childCount: 3, createdAt: '2026-02-03', updatedAt: '2026-02-03', createdBy: '이서준', updatedBy: '이서준', active: true },
+  { id: 'ct-04', order: 4, name: '침실', emoji: '🛏️', brand: '한샘', description: '붙박이장·도배·창호', childCount: 1, createdAt: '2026-02-18', updatedAt: '2026-04-02', createdBy: '이서준', updatedBy: '박하윤', active: true },
+  { id: 'ct-05', order: 5, name: '전체 리모델링', emoji: '🏠', brand: '리바트', description: '샤시·배관·바닥까지 포함한 올수리', childCount: 4, createdAt: '2026-03-04', updatedAt: '2026-07-01', createdBy: '김민수', updatedBy: '홍성보', active: true },
   // 이미지·아이콘이 모두 없는 행 — 표가 공용 대체 그림(Placeholder)을 그린다
-  { id: 'ct-06', order: 6, name: '베란다·확장', description: '확장 공사와 단열·결로 보강', createdAt: '2026-03-27', updatedAt: '2026-03-27', createdBy: '박하윤', updatedBy: '박하윤', active: false },
-  { id: 'ct-07', order: 7, name: '상업공간', emoji: '🏢', description: '카페·사무실·상가 인테리어', createdAt: '2026-04-15', updatedAt: '2026-06-05', createdBy: '김민수', updatedBy: '이서준', active: true },
-  { id: 'ct-08', order: 8, name: '조명·전기', emoji: '💡', description: '배선·스위치·매입등 교체', createdAt: '2026-05-09', updatedAt: '2026-05-09', createdBy: '최도현', updatedBy: '최도현', active: false },
+  { id: 'ct-06', order: 6, name: '베란다·확장', brand: '자체 브랜드', description: '확장 공사와 단열·결로 보강', childCount: 1, createdAt: '2026-03-27', updatedAt: '2026-03-27', createdBy: '박하윤', updatedBy: '박하윤', active: false },
+  { id: 'ct-07', order: 7, name: '상업공간', emoji: '🏢', brand: '한샘', description: '카페·사무실·상가 인테리어', childCount: 2, createdAt: '2026-04-15', updatedAt: '2026-06-05', createdBy: '김민수', updatedBy: '이서준', active: true },
+  { id: 'ct-08', order: 8, name: '조명·전기', emoji: '💡', brand: '리바트', description: '배선·스위치·매입등 교체', childCount: 1, createdAt: '2026-05-09', updatedAt: '2026-05-09', createdBy: '최도현', updatedBy: '최도현', active: false },
 ]
 
 /** 신규 등록 시작값 — 아이콘(이모지) 선택으로 시작한다 */
@@ -1004,8 +1011,8 @@ const TRAIL: Record<string, Trail> = {
   // ── 게시판 ──
   'notice-board': { crumbs: ['홈', '게시판', '공지사항'], title: '공지사항', desc: '공지 노출 여부와 상단 고정을 관리합니다.', self: true },
   // ── 설정 ──
-  'category-list': { crumbs: ['홈', '설정', '카테고리 관리'], title: '카테고리 관리', desc: '시공 분야 카테고리를 등록·수정·삭제하고 순번/활성화를 관리합니다.', self: true },
-  'category-form': { crumbs: ['홈', '설정', '카테고리 관리', '카테고리 등록'], title: '카테고리 등록', desc: '카테고리명·아이콘·설명과 활성화 여부를 입력합니다.', self: true },
+  'category-list': { crumbs: ['홈', '설정', '카테고리 관리'], title: '카테고리 관리', desc: '1Depth 카테고리를 등록하고, 각 카테고리의 하위(2Depth)를 설정합니다.', self: true },
+  'category-form': { crumbs: ['홈', '설정', '카테고리 관리', '카테고리 등록'], title: '카테고리 등록', desc: '브랜드·카테고리명·이미지(또는 아이콘)·설명과 활성화 여부를 입력합니다.', self: true },
 }
 
 // 상세 화면은 사이드바 항목이 아니다 — 부모 목록 메뉴를 계속 선택 상태로 둔다
@@ -1677,6 +1684,7 @@ export function AdminSuite({ initialMenu = 'dashboard' }: AdminSuiteProps = {}) 
 
   const editCategory = (row: CategoryRow) => {
     setCategoryForm({
+      brand: row.brand,
       name: row.name,
       // 이미지가 있으면 이미지, 없으면 아이콘(이모지) 모드
       useImage: row.image != null,
@@ -3081,6 +3089,7 @@ export function AdminSuite({ initialMenu = 'dashboard' }: AdminSuiteProps = {}) 
         <CategoryForm
           value={categoryForm}
           onChange={setCategoryForm}
+          brands={CATEGORY_BRANDS}
           title={pageTitle}
           description={trail.desc}
           submitLabel={categoryId != null ? '수정' : '등록'}

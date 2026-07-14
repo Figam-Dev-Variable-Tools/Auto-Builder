@@ -119,8 +119,59 @@ const ALLOWLIST = [
 - **미사용 항목 = 실패**(`E-ALLOWLIST-STALE`). 예외가 썩어서 규칙을 가리는 걸 막는다.
 - **만료 = 실패**(`E-ALLOWLIST-EXPIRED`).
 
-현재 등록된 예외는 **코드 짝이 없는 Figma 전용 합성 세트**(`DS/AdminSidebar`, `DS/InfoCard`,
-`DS/Dashboard` 등 문서/화면 샘플) 7건의 `no-code`뿐이다.
+현재 ALLOWLIST는 404건이다. 대부분(341건)은 Figma 컴포넌트 속성 타입(VARIANT/TEXT/BOOLEAN/
+INSTANCE_SWAP) 네 가지로는 애초에 표현 못 하는 **영구(permanent)** 면제다 — 숫자 prop, 배열을
+인덱스로 편 데모 데이터, ReactNode 슬롯(아이콘 외 INSTANCE_SWAP 기본값 불가), 화면에 안 그려지는
+문자열(접근성 이름 등), 이미지/미디어 URL, 플랫폼이 요구하는 최소 1개 축 등. 나머지 63건은
+**연기(deferred)** — 아래 §연기 항목 참조.
+
+---
+
+## 연기(deferred) 항목 — "표현 불가"와 "지금은 미룸"을 구분한다
+
+ALLOWLIST의 예외는 전부 `reason`이 있지만, 그 이유는 두 갈래로 다르다:
+
+- **permanent** — Figma가 그 개념 자체를 **영원히** 표현 못 한다(숫자 prop, 배열, ReactNode 슬롯,
+  화면에 안 그려지는 문자열, 데이터 등). 세트를 아무리 다시 그려도 사라지지 않는다.
+- **deferred** — 지금 표현 못 하는 이유가 "지금 이 세트/이 검사기를 손대면 모양이 바뀌거나
+  (세트 확장·재설계가 필요) 이 저장소의 검사 도구가 아직 그 대응을 못 읽어서"다. **언젠가는
+  해소해야 한다** — 영구 면제로 조용히 굳으면 안 된다.
+
+`scripts/verify-naming.mjs`의 `DEFERRED` 목록이 `component·kind·figma·code` 키로 ALLOWLIST 항목에
+`lifecycle: 'deferred'` · `blockedBy` · `unblockedBy`를 붙인다(나머지는 전부 `lifecycle: 'permanent'`).
+요약 줄이 매번 건수를 찍는다 — **연기 항목이 안 보이면 영구 면제로 굳는다**는 것이 이 구분의 핵심이다:
+
+```
+verify-naming OK — 137세트, 이름 규약(N1~N7) 위반 0건
+  allowlist 446건 적용 · 미파싱 0건 · 커버리지 137/137
+  allowlist 446건 (영구 386 · 연기 60) — 연기 항목은 docs/naming-parity.md 참조
+```
+
+(정확한 최신 수치는 `node scripts/verify-naming.mjs`를 직접 돌려서 확인하라 — 이 표는 예시일 뿐이고
+ALLOWLIST가 바뀔 때마다 사람이 손으로 갱신해야 하므로 항상 최신이라는 보장이 없다.)
+
+`DEFERRED`에 적었는데 ALLOWLIST에 같은 키가 없으면(오타이거나 이미 해소된 것) `E-ALLOWLIST-STALE`과
+같은 원리로 `E-DEFERRED-STALE`이 실패시킨다 — 이 목록도 썩으면 안 된다.
+
+### 연기 항목 표
+
+| 그룹 | 컴포넌트 · 속성 | 무엇이 막혔나 | 무엇이 생기면 풀리나 | 건수 |
+|---|---|---|---|---|
+| A | `AdminTable`(columnPicker·exportable·loading·emptyKind·emptyText·emptyDescription·loadingLabel·showEmptyDescription·kebabIcon·dragIcon·csvIcon·excelIcon·columnPickerIcon), `SearchPanel`(collapsible·defaultCollapsed·expandLabel·collapseLabel·collapseIcon), `ActivityLog`(emptyText), `MemoBox`(emptyText·composer·labels.itemActions.group/view/edit/delete·value), `DropZone`(showError·errorIcon), `StatusTimeline`(skippedIcon), `AdminCard`(emptyThumbnailLabel) | figma-plugin 세트 확장 배치(생성기 `admin.ts`) — 툴바·로딩·빈 상태·접기 토글 UI 자체가 Figma 세트에 없다. 담당자 미배정 | 이 UI(툴바·로딩·빈 상태·접기 토글 등)를 DS 세트에 실제로 그리는 후속 배치가 실행되면 | 30 |
+| B | `ActionSheet`(title), `Footer`(description), `Header`(description), `Breadcrumb`(separator) | figma-plugin 세트 확장 배치(생성기 `categories-nav-overlay.ts`) — 제목 줄·설명 줄·문자열 구분자가 세트에 없다. 담당자 미배정 | 그 UI를 세트에 실제로 그리는 후속 배치가 실행되면 | 4 |
+| C | `DatePicker`·`TimePicker`·`DateRangePicker`·`KrAddressAutocomplete`(helperText), `Table`(emptyText), `KrAddressForm`(value.jibun·value.requestNote), `AdminShell`(pageTitle·pageDescription·user.name·user.role), `Video`(title), `YouTube`(title) | figma-plugin 세트 확장 배치(생성기 `categories-data-kr-media.ts`) — 헬퍼 줄·지번 토글·페이지 헤더·캡션 UI가 세트에 없다. 담당자 미배정 | 그 UI를 세트에 실제로 그리는 후속 배치가 실행되면 | 13 |
+| D | `DefinitionList`(columns·layout·align), `TodoSummary`(layout), `SearchPanel`(columns) | figma-plugin 세트 재설계(레이아웃 엔진) — 축을 그대로 추가하면 최대 144변형(권장 상한 40 초과) | 세트 몸통을 grid/inline/stacked 등 레이아웃별로 재설계(또는 별도 세트로 분리)하면 | 5 |
+| E | `ProductCard`(ratio) | `scripts/lib/ds-props.mjs` 파서 — `Extract<MediaRatio, …>` 타입 별칭을 union으로 해석하지 못해 "여분 축"으로 오판 | 파서가 TS `Extract<>` 별칭을 해석하도록 확장되면(자동 해소) | 1 |
+| F | `CrudDialog`·`DropZone`·`Upload`·`Drawer`·`AdminShell`(children) | **2026-07 부분 해소.** N7이 이제 `buildSet`의 `render` 콜백을 따라가 렌더 함수 본문의 `name='content'` 프레임도 인정한다(`scripts/lib/figma-sets.mjs`의 `detectContentFrame`) — `SiteSection`은 그걸로 해소돼 이 그룹에서 빠졌다(렌더 함수에 `fixedFrame('content', …)`가 있었다). 남은 다섯은 렌더 함수 자체에 `'content'`라는 이름의 노드가 없다(각각 `body`·컴포넌트 루트·`dropzone`·`nav` 반복·`main`) — **검사기가 아니라 생성기 쪽**이 막고 있다 | 해당 렌더 함수가 그 프레임(또는 새 자리표시 프레임)의 이름을 `'content'`로 바꾸면(figma-plugin 소관) | 5 |
+| G | `Card`·`Modal`·`Popover`·`BottomSheet`(content) | `scripts/lib/ds-props.mjs`의 `classifyProps` — `children`을 `code.slot`으로만 분류해 `code.text` 후보에서 제외(§7을 지킬수록 `text-extra`가 된다) | `classifyProps`가 §7 `content` 레이어와 짝지어진 `children`을 `code.text` 후보로도 인정하면 | 4 |
+| D2 | `InputBase`(readOnly·required) | figma-plugin `DS/InputBase` 변형 예산 — 지금 24변형(size×error×success×disabled)에 readOnly·required 중 하나만 더해도 48로 상한(40)을 넘는다. 둘 다 실제로 그림이 바뀌는 진짜 축 후보다(`.readOnly` 배경·`.required` 별표) — "표현 불가"가 아니라 "변형 예산 재설계 필요" | 기존 축을 접어(예: error/success를 상호 배타 state 축 하나로 합치는 등) 여유를 만들거나 세트당 상한을 재검토하면 | 2 |
+
+합계 60건(2026-07: EraTimeline.ratio가 실제로 축이 세워져 이 표에서 해소·제외됐다 — 축소 4값이라는
+남은 문제는 §연기가 아니라 §permanent axis-values로 옮겨졌다, ALLOWLIST 본문 참고). A·B·C는 "세트가 아예 그리지 않는 UI"라는
+같은 뿌리를 생성기 파일별로 나눈 것이고, D·D2는 세트 재설계(레이아웃 엔진 · 변형 예산)가 필요한
+것, E·G는 이 저장소 자신의 파서(`scripts/lib/ds-props.mjs`)가 아직 못 읽는 것, F는 생성기가
+`content` 이름을 아직 안 붙인 것이다 — F는 이제 **검사기가 아니라 figma-plugin 쪽**을 고쳐야 풀린다
+(N7 자체는 이미 고쳐졌다 — `SiteSection`이 그 증거다).
 
 ---
 
@@ -237,6 +288,25 @@ S3/S4가 왜 실패인가: 축이 아닌 이름이나 없는 값을 `variant`에
 - 새 `InstOpts` 버킷이 생겼는데 `BUCKETS`에 없으면 `E-UNPARSED`. 그 버킷이 영영 안 보이는 걸 막는다.
 
 CLI: `--json` · `--file=site-screens.ts`
+
+### 문서(variantItem) states 대조 — 같은 검사기, 다른 조립 통로
+
+`inst()`가 **화면**에서 세트를 조립한다면, `variantItem(ctx, set, state)`는 **문서 페이지**에서 같은 일을
+한다(`categories-core.ts` 등 5개 생성기가 컴포넌트별 예시 그림을 그릴 때 호출). `state.props`/`texts`/`swaps`도
+`inst()`의 `props`와 똑같이 **표시 이름**으로 세트를 되묻고, `lib/build-set.ts`의 `resolveStateProps`도
+`inst()`와 똑같이 **모르는 이름은 경고만 남기고 무시**한다 — 오타(`showFotter`)나 없는 축 값(`size: 'xl'`)을
+넣어도 그 그림은 조용히 세트 기본값으로 렌더된다. `verify-screen-props`가 이 통로도 함께 본다:
+
+| 규칙 | 검사 |
+|---|---|
+| **D1** `doc-state-unknown` | `states`의 `props`/`texts`/`swaps` 키가 그 세트에 실재하는 속성인가 |
+| **D2** `doc-state-bad-bool` | BOOLEAN 속성 값이 `'true'`/`'false'` 문자열인가 |
+| **D3** `doc-state-bad-variant-value` | VARIANT 축 값이 그 축의 값 집합에 있는가 |
+
+`states`는 세트를 만드는 `buildSet` 호출과 **같은 doc 리터럴**에 선언되므로 `setName` 매칭은 필요 없다
+(`figma-sets.mjs`의 `resolveDocStates`가 그 자리에서 그대로 읽는다). 예외는 `krFieldDoc`처럼 `states`를
+함수 본문에서 조건부로 조립하는 팩토리뿐 — `makeInputSet`과 같은 원칙(재현 + 지문가드, 어긋나면
+`E-ADAPTER-STALE`)으로 대응한다. 못 찾거나 못 읽은 states는 조용히 건너뛰지 않고 `E-UNPARSED-STATES`로 실패시킨다.
 
 ---
 

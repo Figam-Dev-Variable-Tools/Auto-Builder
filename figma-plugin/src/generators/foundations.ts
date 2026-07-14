@@ -5,6 +5,11 @@
 import { hexToRgb, rgbToHex, COLOR_KEYS, PRESETS, type PresetName } from '../presets'
 import { ICON_PATHS } from '../icons-data'
 import { strokeIcon, ICON_COMPONENTS, publicIconName } from './icon-vec'
+// solid·boundPaint·txt·boundText 등의 정본은 lib/bind.ts다(CLAUDE.md §0-2 — 6벌로 복제됐던 걸 통합했다).
+// 이 파일은 자신의 문서 크롬 텍스트(Design System·Icon System 페이지)도 boundText로 그려야 해서
+// (오너: 폰트도 전부 변수) lib/bind.ts에 의존한다 — lib/bind.ts는 거꾸로 `type Ctx`만 가져가므로
+// (타입은 컴파일 타임에 지워진다) 런타임 순환 임포트는 없다.
+import { boundPaint, bindFillVar, bindFontVars, bindStrokeVar, bindTokens, boundText, solid, txt, txtWrap, type BindTokensOpts } from './lib/bind'
 
 // 오너 규칙: 생성되는 모든 페이지는 "순번. System - 이름". 페이지 탭에는 순번명, 내부 헤더엔 깔끔한 제목.
 const PAGE_DS = '1. System - Design System'
@@ -37,21 +42,12 @@ type Ctx = {
   colorModeId: string | null
 }
 
-const solid = (hex: string): SolidPaint => ({ type: 'SOLID', color: hexToRgb(hex) })
-
-function boundPaint(v: Variable): SolidPaint {
-  return figma.variables.setBoundVariableForPaint({ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }, 'color', v)
-}
-
-/** 변수 있으면 바인딩(프리셋 재색), 없으면 리터럴 hex. */
-function fillColor(ctx: Ctx, node: GeometryMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.fills = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
-}
-function strokeColor(ctx: Ctx, node: MinimalStrokesMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.strokes = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
-}
+// fillColor/strokeColor는 bindFillVar/bindStrokeVar(lib/bind.ts)의 얇은 별칭이다 — 예전엔 완전히
+// 같은 구현을 이름만 바꿔 복제하고 있었다(verify-bindings B4가 잡는 4개 헬퍼 밖이라 게이트는
+// 통과했지만 실질은 사본이었다). 아래 두 이름을 남긴 건 이 파일과 layout-guide.ts·lib/build-set.ts의
+// 기존 호출부(26곳+)를 기계적으로 리네임하는 위험을 피하기 위해서다 — 로직은 이제 한 곳뿐이다.
+const fillColor = bindFillVar
+const strokeColor = bindStrokeVar
 /** 모서리 반경을 radius/* 변수에 바인딩(없으면 리터럴). */
 function bindRadiusVar(ctx: Ctx, node: SceneNode & CornerMixin & RectangleCornerMixin, varName: string, r: number) {
   const v = ctx.vars.get(varName)
@@ -79,25 +75,16 @@ function autoFrame(name: string, dir: 'HORIZONTAL' | 'VERTICAL'): FrameNode {
   return f
 }
 
-function txt(ctx: Ctx, chars: string, size: number, hex: string, bold = false): TextNode {
-  const t = figma.createText()
-  t.fontName = bold ? ctx.fontBold : ctx.font
-  t.characters = chars
-  t.fontSize = size
-  t.fills = [solid(hex)]
-  t.textAutoResize = 'WIDTH_AND_HEIGHT'
-  return t
-}
-/** 폭 제한 래핑 텍스트. */
-function txtWrap(ctx: Ctx, chars: string, size: number, hex: string, maxW: number, bold = false): TextNode {
-  const t = txt(ctx, chars, size, hex, bold)
+/** boundText + 폭 제한 래핑(txtWrap과 같은 조합, 색·크기·굵기·글씨체는 변수 바인딩까지). */
+function boundTextWrap(ctx: Ctx, chars: string, size: number, varName: string, hex: string, maxW: number, bold = false): TextNode {
+  const t = boundText(ctx, chars, size, varName, hex, bold)
   t.textAutoResize = 'HEIGHT'
   t.resize(maxW, t.height)
   return t
 }
 
 // ── 페이지 루트 + 헤더 + 문서 섹션 (레이아웃 스펙 §3) ──────────────────
-function makeRoot(name: string): FrameNode {
+function makeRoot(ctx: Ctx, name: string): FrameNode {
   const root = figma.createFrame()
   root.name = name
   root.layoutMode = 'VERTICAL'
@@ -107,7 +94,7 @@ function makeRoot(name: string): FrameNode {
   root.counterAxisAlignItems = 'MIN'
   root.itemSpacing = 56
   root.paddingTop = root.paddingRight = root.paddingBottom = root.paddingLeft = 80
-  root.fills = [solid(SURFACE)]
+  fillColor(ctx, root, 'color/bgSubtle', SURFACE)
   return root
 }
 
@@ -117,15 +104,15 @@ function makeHeader(ctx: Ctx, root: FrameNode, title: string, subtitle: string) 
   header.itemSpacing = 12
   root.appendChild(header)
 
-  header.appendChild(txt(ctx, title, 40, INK, true))
+  header.appendChild(boundText(ctx, title, 40, 'color/text', INK, true))
   // 강조 밑줄(TDS 시그니처)
   const underline = figma.createRectangle()
   underline.resize(44, 3)
   underline.cornerRadius = 999
-  underline.fills = [solid(ACCENT)]
+  fillColor(ctx, underline, 'color/primary', ACCENT)
   underline.layoutAlign = 'INHERIT'
   header.appendChild(underline)
-  header.appendChild(txtWrap(ctx, subtitle, 18, SUB, 720))
+  header.appendChild(boundTextWrap(ctx, subtitle, 18, 'color/secondary', SUB, 720))
 }
 
 /** 문서 섹션(eyebrow·name·desc·meta·render container) 생성. render 컨테이너 반환. */
@@ -154,12 +141,12 @@ function makeSection(
   tag.paddingTop = tag.paddingBottom = 4
   tag.paddingLeft = tag.paddingRight = 8
   tag.cornerRadius = 6
-  tag.fills = [solid('#EDF2FF')]
-  tag.appendChild(txt(ctx, opts.eyebrow, 12, ACCENT, true))
+  fillColor(ctx, tag, 'color/primary/50', '#EDF2FF') // 강조색 90% 흰 틴트(SHADE_STEPS 50과 같은 공식)
+  tag.appendChild(boundText(ctx, opts.eyebrow, 12, 'color/primary', ACCENT, true))
   eyebrowRow.appendChild(tag)
 
-  head.appendChild(txt(ctx, opts.name, 28, INK, true))
-  head.appendChild(txtWrap(ctx, opts.desc, 16, SUB, 640))
+  head.appendChild(boundText(ctx, opts.name, 28, 'color/text', INK, true))
+  head.appendChild(boundTextWrap(ctx, opts.desc, 16, 'color/secondary', SUB, 640))
 
   if (opts.meta && opts.meta.length) {
     const meta = autoFrame('Meta Row', 'HORIZONTAL')
@@ -170,10 +157,10 @@ function makeSection(
       if (i > 0) {
         const dot = figma.createEllipse()
         dot.resize(3, 3)
-        dot.fills = [solid('#C5CCD3')]
+        fillColor(ctx, dot, 'color/secondary/200', '#C5CCD3')
         meta.appendChild(dot)
       }
-      meta.appendChild(txt(ctx, m, 13, MUTED))
+      meta.appendChild(boundText(ctx, m, 13, 'color/secondary/300', MUTED))
     })
   }
 
@@ -196,8 +183,8 @@ function makeSection(
   render.itemSpacing = opts.renderDir === 'WRAP' ? 24 : 20
   render.paddingTop = render.paddingRight = render.paddingBottom = render.paddingLeft = 24
   render.cornerRadius = 12
-  render.fills = [solid(WHITE)]
-  render.strokes = [solid(BORDER)]
+  fillColor(ctx, render, 'color/bg', WHITE)
+  strokeColor(ctx, render, 'color/border', BORDER)
   render.strokeWeight = 1
   render.strokeAlign = 'INSIDE'
   section.appendChild(render)
@@ -213,15 +200,15 @@ function swatchItem(ctx: Ctx, roleKR: string, varName: string, hex: string): Fra
   chip.resize(132, 72)
   chip.cornerRadius = 10
   fillColor(ctx, chip, varName, hex)
-  chip.strokes = [solid(BORDER)]
+  strokeColor(ctx, chip, 'color/border', BORDER)
   chip.strokeWeight = 1
   chip.strokeAlign = 'INSIDE'
   item.appendChild(chip)
   const label = autoFrame('label', 'VERTICAL')
   label.itemSpacing = 2
-  label.appendChild(txt(ctx, roleKR, 13, INK, true))
-  label.appendChild(txt(ctx, `${varName.replace('color/', '--ds-color-')}`, 11, MUTED))
-  label.appendChild(txt(ctx, hex.toUpperCase(), 11, SUB))
+  label.appendChild(boundText(ctx, roleKR, 13, 'color/text', INK, true))
+  label.appendChild(boundText(ctx, `${varName.replace('color/', '--ds-color-')}`, 11, 'color/secondary/300', MUTED))
+  label.appendChild(boundText(ctx, hex.toUpperCase(), 11, 'color/secondary', SUB))
   item.appendChild(label)
   return item
 }
@@ -230,11 +217,12 @@ function typeRow(ctx: Ctx, roleKR: string, sizeVarName: string, px: number): Fra
   const item = autoFrame('type / ' + roleKR, 'VERTICAL')
   item.itemSpacing = 4
   item.layoutAlign = 'STRETCH'
-  const sample = txt(ctx, '다람쥐 헌 쳇바퀴에 타고파 · Aa Bb Gg 0123', px >= 23 ? px : px, INK, px >= 23)
+  const sample = boundText(ctx, '다람쥐 헌 쳇바퀴에 타고파 · Aa Bb Gg 0123', px, 'color/text', INK, px >= 23)
+  // 램프 크기는 픽셀(font/size/<px>)이 아니라 의미 스케일(font/size/xxl 등) — boundText가 문 픽셀 바인딩을 덮어쓴다.
   const v = ctx.vars.get(sizeVarName)
   if (v) sample.setBoundVariable('fontSize', v)
   item.appendChild(sample)
-  item.appendChild(txt(ctx, `${roleKR} · ${sizeVarName.replace('font/size/', 'font-size-')} · ${px}px`, 12, MUTED))
+  item.appendChild(boundText(ctx, `${roleKR} · ${sizeVarName.replace('font/size/', 'font-size-')} · ${px}px`, 12, 'color/secondary/300', MUTED))
   return item
 }
 
@@ -249,8 +237,8 @@ function spacingBar(ctx: Ctx, name: string, px: number): FrameNode {
   item.appendChild(bar)
   const cap = autoFrame('cap', 'VERTICAL')
   cap.itemSpacing = 2
-  cap.appendChild(txt(ctx, name, 13, INK, true))
-  cap.appendChild(txt(ctx, `${px}px`, 11, MUTED))
+  cap.appendChild(boundText(ctx, name, 13, 'color/text', INK, true))
+  cap.appendChild(boundText(ctx, `${px}px`, 11, 'color/secondary/300', MUTED))
   item.appendChild(cap)
   return item
 }
@@ -262,15 +250,15 @@ function radiusItem(ctx: Ctx, name: string, r: number): FrameNode {
   box.name = 'box'
   box.resize(96, 72)
   bindRadiusVar(ctx, box, 'radius/' + name.replace('radius-', ''), r)
-  box.fills = [solid(WHITE)]
+  fillColor(ctx, box, 'color/bg', WHITE)
   strokeColor(ctx, box, 'color/border', BORDER)
   bindStrokeWeightVar(ctx, box, 'border/width', 1)
   box.strokeAlign = 'INSIDE'
   item.appendChild(box)
   const cap = autoFrame('cap', 'VERTICAL')
   cap.itemSpacing = 2
-  cap.appendChild(txt(ctx, name, 13, INK, true))
-  cap.appendChild(txt(ctx, `${r}px`, 11, MUTED))
+  cap.appendChild(boundText(ctx, name, 13, 'color/text', INK, true))
+  cap.appendChild(boundText(ctx, `${r}px`, 11, 'color/secondary/300', MUTED))
   item.appendChild(cap)
   return item
 }
@@ -311,7 +299,7 @@ function iconItem(ctx: Ctx, fullKey: string): FrameNode {
     ICON_COMPONENTS.set(fullKey, comp) // 카테고리 instance-swap이 직접 참조
   }
   item.appendChild(box)
-  item.appendChild(txt(ctx, name, 11, SUB))
+  item.appendChild(boundText(ctx, name, 11, 'color/secondary', SUB))
   return item
 }
 
@@ -332,8 +320,8 @@ function paletteRow(ctx: Ctx, kr: string, varName: string, baseHex: string): Fra
   const headRow = autoFrame('h', 'HORIZONTAL')
   headRow.counterAxisAlignItems = 'CENTER'
   headRow.itemSpacing = 8
-  headRow.appendChild(txt(ctx, kr, 14, INK, true))
-  headRow.appendChild(txt(ctx, `${varName.replace('color/', '--ds-color-')} · ${baseHex.toUpperCase()}`, 11, MUTED))
+  headRow.appendChild(boundText(ctx, kr, 14, 'color/text', INK, true))
+  headRow.appendChild(boundText(ctx, `${varName.replace('color/', '--ds-color-')} · ${baseHex.toUpperCase()}`, 11, 'color/secondary/300', MUTED))
   item.appendChild(headRow)
 
   const strip = autoFrame('strip', 'HORIZONTAL')
@@ -360,11 +348,11 @@ function paletteRow(ctx: Ctx, kr: string, varName: string, baseHex: string): Fra
     chip.cornerRadius = 8
     // 각 셰이드를 color/<key>/<step> 변수에 바인딩(오너: 팔레트도 전부 변수).
     fillColor(ctx, chip, `${varName}/${s.lbl}`, s.hex)
-    chip.strokes = [solid(BORDER)]
+    strokeColor(ctx, chip, 'color/border', BORDER)
     chip.strokeWeight = 1
     chip.strokeAlign = 'INSIDE'
     cell.appendChild(chip)
-    cell.appendChild(txt(ctx, s.base ? '500 · base' : s.lbl, 10, s.base ? INK : MUTED, s.base))
+    cell.appendChild(boundText(ctx, s.base ? '500 · base' : s.lbl, 10, s.base ? 'color/text' : 'color/secondary/300', s.base ? INK : MUTED, s.base))
     strip.appendChild(cell)
   }
   item.appendChild(strip)
@@ -463,7 +451,7 @@ export async function generateDesignSystemPage(
   const page = figma.createPage()
   page.name = PAGE_DS
   applyPageColorMode(ctx, page)
-  const root = makeRoot('Design System')
+  const root = makeRoot(ctx, 'Design System')
   placeRoot(root, page)
 
   // 플러그인에서 선택한 색을 팔레트의 base(500)로 사용. 없으면 기본값.
@@ -608,11 +596,11 @@ function buildColorSet(ctx: Ctx, page: PageNode, colors: Record<string, string>,
     chip.resize(96, 60)
     chip.cornerRadius = 8
     fillColor(ctx, chip, 'color/' + key, (colors && colors[key]) || '#000000')
-    chip.strokes = [solid(BORDER)]
+    strokeColor(ctx, chip, 'color/border', BORDER)
     chip.strokeWeight = 1
     chip.strokeAlign = 'INSIDE'
     comp.appendChild(chip)
-    const label = txt(ctx, kr, 12, INK, true)
+    const label = boundText(ctx, kr, 12, 'color/text', INK, true)
     label.name = 'Label'
     comp.appendChild(label)
     page.appendChild(comp)
@@ -625,7 +613,7 @@ function buildColorSet(ctx: Ctx, page: PageNode, colors: Record<string, string>,
   set.itemSpacing = 16
   set.counterAxisSpacing = 16
   set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid('#FBFCFE')]
+  fillColor(ctx, set, 'color/bgSubtle', '#FBFCFE') // 컴포넌트 소스 영역의 캔버스 배경(문서 밖, x≥1360)
   set.x = x
   set.y = y
 }
@@ -647,7 +635,8 @@ function buildTypeSet(ctx: Ctx, page: PageNode, x: number, y: number): void {
     comp.primaryAxisSizingMode = 'AUTO'
     comp.counterAxisSizingMode = 'AUTO'
     comp.fills = []
-    const t = txt(ctx, '가나다 Aa 123', px, INK, px >= 23)
+    const t = boundText(ctx, '가나다 Aa 123', px, 'color/text', INK, px >= 23)
+    // Size는 의미 스케일(font/size/xxl 등) — boundText가 문 픽셀 바인딩을 덮어쓴다.
     const vv = ctx.vars.get(v)
     if (vv) t.setBoundVariable('fontSize', vv)
     t.name = 'Text'
@@ -660,7 +649,7 @@ function buildTypeSet(ctx: Ctx, page: PageNode, x: number, y: number): void {
   set.layoutMode = 'VERTICAL'
   set.itemSpacing = 16
   set.paddingTop = set.paddingRight = set.paddingBottom = set.paddingLeft = 24
-  set.fills = [solid('#FBFCFE')]
+  fillColor(ctx, set, 'color/bgSubtle', '#FBFCFE') // 컴포넌트 소스 영역의 캔버스 배경(문서 밖, x≥1360)
   set.x = x
   set.y = y
   try {
@@ -685,7 +674,7 @@ function surfaceItem(ctx: Ctx, kr: string, varName: string, hex: string): FrameN
   box.strokeWeight = 1
   box.strokeAlign = 'INSIDE'
   item.appendChild(box)
-  item.appendChild(txt(ctx, `${kr} · ${hex.toUpperCase()}`, 12, SUB))
+  item.appendChild(boundText(ctx, `${kr} · ${hex.toUpperCase()}`, 12, 'color/secondary', SUB))
   return item
 }
 
@@ -711,7 +700,7 @@ function gradientItem(ctx: Ctx, kr: string, fromHex: string, toHex: string, tran
     },
   ]
   item.appendChild(box)
-  item.appendChild(txt(ctx, kr, 12, SUB))
+  item.appendChild(boundText(ctx, kr, 12, 'color/secondary', SUB))
   return item
 }
 
@@ -727,16 +716,15 @@ function fontColorItem(ctx: Ctx, kr: string, varName: string, hex: string): Fram
   box.counterAxisSizingMode = 'FIXED'
   box.resize(200, 96)
   box.cornerRadius = 12
-  box.fills = [solid(WHITE)]
+  fillColor(ctx, box, 'color/bg', WHITE)
   strokeColor(ctx, box, 'color/border', BORDER)
   box.strokeWeight = 1
   box.strokeAlign = 'INSIDE'
-  const sample = txt(ctx, '가나다 Aa', 24, hex, true)
-  const v = ctx.vars.get(varName)
-  if (v) sample.fills = [boundPaint(v)]
+  // boundText가 varName 바인딩·크기·굵기·글씨체를 한 번에 문다(예전엔 여기서 fills만 수동으로 덮어썼다).
+  const sample = boundText(ctx, '가나다 Aa', 24, varName, hex, true)
   box.appendChild(sample)
   item.appendChild(box)
-  item.appendChild(txt(ctx, `${kr} · ${hex.toUpperCase()}`, 12, SUB))
+  item.appendChild(boundText(ctx, `${kr} · ${hex.toUpperCase()}`, 12, 'color/secondary', SUB))
   return item
 }
 
@@ -747,15 +735,15 @@ function borderWeightItem(ctx: Ctx, kr: string, w: number): FrameNode {
   box.name = 'box'
   box.resize(96, 72)
   bindRadiusVar(ctx, box, 'radius/md', 8)
-  box.fills = [solid(WHITE)]
+  fillColor(ctx, box, 'color/bg', WHITE)
   strokeColor(ctx, box, 'color/border', BORDER)
   bindStrokeWeightVar(ctx, box, w === 1 ? 'border/width' : 'border/width-thick', w)
   box.strokeAlign = 'INSIDE'
   item.appendChild(box)
   const cap = autoFrame('cap', 'VERTICAL')
   cap.itemSpacing = 2
-  cap.appendChild(txt(ctx, `보더 ${kr}`, 13, INK, true))
-  cap.appendChild(txt(ctx, `border/width${w === 1 ? '' : '-thick'}`, 11, MUTED))
+  cap.appendChild(boundText(ctx, `보더 ${kr}`, 13, 'color/text', INK, true))
+  cap.appendChild(boundText(ctx, `border/width${w === 1 ? '' : '-thick'}`, 11, 'color/secondary/300', MUTED))
   item.appendChild(cap)
   return item
 }
@@ -771,7 +759,7 @@ export async function generateIconSystemPage(fontFamily: string, preset?: Preset
   const page = figma.createPage()
   page.name = PAGE_ICON
   applyPageColorMode(ctx, page)
-  const root = makeRoot('Icon System')
+  const root = makeRoot(ctx, 'Icon System')
   placeRoot(root, page)
 
   const keys = Object.keys(ICON_PATHS)
@@ -808,15 +796,21 @@ export async function generateFoundations(opts: {
 }
 
 // 카테고리 문서 페이지(categories.ts)가 재사용하는 문서 크롬/헬퍼.
-export type { Ctx }
+export type { Ctx, BindTokensOpts }
 export {
   solid,
   boundPaint,
   fillColor,
   strokeColor,
+  bindFillVar,
+  bindFontVars,
+  bindStrokeVar,
+  boundText,
+  bindTokens,
   autoFrame,
   txt,
   txtWrap,
+  boundTextWrap,
   makeRoot,
   makeHeader,
   makeSection,

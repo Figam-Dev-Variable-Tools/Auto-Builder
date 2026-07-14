@@ -2,10 +2,14 @@
 // 정본(읽기 전용 소스): src/ds/SiteSection · SiteHeader · SiteFooter · ProductCard · SortBar ·
 //                       AboutPage · HistoryPage · PortfolioPage · ShopPage · ContactPage · templates/SiteSuite.
 //
-// 오너 확정(2026-07): 화면은 '18. System - Site'가 만든 컴포넌트 세트의 **인스턴스로 조립**한다.
-//   헤더·푸터·상품카드·정렬바·문의폼·정보카드는 SITE_SETS에서 세트를 꺼내 createInstance → setProperties.
+// 오너 확정(2026-07): 화면은 '18. System - Client Pages'가 만든 컴포넌트 세트의 **인스턴스로 조립**한다.
+//   헤더·푸터·상품카드·정렬바·문의폼·정보카드는 SITE_SETS에서 세트를 꺼내 createInstance → setProperties
+//   (정렬바·정보카드의 세트 자체는 오너 확정으로 '15. Admin Component'에 그려지지만, 조회는 그대로 SITE_SETS다).
 //   텍스트는 컴포넌트 TEXT 속성으로만 덮어쓴다(인스턴스 안 레이어를 직접 찾지 않는다).
 //   폴백: '프론트 컴포넌트' 스코프 없이 화면만 켜면 SITE_SETS가 비어 있다 → draw* 경로로 직접 그리고 warning.
+//
+// 오너 확정(2026-07 개편): 이 화면 5종은 더 이상 별도 페이지(19)를 만들지 않는다.
+// site.ts가 만드는(또는 이미 있는) '18. System - Client Pages'에 이어 그린다.
 //
 // ── 규격: 프론트는 라이트(흰색) 단일 테마다. 다크 반전은 없다 ────────────────
 //   정본이 라이트로 재작성되면서 토큰 반전(배경=color/text)도 SiteSurface(라이트 아일랜드)도 사라졌다.
@@ -25,7 +29,10 @@ import {
   type Ctx,
   solid,
   boundPaint,
-  txt,
+  boundText as bindText,
+  bindFillVar,
+  bindStrokeVar,
+  bindTokens,
   setup,
   applyPageColorMode,
   INK,
@@ -36,13 +43,16 @@ import {
   WHITE,
 } from './foundations'
 import { iconInstance, ICON_COMPONENTS } from './icon-vec'
-import { SITE_SETS, siteSet, adoptSiteSets, propKeys, MENU } from './site'
+import { SITE_SETS, siteSet, adoptSiteSets, propKeys, MENU, PAGE_SITE, maxBottom } from './site'
+import { OVERLAY_DESC_ALPHA, overlayAlpha } from './categories-shared'
 import type { PresetName } from '../presets'
 
-// 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14) · Admin(15) · Layout(16) · Admin Screens(17) · Site(18) 다음.
-const PAGE_SITE_SCREENS = '19. System - Site Screens'
-// reset 대상(재생성 시 삭제) — reset.ts가 이 배열을 읽는다.
-export const SITE_SCREEN_PAGE_NAMES = [PAGE_SITE_SCREENS]
+// 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14) · Admin(15) · Layout(16) · Admin Pages(17) 다음.
+// 오너 확정(2026-07 개편): 예전엔 이 파일이 직접 '19. System - Site Screens' 페이지를 만들었지만,
+// 이제 화면 5종은 site.ts의 PAGE_SITE('18. System - Client Pages')에 이어 그린다(생성기 자체는 남긴다).
+// 옛 페이지 이름은 재생성 삭제 목록에만 남긴다 — 안 그러면 개명 전 파일의 유령 페이지가 영영 안 지워진다.
+const OLD_PAGE_SITE_SCREENS = '19. System - Site Screens'
+export const SITE_SCREEN_PAGE_NAMES = [OLD_PAGE_SITE_SCREENS]
 
 // ── 컴포넌트 인스턴스 조립 ───────────────────────────────────────────
 type InstOpts = {
@@ -241,122 +251,20 @@ function hexOf(ctx: Ctx, varName: string): string {
   return mixHex(base, step[0], step[1])
 }
 
-// ── 바인딩 헬퍼(출처: categories.ts — export가 아니라 동일 구현을 복제) ─
-/** 텍스트 — 색·크기·굵기(·글씨체)를 변수에 바인딩. 화면 안 텍스트는 전부 이걸 쓴다. */
-function boundText(ctx: Ctx, chars: string, size: number, varName: string, bold = false): TextNode {
-  const t = txt(ctx, chars, size, hexOf(ctx, varName), bold)
-  const v = ctx.vars.get(varName)
-  if (v) t.fills = [boundPaint(v)]
-  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
-  const sv = ctx.vars.get('font/size/' + size)
-  if (sv) {
-    try {
-      bind.setBoundVariable('fontSize', sv)
-    } catch {
-      /* skip */
-    }
-  }
-  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
-  if (wv) {
-    try {
-      bind.setBoundVariable('fontWeight', wv)
-    } catch {
-      /* skip */
-    }
-  }
-  // ctx.fontFamilyVar가 null이면 절대 바인딩하지 않는다(미로드 폰트 바인딩 → 노드 생성 실패).
-  if (ctx.fontFamilyVar) {
-    try {
-      bind.setBoundVariable('fontFamily', ctx.fontFamilyVar)
-    } catch {
-      /* skip */
-    }
-  }
-  return t
+// ── 색·토큰 바인딩 — 정본(boundText·bindFillVar·bindStrokeVar·bindTokens)은 lib/bind.ts다.
+// 이 파일은 hexOf()로 계산한 폴백 hex를 물려야 해서 얇은 래퍼로 감싼다 — 예전엔 site.ts와 함께
+// 완전한 사본 2벌이었다(verify-bindings B4). 인스턴스 스킵 동작은 bindTokens의 { skipInstances: true }
+// 옵션으로 흡수했다(세트 18. Site에서 이미 바인딩된 인스턴스에 또 오버라이드를 쌓지 않는다).
+function siteText(ctx: Ctx, chars: string, size: number, varName: string, bold = false): TextNode {
+  return bindText(ctx, chars, size, varName, hexOf(ctx, varName), bold)
 }
-/** 보더·패딩·간격·라운드·불투명도를 값이 맞는 변수에 후처리 바인딩(화면 프레임마다 1회). */
-function bindTokens(ctx: Ctx, root: SceneNode) {
-  // 인스턴스 내부는 건너뛴다 — 세트(18. Site)에서 이미 바인딩됐고, 여기서 또 만지면
-  // 인스턴스에 의미 없는 오버라이드가 쌓여 컴포넌트 수정이 화면에 전파되지 않는다.
-  const all: SceneNode[] = []
-  const walk = (n: SceneNode) => {
-    all.push(n)
-    if (n.type === 'INSTANCE') return
-    const kids = (n as unknown as { children?: readonly SceneNode[] }).children
-    if (kids) for (const k of kids) walk(k)
-  }
-  walk(root)
-  for (const node of all) {
-    const a = node as unknown as {
-      cornerRadius?: number | symbol
-      strokeWeight?: number | symbol
-      strokes?: readonly Paint[]
-      layoutMode?: string
-      paddingTop?: number
-      paddingRight?: number
-      paddingBottom?: number
-      paddingLeft?: number
-      itemSpacing?: number
-      opacity?: number
-      setBoundVariable: (field: string, v: Variable) => void
-    }
-    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
-      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
-      if (ov)
-        try {
-          a.setBoundVariable('opacity', ov)
-        } catch {
-          /* skip */
-        }
-    }
-    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
-      const rv = ctx.vars.get('radius/' + a.cornerRadius)
-      if (rv)
-        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
-          try {
-            a.setBoundVariable(c, rv)
-          } catch {
-            /* skip */
-          }
-        }
-    }
-    // 개별 보더(하단선 등)는 strokeWeight가 figma.mixed(symbol) → 자동으로 건너뛴다.
-    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
-      const bv = ctx.vars.get('border/' + a.strokeWeight)
-      if (bv)
-        try {
-          a.setBoundVariable('strokeWeight', bv)
-        } catch {
-          /* skip */
-        }
-    }
-    if (a.layoutMode && a.layoutMode !== 'NONE') {
-      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
-        const val = a[p]
-        if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('space/' + val)
-          if (sv)
-            try {
-              a.setBoundVariable(p, sv)
-            } catch {
-              /* skip */
-            }
-        }
-      }
-    }
-  }
-}
-
-// 변수명만으로 칠하는 얇은 래퍼(폴백 hex는 hexOf가 계산) — 호출부를 짧게 유지한다.
 function fillV(ctx: Ctx, n: GeometryMixin, varName: string) {
-  const v = ctx.vars.get(varName)
-  n.fills = [v ? boundPaint(v) : solid(hexOf(ctx, varName))]
+  bindFillVar(ctx, n, varName, hexOf(ctx, varName))
 }
 function strokeV(ctx: Ctx, n: MinimalStrokesMixin, varName: string) {
-  const v = ctx.vars.get(varName)
-  n.strokes = [v ? boundPaint(v) : solid(hexOf(ctx, varName))]
+  bindStrokeVar(ctx, n, varName, hexOf(ctx, varName))
 }
-const T = (ctx: Ctx, s: string, size: number, v: string, bold = false) => boundText(ctx, s, size, v, bold)
+const T = (ctx: Ctx, s: string, size: number, v: string, bold = false) => siteText(ctx, s, size, v, bold)
 
 // ── 레이아웃 원시 헬퍼(출처: screens.ts와 동일 규약) ──────────────────
 function box(name: string, dir: 'HORIZONTAL' | 'VERTICAL', gap = 0): FrameNode {
@@ -1299,10 +1207,11 @@ function screenPortfolio(ctx: Ctx): FrameNode {
         },
       ]
       scrim.appendChild(wrap(T(ctx, title, 18, V_BG, true), 140)) // 스크림 위 글자는 항상 흰색
-      scrim.appendChild(T(ctx, cat, F_SM, V_BG))
-      // 카테고리 줄은 한 단계 흐리게 — 색은 변수(흰색) 유지, 불투명도만 낮춘다(opacity/90).
-      const catText = scrim.children[1] as TextNode
-      catText.opacity = 0.9
+      // 카테고리 줄은 한 단계 흐리게 — React(ImageCard .overlayDescription)와 같이 노드 opacity가
+      // 아니라 paint 알파로 낮춘다(오너: 폰트는 100%). 색은 변수(흰색) 그대로 유지.
+      const catText = T(ctx, cat, F_SM, V_BG)
+      overlayAlpha(catText, OVERLAY_DESC_ALPHA)
+      scrim.appendChild(catText)
       tile.appendChild(scrim)
       row.appendChild(tile)
     }
@@ -1717,15 +1626,16 @@ export async function generateSiteScreens(
   if (!ctx.vars.get('color/success')) {
     ctx.warnings.push("Variables가 없습니다 — '토큰'을 먼저 생성하세요(화면 색이 프리셋과 연결되지 않습니다).")
   }
-  // 세트가 없으면 파일에 이미 있는 '18. System - Site' 페이지에서 입양해 본다.
+  // 세트가 없으면 파일에 이미 있는 PAGE_SITE 페이지에서 입양해 본다(SortBar·InfoCard는 그 안에서
+  // Admin Component 페이지까지 함께 확인한다 — adoptSiteSets 참고).
   // 그것도 없으면 5화면 전부 직접 그리기 — 그 상태에서는 컴포넌트를 고쳐도 화면이 안 바뀐다.
   if (SITE_SETS.size === 0) {
     const adopted = adoptSiteSets()
     if (adopted > 0) {
-      ctx.warnings.push(`'18. System - Site'의 기존 컴포넌트 세트 ${adopted}개로 화면을 조립합니다.`)
+      ctx.warnings.push(`'${PAGE_SITE}'의 기존 컴포넌트 세트 ${adopted}개로 화면을 조립합니다.`)
     } else {
       ctx.warnings.push(
-        "'18. System - Site' 컴포넌트 세트가 없습니다 — 화면을 직접 그립니다. " +
+        `'${PAGE_SITE}' 컴포넌트 세트가 없습니다 — 화면을 직접 그립니다. ` +
           "'프론트 컴포넌트' 스코프를 함께 켜면 화면이 컴포넌트 인스턴스로 조립됩니다.",
       )
     }
@@ -1736,23 +1646,32 @@ export async function generateSiteScreens(
   if (!figma.root.children.some((p) => p.name.indexOf('Icon System') >= 0)) {
     ctx.warnings.push('Icon System 페이지가 없어 화면 아이콘이 인라인 폴백됩니다 — 함께 생성하는 것을 권장합니다.')
   }
-  if (figma.root.children.some((p) => p.name === PAGE_SITE_SCREENS)) {
-    ctx.warnings.push(`페이지 '${PAGE_SITE_SCREENS}' 이미 존재 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').`)
+
+  // 오너 확정(2026-07 개편): 화면은 더 이상 19번 페이지를 만들지 않고, site.ts가 만든(또는 이미 있는)
+  // PAGE_SITE('18. System - Client Pages')에 이어 그린다. 그 페이지조차 없으면(예: '프론트 컴포넌트'도
+  // 이번이 처음) 여기서 새로 만든다.
+  let page = figma.root.children.find((p) => p.name === PAGE_SITE)
+  const firstScreenName = 'Screen/' + SITE_SCREEN_BUILDERS[0][0]
+  if (page && page.children.some((n) => n.name === firstScreenName)) {
+    ctx.warnings.push(`'${PAGE_SITE}'에 프론트 화면이 이미 있습니다 — 건너뜀(재생성하려면 '기존 삭제 후 재생성').`)
     return ctx.warnings
   }
+  if (!page) {
+    page = figma.createPage()
+    page.name = PAGE_SITE
+    applyPageColorMode(ctx, page)
+  }
 
-  const page = figma.createPage()
-  page.name = PAGE_SITE_SCREENS
-  applyPageColorMode(ctx, page)
-
-  let y = 0
+  // 이미 있는 컴포넌트 세트 문서(오토레이아웃 root)·세트 컬럼 아래로 이어 그린다 — 겹치지 않게.
+  let y = maxBottom(page) + (page.children.length ? SCREEN_GAP : 0)
   for (const [name, build] of SITE_SCREEN_BUILDERS) {
     try {
       const frame = build(ctx)
       page.appendChild(frame)
       frame.x = 0
       frame.y = y
-      bindTokens(ctx, frame) // 보더·패딩·간격·라운드·불투명도 변수 바인딩(화면당 1회)
+      // 인스턴스 내부는 건너뛴다 — 세트(18. Site)에서 이미 바인딩됐다(위 주석 참고).
+      bindTokens(ctx, frame, { skipInstances: true }) // 보더·패딩·간격·라운드·불투명도 변수 바인딩(화면당 1회)
       y += frame.height + SCREEN_GAP
     } catch (e) {
       ctx.warnings.push(`Screen/${name} 생성 실패: ${e instanceof Error ? e.message : String(e)}`)

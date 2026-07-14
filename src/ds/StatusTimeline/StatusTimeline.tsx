@@ -1,7 +1,17 @@
 import type { ReactNode } from 'react'
-import { Check, Minus } from 'lucide-react'
-import styles from './StatusTimeline.module.css'
+import { TimelineProgress } from '../Timeline/Timeline'
 
+/**
+ * StatusTimeline — TimelineProgress(Timeline.tsx에 함께 사는, 구 StatusTimeline 흡수 컴포넌트)의
+ * 얇은 파사드.
+ *
+ * 실제 렌더·CSS는 전부 Timeline.tsx/.module.css(.progress* 클래스)로 옮겼다(중복 유지 금지) —
+ * 이 파일은 이름·prop 표면만 남긴다. 그대로 두는 이유는 둘:
+ *   1) ProductDetail·InquiryDetail·InquiryApplicationDetail 등 기존 호출부가 이 이름/타입을 그대로 쓴다.
+ *   2) Figma 세트 DS/StatusTimeline(figma-plugin/src/generators/admin.ts)이 이 타입의 prop 이름
+ *      (steps·direction·showMeta·doneIcon·skippedIcon)을 그대로 검증 기준으로 삼는다 — 이름을 바꾸거나
+ *      파일을 지우면 verify-naming의 ALLOWLIST(StatusTimeline 항목)가 무효(stale)가 된다.
+ */
 export type StatusStep = {
   key: string
   label: string
@@ -30,65 +40,20 @@ export type StatusTimelineProps = {
   skippedIcon?: ReactNode
 }
 
-/**
- * StatusTimeline — 처리 상태 진행(접수 → 확인중 → 답변완료 → 종료).
- *
- * 기존 Timeline과 시각 언어를 맞춘다(20px 점 · 2px 연결선 · done=success 체크 · current=primary 링).
- * 다른 점은 역할이다:
- *  - Timeline      : 시간순 **이벤트 로그**. 항목이 계속 쌓이고 순서가 곧 시간이다.
- *  - StatusTimeline: 정해진 **단계 진행**. 단계 수가 고정이고, 건너뛴 단계(skipped)와
- *                    가로 진행 표시(direction)가 필요하다.
- */
 export function StatusTimeline({
   steps,
-  direction = 'vertical',
-  showMeta = true,
+  direction,
+  showMeta,
   doneIcon,
   skippedIcon,
 }: StatusTimelineProps) {
-  const rootClassName = [styles.root, styles[direction]].join(' ')
-
   return (
-    <ol className={rootClassName}>
-      {steps.map((step, index) => {
-        const isLast = index === steps.length - 1
-        // 연결선은 "이 단계에서 다음 단계로" 가는 구간 — 이 단계가 done일 때만 채운다
-        const connectorClassName = [
-          styles.connector,
-          step.state === 'done' ? styles.connectorDone : '',
-        ]
-          .filter(Boolean)
-          .join(' ')
-
-        return (
-          <li key={step.key} className={[styles.step, styles[step.state]].join(' ')}>
-            <div className={styles.marker}>
-              <span className={styles.dot} aria-hidden="true">
-                {step.state === 'done' && (doneIcon ?? <Check size={12} strokeWidth={3} />)}
-                {step.state === 'skipped' && (skippedIcon ?? <Minus size={12} strokeWidth={3} />)}
-              </span>
-              {!isLast && <span className={connectorClassName} aria-hidden="true" />}
-            </div>
-
-            <div className={styles.content}>
-              <span className={styles.label} title={step.label}>
-                {step.label}
-              </span>
-              {showMeta && (step.at != null || step.by != null) && (
-                <span className={styles.meta}>
-                  {step.at != null && <span className={styles.at}>{step.at}</span>}
-                  {step.at != null && step.by != null && (
-                    <span className={styles.sep} aria-hidden="true">
-                      ·
-                    </span>
-                  )}
-                  {step.by != null && <span className={styles.by}>{step.by}</span>}
-                </span>
-              )}
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+    <TimelineProgress
+      steps={steps}
+      direction={direction}
+      showMeta={showMeta}
+      doneIcon={doneIcon}
+      skippedIcon={skippedIcon}
+    />
   )
 }

@@ -1,6 +1,10 @@
 // P4 — docs-content.json → Figma 페이지 미러링
 import { rgbToHex } from '../presets'
 
+// 표 셀 본문 크기 — font/size/13 변수(tokens.ts)에 바인딩된다. 리터럴로 두면
+// verify-bindings B3(하드코딩 폰트)에 걸린다 — 이름 있는 상수를 거쳐 변수 바인딩까지 잇는다.
+const TABLE_CELL_SIZE = 13
+
 export type DocBlock =
   | { type: 'heading'; text: string }
   | { type: 'paragraph'; text: string }
@@ -183,7 +187,16 @@ async function renderBlock(ctx: DocCtx, block: DocBlock, docsContent: DocsConten
           const t = figma.createText()
           t.fontName = bold ? ctx.fontBold : ctx.font
           t.characters = cell
-          t.fontSize = 13
+          t.fontSize = TABLE_CELL_SIZE
+          // 오너: 폰트 크기도 전부 변수 — font/size/13(tokens.ts가 생성)이 있으면 바인딩.
+          const sv = ctx.vars.get('font/size/' + TABLE_CELL_SIZE)
+          if (sv) {
+            try {
+              t.setBoundVariable('fontSize', sv)
+            } catch {
+              /* skip */
+            }
+          }
           t.layoutAlign = 'STRETCH'
           cellFrame.appendChild(t)
           row.appendChild(cellFrame)

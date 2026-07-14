@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
-import { Select, type SelectOption } from '../Select/Select'
-import styles from './SortBar.module.css'
+import { ListToolbar } from '../ListToolbar/ListToolbar'
+import type { SelectOption } from '../Select/Select'
 
 /**
- * 목록 상단의 정렬/필터 바. 라이트(흰색) 전용 — 다크 축은 없다.
- * 레퍼런스: 좌측 "전체 6개", 우측 "최신순 ▾" "서비스별 ▾".
+ * SortBar — ListToolbar(layout='site')의 얇은 파사드.
  *
- * 드롭다운은 기존 Select를 그대로 쓴다(별도 구현 금지).
+ * 실제 렌더·CSS는 전부 ListToolbar.tsx/.module.css로 옮겼다(중복 유지 금지) — 이 파일은
+ * 이름·prop 표면만 남긴다. 그대로 두는 이유는 둘:
+ *   1) ShopPage 등 기존 호출부가 이 이름/타입을 그대로 쓴다.
+ *   2) Figma 세트 DS/SortBar(figma-plugin/src/generators/site.ts)가 이 타입의 prop 이름
+ *      (total·totalLabel·totalSuffix·selects·leadingActions·actions)을 그대로 검증 기준으로 삼는다 —
+ *      이름을 바꾸거나 파일을 지우면 verify-naming의 ALLOWLIST(SortBar 항목)가 무효(stale)가 된다.
  */
 export type SortBarSelect = {
   /** React key 겸 식별자 */
@@ -30,32 +34,16 @@ export type SortBarProps = {
   actions?: ReactNode
 }
 
-export function SortBar({
-  total,
-  totalLabel = '전체',
-  totalSuffix = '',
-  selects = [],
-  leadingActions,
-  actions,
-}: SortBarProps) {
+export function SortBar({ total, totalLabel, totalSuffix, selects, leadingActions, actions }: SortBarProps) {
   return (
-    <div className={styles.bar}>
-      {total != null && (
-        <p className={styles.total}>
-          {totalLabel} <strong className={styles.count}>{total.toLocaleString('ko-KR')}개</strong>
-          {totalSuffix}
-        </p>
-      )}
-
-      <div className={styles.controls}>
-        {leadingActions}
-        {selects.map((select) => (
-          <div key={select.key} className={styles.select}>
-            <Select value={select.value} options={select.options} onChange={select.onChange} />
-          </div>
-        ))}
-        {actions}
-      </div>
-    </div>
+    <ListToolbar
+      layout="site"
+      total={total}
+      totalLabel={totalLabel}
+      totalSuffix={totalSuffix}
+      selects={selects}
+      leadingActions={leadingActions}
+      actions={actions}
+    />
   )
 }

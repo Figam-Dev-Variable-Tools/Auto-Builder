@@ -6,7 +6,7 @@ import { ACTION_CATEGORY, FEEDBACK_CATEGORY, INPUT_CATEGORY, SELECTION_CATEGORY 
 import { DATA_CATEGORY, DATETIME_CATEGORY, ETC_CATEGORY, KR_CATEGORY, MEDIA_CATEGORY, TEMPLATES_CATEGORY } from './categories-data-kr-media'
 import { LAYOUT_CATEGORY, NAVIGATION_CATEGORY, OVERLAY_CATEGORY, STRUCTURE_CATEGORY } from './categories-nav-overlay'
 import { PAGE_ACTION, PAGE_DATA, PAGE_DATETIME, PAGE_ETC, PAGE_FEEDBACK, PAGE_INPUT, PAGE_KR, PAGE_LAYOUT, PAGE_MEDIA, PAGE_NAV, PAGE_OVERLAY, PAGE_SELECTION, PAGE_STRUCTURE, PAGE_TEMPLATES } from './categories-shared'
-import { applyPageColorMode, type Ctx, makeHeader, makeRoot, makeSection, placeRoot, setup } from './foundations'
+import { applyPageColorMode, bindTokens, makeHeader, makeRoot, makeSection, placeRoot, setup } from './foundations'
 import { variantItem } from './lib/build-set'
 
 // 오너 규칙: 페이지 탭은 "순번. System - 이름". 절취선은 하이픈 라인.
@@ -43,70 +43,8 @@ export const CATEGORY_PAGE_NAMES = [
   '✂ ─────────  컴포넌트  ─────────',
 ]
 // 오너: 생성 컴포넌트의 보더·마진(패딩/간격)·라운드를 값이 맞는 변수에 후처리 바인딩.
-function bindTokens(ctx: Ctx, root: SceneNode) {
-  const all: SceneNode[] = [root]
-  const rf = root as unknown as { findAll?: (cb: (n: SceneNode) => boolean) => SceneNode[] }
-  if (typeof rf.findAll === 'function') all.push(...rf.findAll(() => true))
-  for (const node of all) {
-    const a = node as unknown as {
-      cornerRadius?: number | symbol
-      strokeWeight?: number | symbol
-      strokes?: readonly Paint[]
-      layoutMode?: string
-      paddingTop?: number
-      paddingRight?: number
-      paddingBottom?: number
-      paddingLeft?: number
-      itemSpacing?: number
-      opacity?: number
-      setBoundVariable: (field: string, v: Variable) => void
-    }
-    // 불투명도
-    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
-      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
-      if (ov)
-        try {
-          a.setBoundVariable('opacity', ov)
-        } catch {
-          /* skip */
-        }
-    }
-    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
-      const rv = ctx.vars.get('radius/' + a.cornerRadius)
-      if (rv)
-        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
-          try {
-            a.setBoundVariable(c, rv)
-          } catch {
-            /* skip */
-          }
-        }
-    }
-    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
-      const bv = ctx.vars.get('border/' + a.strokeWeight)
-      if (bv)
-        try {
-          a.setBoundVariable('strokeWeight', bv)
-        } catch {
-          /* skip */
-        }
-    }
-    if (a.layoutMode && a.layoutMode !== 'NONE') {
-      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
-        const val = a[p]
-        if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('space/' + val)
-          if (sv)
-            try {
-              a.setBoundVariable(p, sv)
-            } catch {
-              /* skip */
-            }
-        }
-      }
-    }
-  }
-}
+// (정본은 lib/bind.ts — 예전엔 admin.ts·layout-guide.ts·screens.ts·site.ts·site-screens.ts와
+// 합쳐 6벌로 복제돼 있었다. verify-bindings B4.)
 
 const ALL_CATEGORIES = [
   INPUT_CATEGORY,
@@ -166,7 +104,7 @@ export async function generateCategories(fontFamily: string, colors?: Record<str
       }
     }
 
-    const root = makeRoot(cat.title)
+    const root = makeRoot(ctx, cat.title)
     placeRoot(root, page)
     makeHeader(ctx, root, cat.title, cat.subtitle)
     for (const doc of cat.docs) {

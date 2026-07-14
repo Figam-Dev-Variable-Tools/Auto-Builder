@@ -1,13 +1,14 @@
 import { useId, type KeyboardEvent, type ReactNode } from 'react'
 import styles from './InputBase.module.css'
 
-// Input 계열 공용 베이스 — 스토리 없음(인프라). §7 공통 State:
+// Input 계열 공용 베이스 — §7 공통 State:
 // Default/Hover/Focus/Disabled/Readonly/Required/Success/Error/Empty를 담당한다.
 export type InputBaseProps = {
   label?: string
   /**
    * 눈에 보이는 라벨이 없을 때의 접근성 이름(placeholder는 이름이 아니다).
    * 툴바 안 검색 입력처럼 라벨을 그릴 자리가 없는 자리를 위해 연다 — 주지 않으면 붙지 않는다.
+   * label을 생략하면 라벨 자리 자체가 렌더되지 않는다(빈 공간이 남지 않는다) — WithoutLabel 스토리 참조.
    */
   ariaLabel?: string
   value: string
@@ -15,6 +16,8 @@ export type InputBaseProps = {
   placeholder?: string
   type?: 'text' | 'password' | 'email' | 'search' | 'tel'
   inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'decimal' | 'search'
+  /** 박스 크기 3단 — TextField와 같은 스케일을 쓴다(값은 InputBase.module.css에 한 곳만 선언). 기본 md */
+  size?: 'sm' | 'md' | 'lg'
   error?: boolean
   success?: boolean
   disabled?: boolean
@@ -23,7 +26,10 @@ export type InputBaseProps = {
   helperText?: string
   maxLength?: number
   showCounter?: boolean
-  /** 인풋 좌/우 액세서리 — 아이콘, 토글 버튼, 스텝퍼 등 */
+  /**
+   * 인풋 좌/우 액세서리 — 아이콘, 토글 버튼, 스텝퍼 등.
+   * Figma에서는 INSTANCE_SWAP(leading/trailing)으로 미러링된다 — 이름을 그대로 속성명으로 쓴다.
+   */
   leading?: ReactNode
   trailing?: ReactNode
   /**
@@ -43,6 +49,7 @@ export function InputBase({
   placeholder,
   type = 'text',
   inputMode,
+  size = 'md',
   error = false,
   success = false,
   disabled = false,
@@ -60,6 +67,7 @@ export function InputBase({
   const id = useId()
   const fieldClass = [
     styles.field,
+    size !== 'md' ? styles[size] : '',
     error ? styles.error : '',
     success ? styles.success : '',
     fullWidth ? styles.fullWidth : '',

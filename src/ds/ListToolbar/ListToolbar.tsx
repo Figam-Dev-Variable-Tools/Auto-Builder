@@ -11,12 +11,18 @@ import { SearchField } from '../SearchField/SearchField'
 import styles from './ListToolbar.module.css'
 
 /**
- * ListToolbar — 어드민 목록 상단의 흰 카드 바.
- * 레퍼런스: "전체 상태 ▾ | 검색 | ………… | 순번순 ▾ | 2건"
+ * ListToolbar — 목록 상단 바. `layout` 축으로 두 화면 맥락을 아우른다.
+ *
+ *  - layout='admin'(기본) : 어드민 목록 상단의 흰 카드 바.
+ *    레퍼런스: "전체 상태 ▾ | 검색 | ………… | 순번순 ▾ | 2건"
+ *  - layout='site'        : 공개 사이트(쇼핑 등) 목록 상단의 테두리 없는 바(구 SortBar 흡수).
+ *    레퍼런스: 좌 "전체 6개" · 우 [leadingActions][Select…][actions]. 카드 크롬이 없고
+ *    총계가 좌측에 선다 — admin과 시각 언어가 달라 렌더 분기가 따로지만, prop 타입과
+ *    파일은 하나다(SortBar.tsx는 이제 이 layout='site' 분기에 위임하는 얇은 파사드).
  *
  * 드롭다운은 기존 Select, 검색은 기존 SearchField(leading 아이콘)를 그대로 쓴다 — 새로 만들지 않는다.
  * 요소 단위 ON/OFF: prop을 넘기지 않으면 그 요소가 통째로 사라진다(빈 자리·구분선 없음).
- * 아무 요소도 없으면 카드 자체를 렌더하지 않는다.
+ * 아무 요소도 없으면(admin) 카드 자체를 렌더하지 않는다.
  */
 export type ListToolbarSelect = {
   /** React key 겸 식별자 */
@@ -79,8 +85,23 @@ export const DEFAULT_LIST_TOOLBAR_LABELS: ListToolbarLabelsResolved = {
   },
 }
 
+/**
+ * layout='site'(구 SortBar 흡수)의 총계 기본값 — admin과 갈라진다.
+ * 구 SortBar는 접두사 '전체'·단위 '개'를 컴포넌트에 하드코딩했다(admin의 기본은 접두사 없음·단위 '건').
+ * 두 레이아웃이 같은 total.prefix/unit 축을 공유하는 이상 기본값도 갈라질 수밖에 없어
+ * DEFAULT_LIST_TOOLBAR_LABELS와 분리된 이름 있는 상수로 둔다(§3 naive spread 금지와 같은 이유 —
+ * 하나의 기본값 객체에 두 값을 우겨넣으면 어느 레이아웃 것인지 코드만 봐서는 알 수 없다).
+ */
+const DEFAULT_SITE_TOTAL_PREFIX = '전체'
+const DEFAULT_SITE_TOTAL_UNIT = '개'
+
 export type ListToolbarProps = {
-  /** 좌측 필터 Select들 — 상태·카테고리 등 */
+  /**
+   * 바 레이아웃(기본 'admin'). 'site'는 카드 크롬 없는 좌측 총계 + 우측 컨트롤 배치다(구 SortBar).
+   * 'site'에서는 search·sort·appearance가 쓰이지 않는다 — selects가 우측 컨트롤에 전부 들어간다.
+   */
+  layout?: 'admin' | 'site'
+  /** 좌측 필터 Select들 — 상태·카테고리 등. layout='site'에서는 우측 컨트롤에 렌더된다(구 SortBar.selects) */
   selects?: ListToolbarSelect[]
   /** 좌측 검색 입력 */
   search?: ListToolbarSearch
@@ -101,6 +122,15 @@ export type ListToolbarProps = {
   totalUnit?: string
   /** 우측 끝 추가 액션(등록 버튼·내보내기 등) */
   actions?: ReactNode
+  /**
+   * 총계 뒤 문장형 문구 — "총 24개**의 상품이 있습니다.**"의 굵지 않은 꼬리말.
+   * layout='site' 전용(구 SortBar.totalSuffix). 기본 ''(꼬리말 없음).
+   */
+  totalSuffix?: string
+  /**
+   * 총계 옆 · selects 왼쪽에 붙는 선행 액션(뷰 전환 등). layout='site' 전용(구 SortBar.leadingActions).
+   */
+  leadingActions?: ReactNode
   /**
    * 총 건수 표시 (기본 true).
    * 목록 하단 Pagination이 이미 건수를 말하고 있으면 같은 숫자가 두 번 나오므로 끈다 —
@@ -129,19 +159,72 @@ export type ListToolbarProps = {
 const DEFAULT_SELECT_WIDTH = 140
 
 export function ListToolbar({
+  layout = 'admin',
   selects = [],
   search,
   sort,
   total,
   totalLabel,
   totalUnit,
+  totalSuffix = '',
   actions,
+  leadingActions,
   showCount = true,
   searchPlaceholder,
   appearance = 'card',
   labels,
   formatters,
 }: ListToolbarProps) {
+  // admin·site 두 분기가 같은 포맷터를 쓴다 — 여기 한 번만 만든다
+  const formatNumber = formatters?.number ?? ((value: number) => value.toLocaleString('ko-KR'))
+
+  // ── layout='site' — 구 SortBar 흡수. admin과 시각 언어·배치가 달라 렌더 분기를 따로 둔다
+  //    (섹션 면 위에 그대로 얹히는 카드 없는 바 · 총계가 좌측 · selects/leadingActions/actions가
+  //    하나의 우측 컨트롤 묶음). 값은 그대로 admin과 같은 축(totalLabel·totalUnit·labels.total…)을 쓴다.
+  if (layout === 'site') {
+    // resolveLabel은 null을 "명시적으로 접두사 없음"으로 존중한다 — undefined일 때만 구 SortBar 기본값을 쓴다
+    const rawPrefix = resolveLabel<string | null>(totalLabel, labels?.total?.prefix)
+    const resolvedSitePrefix = rawPrefix === undefined ? DEFAULT_SITE_TOTAL_PREFIX : rawPrefix
+    // 구 SortBar는 "개"를 컴포넌트에 하드코딩했다 — 이제 축(labels.total.unit)으로 열되 기본값은 그대로 유지한다
+    const resolvedSiteUnit = resolveLabel(totalUnit, labels?.total?.unit) ?? DEFAULT_SITE_TOTAL_UNIT
+    const siteCountFn = labels?.total?.count
+    const siteCountVisible = showCount && total != null
+
+    return (
+      <div className={styles.siteBar}>
+        {siteCountVisible &&
+          (siteCountFn != null ? (
+            <p className={styles.siteTotal}>{siteCountFn(total as number)}</p>
+          ) : (
+            <p className={styles.siteTotal}>
+              {resolvedSitePrefix != null && `${resolvedSitePrefix} `}
+              {/* 구 SortBar는 "개"까지 굵게 묶었다(<strong>{count}개</strong>) — 그 굵기 경계를 그대로 둔다 */}
+              <strong className={styles.siteCount}>
+                {formatNumber(total as number)}
+                {resolvedSiteUnit}
+              </strong>
+              {totalSuffix}
+            </p>
+          ))}
+
+        <div className={styles.siteControls}>
+          {leadingActions}
+          {selects.map((select) => (
+            <div key={select.key} className={styles.siteSelect}>
+              <Select
+                value={select.value}
+                options={select.options}
+                onChange={select.onChange}
+                ariaLabel={select.ariaLabel}
+              />
+            </div>
+          ))}
+          {actions}
+        </div>
+      </div>
+    )
+  }
+
   const L = mergeLabels(DEFAULT_LIST_TOOLBAR_LABELS, labels)
 
   const resolvedPlaceholder =
@@ -150,7 +233,6 @@ export function ListToolbar({
   // prefix의 기본값은 null(접두사 없음)이라 ??로 접으면 안 된다 — resolveLabel이 null을 값으로 존중한다
   const resolvedPrefix = resolveLabel<string | null>(totalLabel, L.total.prefix) ?? null
   const resolvedUnit = resolveLabel(totalUnit, L.total.unit) ?? DEFAULT_LIST_TOOLBAR_LABELS.total.unit
-  const formatNumber = formatters?.number ?? ((value: number) => value.toLocaleString('ko-KR'))
 
   const countVisible = showCount && total != null
 

@@ -58,3 +58,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 브랜드 — 강조색(링크색) 텍스트. Breadcrumb의 링크와 같은 토큰을 쓴다(사본을 만들지 않는다) */
+.brand {
+  color: var(--ds-color-primary);
+  font-weight: var(--ds-font-weight-medium);
+}

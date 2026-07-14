@@ -26,8 +26,11 @@ import {
   type Ctx,
   solid,
   boundPaint,
+  boundText as bindText,
+  bindFillVar,
+  bindStrokeVar,
+  bindTokens,
   autoFrame,
-  txt,
   makeRoot,
   makeHeader,
   makeSection,
@@ -46,30 +49,64 @@ import { buildSet, addTextProp, addBoolProp, addSwapProp, propKeys, variantItem,
 // site-screens.ts가 './site'에서 propKeys를 가져간다 — 정본은 lib/build-set.ts, 여기선 경로만 유지한다.
 export { propKeys }
 import type { PresetName } from '../presets'
+// 오너 확정(2026-07 개편): SortBar·InfoCard를 15(Admin Component)로 옮기려면 그 페이지를 찾아야 한다.
+// admin.ts만 이 이름의 정본이다(문자열을 두 곳에 적지 않는다).
+import { PAGE_ADMIN } from './admin'
 
-// 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14)·Admin(15)·Layout(16)·Screens(17) 다음 번호.
-const PAGE_SITE = '18. System - Site'
+// 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14)·Admin(15)·Layout(16)·Admin Pages(17) 다음 번호.
+// 오너 확정(2026-07 개편): '18. System - Site' → '18. System - Client Pages'로 개명하고,
+// 예전 '19. System - Site Screens'(site-screens.ts)의 화면 5종도 이 페이지에 합친다.
+export const PAGE_SITE = '18. System - Client Pages'
 // reset 대상 등록용 — reset.ts가 이 배열을 함께 삭제해야 재생성이 된다(안 하면 좀비 페이지).
-export const SITE_PAGE_NAMES = [PAGE_SITE]
+// 옛 이름도 남겨 둔다 — 안 그러면 개명 전 파일의 유령 페이지가 영영 안 지워진다.
+export const SITE_PAGE_NAMES = [PAGE_SITE, '18. System - Site']
+
+/** 페이지 최상위 자식들의 최대 하단 y(비어 있으면 0). 겹치지 않게 이어붙일 때 쓴다 —
+ *  site-screens.ts가 18페이지에 화면 5종을 이어 그릴 때, 여기(SortBar·InfoCard를 15로 옮길 때) 재사용한다. */
+export function maxBottom(page: PageNode): number {
+  let max = 0
+  for (const child of page.children) {
+    const n = child as unknown as { y?: number; height?: number }
+    if (typeof n.y === 'number' && typeof n.height === 'number') max = Math.max(max, n.y + n.height)
+  }
+  return max
+}
 
 // ── 프론트 컴포넌트 세트 레지스트리 ───────────────────────────────────
-// admin.ts의 ADMIN_SETS와 같은 패턴. '19. System - Site Screens'(site-screens.ts)가
-// 여기서 세트를 꺼내 헤더·푸터·상품카드·정렬바·문의폼·정보카드를 인스턴스로 조립한다.
+// admin.ts의 ADMIN_SETS와 같은 패턴. site-screens.ts(예전엔 '19. Site Screens', 이제 '18. Client Pages'에
+// 함께 그려진다)가 여기서 세트를 꺼내 헤더·푸터·상품카드·정렬바·문의폼·정보카드를 인스턴스로 조립한다.
+// (정렬바·정보카드는 오너 확정으로 '15. Admin Component' 페이지에 그려지지만, 조회 경로는 그대로
+//  SITE_SETS다 — site-screens.ts의 inst()는 페이지 위치가 아니라 이 맵만 본다.)
 // 프론트 컴포넌트 스코프를 끄고 화면만 켜면 비어 있고, site-screens.ts는 직접 그리는 폴백으로 내려간다.
 export const SITE_SETS = new Map<string, ComponentSetNode>()
 
 /**
- * 이미 있는 '18. System - Site' 페이지의 컴포넌트 세트를 레지스트리에 입양한다.
+ * 이미 있는 '18. System - Client Pages'(+ 오너 확정으로 옮겨진 '15. Admin Component') 페이지의
+ * 컴포넌트 세트를 레지스트리에 입양한다.
  * 프론트 컴포넌트 스코프를 끄고 화면만 다시 돌려도 인스턴스 조립이 되게 하는 장치.
  */
 export function adoptSiteSets(): number {
-  const page = figma.root.children.find((p) => p.name === PAGE_SITE)
-  if (!page) return 0
   let n = 0
-  for (const node of page.children) {
-    if (node.type === 'COMPONENT_SET') {
-      SITE_SETS.set(node.name, node)
-      n++
+  const page = figma.root.children.find((p) => p.name === PAGE_SITE)
+  if (page) {
+    for (const node of page.children) {
+      if (node.type === 'COMPONENT_SET') {
+        SITE_SETS.set(node.name, node)
+        n++
+      }
+    }
+  }
+  // SortBar·InfoCard는 15(Admin Component)에 그려진다 — 거기서 이름을 정확히 지정해서만 가져온다.
+  // (전부 입양하면 admin의 다른 세트들까지 SITE_SETS에 섞여 site-screens.ts가 엉뚱한 세트를 집을 수 있다.)
+  const adminPage = figma.root.children.find((p) => p.name === PAGE_ADMIN)
+  if (adminPage) {
+    for (const name of RELOCATED_SET_NAMES) {
+      if (SITE_SETS.has(name)) continue
+      const node = adminPage.children.find((c) => c.type === 'COMPONENT_SET' && c.name === name)
+      if (node) {
+        SITE_SETS.set(name, node as ComponentSetNode)
+        n++
+      }
     }
   }
   return n
@@ -203,110 +240,19 @@ const V_ACCENT_TEXT = `color/${TONE}/800` // 흰 면 위 글자 — --site-accen
 const V_ACCENT_SOLID = `color/solid-${TONE}` // solid 버튼 면
 const V_ACCENT_ON = `color/on-${TONE}` // solid 버튼 글자
 
-// ── 색·토큰 바인딩 헬퍼 (출처: categories.ts — 비-export라 동일 구현을 복제) ──
-function boundText(ctx: Ctx, chars: string, size: number, varName: string, bold = false): TextNode {
-  const t = txt(ctx, chars, size, hexOf(ctx, varName), bold)
-  const v = ctx.vars.get(varName)
-  if (v) t.fills = [boundPaint(v)]
-  // 오너: 텍스트 크기·굵기·글씨체도 변수로.
-  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
-  const sv = ctx.vars.get('font/size/' + size)
-  if (sv) {
-    try {
-      bind.setBoundVariable('fontSize', sv)
-    } catch {
-      /* skip */
-    }
-  }
-  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
-  if (wv) {
-    try {
-      bind.setBoundVariable('fontWeight', wv)
-    } catch {
-      /* skip */
-    }
-  }
-  // ctx.fontFamilyVar가 null이면 절대 바인딩하지 않는다(미로드 폰트 바인딩 = 노드 생성 실패).
-  if (ctx.fontFamilyVar) {
-    try {
-      bind.setBoundVariable('fontFamily', ctx.fontFamilyVar)
-    } catch {
-      /* skip */
-    }
-  }
-  return t
+// ── 색·토큰 바인딩 — 정본(boundText·bindFillVar·bindStrokeVar·bindTokens)은 lib/bind.ts다.
+// 이 파일은 hexOf()로 계산한 폴백 hex를 물려야 해서(프리셋 base에서 셰이드/solid/on을 계산) 얇은
+// 래퍼로 감싼다 — 로직 자체(변수 바인딩·fontSize/Weight/Family 바인딩)는 더 이상 복제하지 않는다.
+// site.ts는 예전에 "이름만 다른 사본"(`node.fills = [v ? boundPaint(v) : solid(hexOf(...))]`)까지
+// 갖고 있었다(verify-bindings B4 지적 사항).
+function siteText(ctx: Ctx, chars: string, size: number, varName: string, bold = false): TextNode {
+  return bindText(ctx, chars, size, varName, hexOf(ctx, varName), bold)
 }
 function fillV(ctx: Ctx, node: GeometryMixin, varName: string) {
-  const v = ctx.vars.get(varName)
-  node.fills = [v ? boundPaint(v) : solid(hexOf(ctx, varName))]
+  bindFillVar(ctx, node, varName, hexOf(ctx, varName))
 }
 function strokeV(ctx: Ctx, node: MinimalStrokesMixin, varName: string) {
-  const v = ctx.vars.get(varName)
-  node.strokes = [v ? boundPaint(v) : solid(hexOf(ctx, varName))]
-}
-/** 보더·패딩·라운드·불투명도를 값이 맞는 변수에 후처리 바인딩. 출처: categories.ts bindTokens */
-function bindTokens(ctx: Ctx, root: SceneNode) {
-  const all: SceneNode[] = [root]
-  const rf = root as unknown as { findAll?: (cb: (n: SceneNode) => boolean) => SceneNode[] }
-  if (typeof rf.findAll === 'function') all.push(...rf.findAll(() => true))
-  for (const node of all) {
-    const a = node as unknown as {
-      cornerRadius?: number | symbol
-      strokeWeight?: number | symbol
-      strokes?: readonly Paint[]
-      layoutMode?: string
-      paddingTop?: number
-      paddingRight?: number
-      paddingBottom?: number
-      paddingLeft?: number
-      itemSpacing?: number
-      opacity?: number
-      setBoundVariable: (field: string, v: Variable) => void
-    }
-    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
-      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
-      if (ov)
-        try {
-          a.setBoundVariable('opacity', ov)
-        } catch {
-          /* skip */
-        }
-    }
-    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
-      const rv = ctx.vars.get('radius/' + a.cornerRadius)
-      if (rv)
-        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
-          try {
-            a.setBoundVariable(c, rv)
-          } catch {
-            /* skip */
-          }
-        }
-    }
-    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
-      const bv = ctx.vars.get('border/' + a.strokeWeight)
-      if (bv)
-        try {
-          a.setBoundVariable('strokeWeight', bv)
-        } catch {
-          /* skip */
-        }
-    }
-    if (a.layoutMode && a.layoutMode !== 'NONE') {
-      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
-        const val = a[p]
-        if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('space/' + val)
-          if (sv)
-            try {
-              a.setBoundVariable(p, sv)
-            } catch {
-              /* skip */
-            }
-        }
-      }
-    }
-  }
+  bindStrokeVar(ctx, node, varName, hexOf(ctx, varName))
 }
 /** 크기 고정 프레임. 출처: categories.ts fixedFrame */
 function fixedFrame(name: string, dir: 'HORIZONTAL' | 'VERTICAL', w: number, h: number): FrameNode {
@@ -386,7 +332,7 @@ function siteBtn(ctx: Ctx, label: string, layer: string, size: 'sm' | 'lg' = 'sm
   b.paddingLeft = b.paddingRight = size === 'sm' ? 12 : 20
   b.cornerRadius = 8
   fillV(ctx, b, V_ACCENT_SOLID)
-  const t = boundText(ctx, label, size === 'sm' ? 13 : 15, V_ACCENT_ON, true)
+  const t = siteText(ctx, label, size === 'sm' ? 13 : 15, V_ACCENT_ON, true)
   t.name = layer
   b.appendChild(t)
   return b
@@ -425,7 +371,7 @@ function solidBadge(ctx: Ctx, label: string, layer: string): FrameNode {
   b.paddingLeft = b.paddingRight = 10
   b.cornerRadius = 6
   fillV(ctx, b, 'color/solid-secondary')
-  const t = boundText(ctx, label, 13, 'color/on-secondary', true)
+  const t = siteText(ctx, label, 13, 'color/on-secondary', true)
   t.name = layer
   b.appendChild(t)
   return b
@@ -442,7 +388,7 @@ function selectBox(ctx: Ctx, value: string, layer: string, w = 160): FrameNode {
   strokeV(ctx, f, V_BORDER)
   f.strokeWeight = 1
   f.strokeAlign = 'INSIDE'
-  const t = boundText(ctx, value, 13, V_TEXT)
+  const t = siteText(ctx, value, 13, V_TEXT)
   t.name = layer + ' Value'
   t.layoutGrow = 1
   f.appendChild(t)
@@ -470,8 +416,8 @@ function formField(
   const lb = autoFrame('label row', 'HORIZONTAL')
   lb.counterAxisAlignItems = 'CENTER'
   lb.itemSpacing = 4
-  lb.appendChild(boundText(ctx, label, 12, V_SUB, true))
-  if (required) lb.appendChild(boundText(ctx, '*', 12, V_ERROR, true))
+  lb.appendChild(siteText(ctx, label, 12, V_SUB, true))
+  if (required) lb.appendChild(siteText(ctx, '*', 12, V_ERROR, true))
   cell.appendChild(lb)
 
   const ctrl = fixedFrame('control', 'HORIZONTAL', w, 40)
@@ -483,7 +429,7 @@ function formField(
   strokeV(ctx, ctrl, V_BORDER)
   ctrl.strokeWeight = 1
   ctrl.strokeAlign = 'INSIDE'
-  const ph = boundText(ctx, placeholder, 13, V_SUB)
+  const ph = siteText(ctx, placeholder, 13, V_SUB)
   ph.layoutGrow = 1
   ctrl.appendChild(ph)
   if (iconKey) ctrl.appendChild(icon(ctx, iconKey, 'Field Icon', 15, V_SUB))
@@ -537,7 +483,7 @@ function renderSiteHeader(ctx: Ctx, combo: Record<string, string>): ComponentNod
     bottomBorder(ctx, c, V_BORDER)
   }
 
-  const brand = boundText(ctx, BRAND, 19, V_TEXT, true)
+  const brand = siteText(ctx, BRAND, 19, V_TEXT, true)
   brand.name = 'brand'
   c.appendChild(brand)
 
@@ -549,14 +495,14 @@ function renderSiteHeader(ctx: Ctx, combo: Record<string, string>): ComponentNod
   c.appendChild(nav)
   nav.layoutGrow = 1
 
-  // 활성 메뉴(현재 페이지) = 베리언트 축 active(1~5). 화면(19)은 자기 번호를 그대로 넘긴다.
+  // 활성 메뉴(현재 페이지) = 베리언트 축 active(1~5). site-screens.ts의 5화면은 자기 번호를 그대로 넘긴다.
   const activeIndex = Math.max(0, (parseInt(combo.active || '1', 10) || 1) - 1)
   MENU.forEach((label, i) => {
     const active = i === activeIndex
     const it = autoFrame('menu ' + (i + 1), 'VERTICAL')
     it.counterAxisAlignItems = 'CENTER'
     it.itemSpacing = 4
-    const t = boundText(ctx, label, 13, active ? V_TEXT : V_SUB, active)
+    const t = siteText(ctx, label, 13, active ? V_TEXT : V_SUB, active)
     t.name = 'Menu ' + (i + 1)
     it.appendChild(t)
     // 활성 밑줄 — 그린 강조(선이라 장식용 -500). 출처: SiteHeader.module.css .active::after
@@ -636,7 +582,7 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
   top.primaryAxisAlignItems = 'SPACE_BETWEEN'
   top.counterAxisAlignItems = 'CENTER'
   top.itemSpacing = 20
-  const brand = boundText(ctx, BRAND, 22, V_TEXT, true)
+  const brand = siteText(ctx, BRAND, 22, V_TEXT, true)
   brand.name = 'brand'
   top.appendChild(brand)
 
@@ -644,7 +590,7 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
   links.counterAxisAlignItems = 'CENTER'
   links.itemSpacing = 16
   MENU.forEach((label, i) => {
-    const t = boundText(ctx, label, 13, V_SUB)
+    const t = siteText(ctx, label, 13, V_SUB)
     t.name = 'Link ' + (i + 1)
     links.appendChild(t)
   })
@@ -674,8 +620,8 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
     const row = autoFrame('company item', 'HORIZONTAL')
     row.counterAxisAlignItems = 'CENTER'
     row.itemSpacing = 8
-    row.appendChild(boundText(ctx, label, 11, V_SUB))
-    const v = boundText(ctx, value, 13, V_TEXT)
+    row.appendChild(siteText(ctx, label, 11, V_SUB))
+    const v = siteText(ctx, value, 13, V_TEXT)
     v.name = 'Company ' + (i + 1)
     row.appendChild(v)
     company.appendChild(row)
@@ -697,7 +643,7 @@ function renderSiteFooter(ctx: Ctx, _combo: Record<string, string>): ComponentNo
   fillV(ctx, rule, V_BORDER)
   bottom.appendChild(rule)
   rule.layoutAlign = 'STRETCH'
-  const cr = boundText(ctx, '© 2026 SPACE PLANNING Inc. All rights reserved.', 11, V_SUB)
+  const cr = siteText(ctx, '© 2026 SPACE PLANNING Inc. All rights reserved.', 11, V_SUB)
   cr.name = 'copyright'
   bottom.appendChild(cr)
   c.appendChild(bottom)
@@ -778,13 +724,13 @@ function renderProductCard(ctx: Ctx, combo: Record<string, string>): ComponentNo
   } else {
     body.paddingTop = body.paddingBottom = body.paddingLeft = body.paddingRight = 16
   }
-  const brand = boundText(ctx, '스페이스플래닝', 11, V_SUB)
+  const brand = siteText(ctx, '스페이스플래닝', 11, V_SUB)
   brand.name = 'brand'
   body.appendChild(brand)
-  const name = boundText(ctx, '라운드 화분 · 라이트그레이', 16, V_TEXT, true)
+  const name = siteText(ctx, '라운드 화분 · 라이트그레이', 16, V_TEXT, true)
   name.name = 'name'
   body.appendChild(name)
-  const desc = boundText(ctx, '실내 식물에 맞춘 배수형 화분', 13, V_SUB)
+  const desc = siteText(ctx, '실내 식물에 맞춘 배수형 화분', 13, V_SUB)
   desc.name = 'description'
   body.appendChild(desc)
 
@@ -797,7 +743,7 @@ function renderProductCard(ctx: Ctx, combo: Record<string, string>): ComponentNo
   // 흰 판 위 "글자"라 장식용 -500(2.1:1)이 아니라 --site-accent-text(-800)를 쓴다.
   // 레이어 이름 = CSS 클래스(.price). React `price`는 number라 Figma에 대응 속성 타입이 없다 —
   // 포맷된 문자열을 TEXT 속성으로 열되 이름은 코드 prop 그대로 'price'다(사유는 ALLOWLIST).
-  const price = boundText(ctx, symbol ? '₩38,000' : '38,000원', 19, V_ACCENT_TEXT, true)
+  const price = siteText(ctx, symbol ? '₩38,000' : '38,000원', 19, V_ACCENT_TEXT, true)
   price.name = 'price'
   priceRow.appendChild(price)
   body.appendChild(priceRow)
@@ -808,7 +754,11 @@ function renderProductCard(ctx: Ctx, combo: Record<string, string>): ComponentNo
 
 // ══ DS/SortBar ═══════════════════════════════════════════════════════
 // 축 없음(단일). 좌 '전체 6개' + 우 Select 2개(최신순 / 서비스별).
-// 바 자체는 면을 깔지 않는다 — 섹션 면(흰색 또는 bgSubtle) 위에 그대로 얹힌다(출처: SortBar.module.css).
+// 바 자체는 면을 깔지 않는다 — 섹션 면(흰색 또는 bgSubtle) 위에 그대로 얹힌다.
+// 출처: SortBar는 이제 ListToolbar(layout='site')의 파사드다(src/ds/SortBar/SortBar.tsx) —
+// 실제 마크업·CSS는 ListToolbar.tsx/.module.css(.siteBar·.siteTotal·.siteCount·.siteControls)에 있다.
+// 이 세트의 prop 이름(totalLabel·total·totalSuffix·selects·leadingActions·actions)은
+// SortBarProps 표면과 그대로 맞아야 한다(바꾸면 verify-naming ALLOWLIST가 stale로 실패한다).
 function renderSortBar(ctx: Ctx, _combo: Record<string, string>): ComponentNode {
   const W = 720
 
@@ -822,20 +772,23 @@ function renderSortBar(ctx: Ctx, _combo: Record<string, string>): ComponentNode 
   c.paddingTop = c.paddingBottom = 12
   c.fills = []
 
-  // 좌측 "전체 6개…" — 출처: SortBar.tsx <p className={styles.total}>{totalLabel} <strong className={styles.count}>…</strong>{totalSuffix}</p>
-  const total = autoFrame('total', 'HORIZONTAL')
+  // 좌측 "전체 6개…" — 출처: ListToolbar.tsx의 site 분기 <p className={styles.siteTotal}>{totalLabel} <strong className={styles.siteCount}>…</strong>{totalSuffix}</p>
+  // 바깥 프레임은 구조용이라 'totalGroup'(총계 텍스트 레이어 'total'과 이름이 겹치면 findOne이 프레임을
+  // 먼저 집어 텍스트 바인딩이 어긋난다 — N6도 '레이어 = CSS 클래스 또는 그 prop 이름 자체'만 허용한다).
+  const total = autoFrame('totalGroup', 'HORIZONTAL')
   total.counterAxisAlignItems = 'CENTER'
   total.itemSpacing = 4
-  const label = boundText(ctx, '전체', 13, V_SUB)
+  const label = siteText(ctx, '전체', 13, V_SUB)
   label.name = 'totalLabel'
   total.appendChild(label)
-  // 레이어는 CSS 클래스(.count), 속성 이름은 코드 prop(total: number) 그대로.
-  const count = boundText(ctx, '6개', 13, V_TEXT, true)
-  count.name = 'count'
+  // 레이어 이름 = 바인딩된 prop 이름 그대로('total': number → "6개" 포맷 문자열, CSS 클래스는 이제
+  // ListToolbar.module.css의 .siteCount라 SortBar 쪽엔 CSS 후보가 없다 — N6가 허용하는 두 번째 경로).
+  const count = siteText(ctx, '6개', 13, V_TEXT, true)
+  count.name = 'total'
   total.appendChild(count)
   // totalSuffix — 개수 뒤 문구(예: '의 상품이 있습니다.'). React 기본값이 ''이라 레이어도 빈 글자로 둔다
   // (기본 상태에서는 아무것도 그려지지 않아 지금 문서의 모양이 그대로 유지된다).
-  const suffix = boundText(ctx, '', 13, V_SUB)
+  const suffix = siteText(ctx, '', 13, V_SUB)
   suffix.name = 'totalSuffix'
   total.appendChild(suffix)
   c.appendChild(total)
@@ -884,13 +837,13 @@ function renderSiteSection(ctx: Ctx, combo: Record<string, string>): ComponentNo
   header.itemSpacing = 8
   header.counterAxisAlignItems = center ? 'CENTER' : 'MIN'
   // 레이어 이름 = CSS Module 클래스 이름(.title/.subtitle) 그대로 — TEXT 속성이 여기에 바인딩된다.
-  const title = boundText(ctx, 'PORTFOLIO', 40, V_TEXT, true)
+  const title = siteText(ctx, 'PORTFOLIO', 40, V_TEXT, true)
   title.name = 'title'
   title.layoutAlign = 'STRETCH'
   title.textAutoResize = 'HEIGHT'
   if (center) title.textAlignHorizontal = 'CENTER'
   header.appendChild(title)
-  const subtitle = boundText(ctx, '공간의 쓰임에서 출발한 프로젝트를 모았습니다.', 13, V_SUB)
+  const subtitle = siteText(ctx, '공간의 쓰임에서 출발한 프로젝트를 모았습니다.', 13, V_SUB)
   subtitle.name = 'subtitle'
   subtitle.layoutAlign = 'STRETCH'
   subtitle.textAutoResize = 'HEIGHT'
@@ -946,7 +899,7 @@ function renderSiteSection(ctx: Ctx, combo: Record<string, string>): ComponentNo
   slot.strokeWeight = 1
   slot.strokeAlign = 'INSIDE'
   slot.dashPattern = [6, 6]
-  const slotLabel = boundText(ctx, 'Content Slot', 13, V_SUB)
+  const slotLabel = siteText(ctx, 'Content Slot', 13, V_SUB)
   slotLabel.name = 'Slot Label'
   slot.appendChild(slotLabel)
   c.appendChild(slot)
@@ -1001,8 +954,8 @@ function renderInquiryForm(ctx: Ctx, _combo: Record<string, string>): ComponentN
   const cLabel = autoFrame('label row', 'HORIZONTAL')
   cLabel.counterAxisAlignItems = 'CENTER'
   cLabel.itemSpacing = 4
-  cLabel.appendChild(boundText(ctx, '내용', 12, V_SUB, true))
-  cLabel.appendChild(boundText(ctx, '*', 12, V_ERROR, true))
+  cLabel.appendChild(siteText(ctx, '내용', 12, V_SUB, true))
+  cLabel.appendChild(siteText(ctx, '*', 12, V_ERROR, true))
   contentCell.appendChild(cLabel)
   const area = fixedFrame('textarea', 'VERTICAL', fullW, 120)
   area.primaryAxisAlignItems = 'MIN'
@@ -1013,10 +966,10 @@ function renderInquiryForm(ctx: Ctx, _combo: Record<string, string>): ComponentN
   strokeV(ctx, area, V_BORDER)
   area.strokeWeight = 1
   area.strokeAlign = 'INSIDE'
-  area.appendChild(boundText(ctx, '프로젝트 개요, 희망 일정, 예산 범위를 적어주시면 상담이 빨라집니다.', 13, V_SUB))
+  area.appendChild(siteText(ctx, '프로젝트 개요, 희망 일정, 예산 범위를 적어주시면 상담이 빨라집니다.', 13, V_SUB))
   contentCell.appendChild(area)
   area.layoutAlign = 'STRETCH'
-  const counter = boundText(ctx, '0 / 2000', 11, V_SUB)
+  const counter = siteText(ctx, '0 / 2000', 11, V_SUB)
   counter.name = 'Counter'
   contentCell.appendChild(counter)
   c.appendChild(contentCell)
@@ -1026,7 +979,7 @@ function renderInquiryForm(ctx: Ctx, _combo: Record<string, string>): ComponentN
   files.layoutAlign = 'STRETCH'
   files.primaryAxisSizingMode = 'AUTO'
   files.itemSpacing = 6
-  files.appendChild(boundText(ctx, '파일 첨부', 12, V_SUB, true))
+  files.appendChild(siteText(ctx, '파일 첨부', 12, V_SUB, true))
   const drop = fixedFrame('DropZone', 'VERTICAL', fullW, 88)
   drop.primaryAxisAlignItems = 'CENTER'
   drop.counterAxisAlignItems = 'CENTER'
@@ -1038,7 +991,7 @@ function renderInquiryForm(ctx: Ctx, _combo: Record<string, string>): ComponentN
   drop.strokeAlign = 'INSIDE'
   drop.dashPattern = [6, 6]
   drop.appendChild(icon(ctx, '_Icon/Upload', 'Upload Icon', 22, V_SUB))
-  const dropHint = boundText(ctx, '현장 사진이나 도면이 있다면 첨부해주세요 (최대 20MB)', 12, V_SUB)
+  const dropHint = siteText(ctx, '현장 사진이나 도면이 있다면 첨부해주세요 (최대 20MB)', 12, V_SUB)
   dropHint.name = 'DropZone Hint'
   drop.appendChild(dropHint)
   files.appendChild(drop)
@@ -1054,11 +1007,11 @@ function renderInquiryForm(ctx: Ctx, _combo: Record<string, string>): ComponentN
   agreeRow.counterAxisAlignItems = 'CENTER'
   agreeRow.itemSpacing = 8
   agreeRow.appendChild(checkBox(ctx, true, 'Consent Checkbox'))
-  const agreeLabel = boundText(ctx, '개인정보 수집·이용에 동의합니다 (필수)', 13, V_TEXT)
+  const agreeLabel = siteText(ctx, '개인정보 수집·이용에 동의합니다 (필수)', 13, V_TEXT)
   agreeLabel.name = 'Consent Label'
   agreeRow.appendChild(agreeLabel)
   consent.appendChild(agreeRow)
-  const consentHint = boundText(ctx, '수집 항목: 이름·이메일·연락처 · 보유 기간: 문의 처리 후 3년', 11, V_SUB)
+  const consentHint = siteText(ctx, '수집 항목: 이름·이메일·연락처 · 보유 기간: 문의 처리 후 3년', 11, V_SUB)
   consentHint.name = 'Consent Hint'
   consent.appendChild(consentHint)
   c.appendChild(consent)
@@ -1097,7 +1050,7 @@ function renderInfoCard(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   labelRow.counterAxisAlignItems = 'CENTER'
   labelRow.itemSpacing = 8
   labelRow.appendChild(icon(ctx, '_Icon/MapPin', 'Info Icon', 16, V_ACCENT_TEXT))
-  const label = boundText(ctx, 'Address', 13, V_ACCENT_TEXT, true)
+  const label = siteText(ctx, 'Address', 13, V_ACCENT_TEXT, true)
   label.name = 'Label'
   labelRow.appendChild(label)
   c.appendChild(labelRow)
@@ -1106,14 +1059,201 @@ function renderInfoCard(ctx: Ctx, _combo: Record<string, string>): ComponentNode
   lines.layoutAlign = 'STRETCH'
   lines.primaryAxisSizingMode = 'AUTO'
   lines.itemSpacing = 4
-  const l1 = boundText(ctx, '서울특별시 성동구 아차산로 111', 13, V_TEXT)
+  const l1 = siteText(ctx, '서울특별시 성동구 아차산로 111', 13, V_TEXT)
   l1.name = 'Line 1'
   lines.appendChild(l1)
   // 둘째 줄부터는 보조 정보(출처: ContactPage.module.css .infoLine + .infoLine)
-  const l2 = boundText(ctx, '성수 쇼룸 2층 (성수동2가)', 13, V_SUB)
+  const l2 = siteText(ctx, '성수 쇼룸 2층 (성수동2가)', 13, V_SUB)
   l2.name = 'Line 2'
   lines.appendChild(l2)
   c.appendChild(lines)
+  return c
+}
+
+// ══ DS/EraTimeline ═══════════════════════════════════════════════════
+// 연혁 표기 — 오너가 "연혁 표기는 별도 컴포넌트 및 스토리북 변수화"로 직접 지시했다
+// (docs/figma-coverage-plan.md §C). 연대(era) 하나가 한 칸(열)이고 칸이 가로로 늘어선다 —
+// 세로 레일을 따라 내려가는 Timeline(상태 축 有)과는 다른 물건이다(EraTimeline.tsx 주석 참고).
+// HistoryPage(src/ds/HistoryPage)가 이 컴포넌트를 그대로 감싸 쓴다.
+//
+// 축: columns(2·3·4) × accent(primary·success) × ratio(대표 4값) = 3×2×4 = 24변형(상한 54 이내).
+// showImage·showDescription·showRail은 축이 아니라 BOOLEAN이다 — 세트는 '전부 켠' 모양을 그리고
+// 세 BOOLEAN이 media·description·rail 레이어를 접는다(SiteFooter의 showCompany·showDivider와 같은 패턴 —
+// BOOLEAN/TEXT/SWAP은 VARIANT 축과 달리 변형을 늘리지 않는다).
+//
+// ratio(MediaRatio, 10값 유니온) — 2026-07 재검토로 축을 세웠다(ds-unblocker 판정: "변형 폭발이
+// 사유였는데 실제 계산은 24변형으로 상한 이내다, EraTimeline이 세 세트 중 여유가 가장 크다" — 원래
+// axis-missing 면제 사유가 거꾸로였다). ImageCard가 10값→대표 4값(CARD_RATIOS)으로 줄인 선례를 그대로
+// 따른다 — 값도 같다(ERA_RATIOS, 정본은 categories-data-kr-media.ts:1377). site.ts는 categories.ts를
+// 건드리지 않는 파일 관행(이 파일 상단 5행)이라 값 목록만 복제하고 출처를 남긴다(import하지 않는다).
+// → verify-naming ALLOWLIST 갱신 필요(scripts/** 소유 밖 — 작업 보고 참고):
+//   (1) 기존 axis-missing(EraTimeline/ratio) 면제는 이제 위반이 아니다 — 지워야 E-ALLOWLIST-STALE을
+//       피한다(안 지우면 이 배치 이후 verify-naming이 stale로 실패한다).
+//   (2) ratio 축 값이 대표 4값이라 axis-values 면제 1건이 새로 필요하다(ImageCard와 같은 사유) —
+//       figma: 'ratio: [1x1|16x9|4x3|21x9]', code: 'ratio: [1x1|4x3|3x2|16x9|21x9|4x5|3x4|9x16|2x1|auto]'.
+//
+// 실데이터 출처: EraTimeline.stories.tsx GROUPS(= HistoryPage.stories.tsx HISTORY_GROUPS와 같은 데이터 —
+// 이 파일의 다른 브랜드 상수(BRAND='SPACE PLANNING')와 달리, 연혁 문구는 레퍼런스 원문(태산)을 그대로 쓴다).
+const ERA_GROUPS: Array<{ era: string; entries: Array<{ date: string; title: string }> }> = [
+  { era: '2019년 대', entries: [{ date: '2019년 5월', title: '회사 설립 — 주식회사 태산 창립일자' }] },
+  {
+    era: '2021년 대',
+    entries: [
+      { date: '2021년 3월', title: '예비사회적기업 공식 지정' },
+      { date: '2021년 4월', title: '여성기업 확인서 취득' },
+    ],
+  },
+  { era: '2023년 대', entries: [{ date: '2023년 1월', title: '상호변경 — (주)태산으로 사명 변경' }] },
+  { era: '2026년 대', entries: [{ date: '2026년 7월', title: '회사 홈페이지 리뉴얼' }] },
+]
+// 출처: EraTimeline.stories.tsx WithDescription 스토리 — 모든 항목에 같은 문구를 붙인다.
+const ERA_DESCRIPTION = '설계·시공·유지관리까지 책임 있는 서비스를 제공합니다.'
+const ERA_W = 880
+// ratio 축 대표 4값 — 정본은 categories-data-kr-media.ts의 CARD_RATIOS(ImageCard가 10값→4값으로
+// 줄인 선례, 값도 그대로 따른다). site.ts는 categories.ts를 건드리지 않는 파일 관행(이 파일 5행)이라
+// 값만 복제한다. React 기본값(ratio='1x1')을 첫 값으로 둬 defaultVariant가 지금 모양과 같게 유지한다.
+const ERA_RATIOS = ['1x1', '16x9', '4x3', '21x9']
+// 가로÷세로(categories-data-kr-media.ts의 RATIO_WH와 같은 표, ERA_RATIOS 4값만).
+const ERA_RATIO_WH: Record<string, number> = { '1x1': 1, '4x3': 4 / 3, '16x9': 16 / 9, '21x9': 21 / 9 }
+
+function renderEraTimeline(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const columns = parseInt(combo.columns || '4', 10) || 4
+  // accent — 레일 점 색(장식용 -500). 출처: EraTimeline.module.css .dot { background: var(--site-accent) }.
+  // renderSiteSection의 vAccent와 정확히 같은 계산식이라 두 컴포넌트가 항상 같은 강조색을 그린다.
+  const accentTone = combo.accent === 'primary' ? 'primary' : TONE
+  const vAccent = `color/${accentTone}/500`
+  const ratio = combo.ratio || '1x1'
+  const groups = ERA_GROUPS.slice(0, columns)
+  const gap = 24
+  const colW = Math.floor((ERA_W - (columns - 1) * gap) / columns)
+
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'FIXED'
+  c.resize(ERA_W, c.height)
+  c.counterAxisSizingMode = 'AUTO' // 높이 hug — resize 뒤에
+  c.itemSpacing = gap
+  c.fills = []
+
+  for (const group of groups) {
+    const col = autoFrame('era', 'VERTICAL')
+    col.counterAxisSizingMode = 'FIXED'
+    col.resize(colW, col.height)
+    col.primaryAxisSizingMode = 'AUTO'
+    col.itemSpacing = 16
+
+    const title = siteText(ctx, group.era, 18, V_TEXT, true)
+    title.name = 'eraTitle'
+    title.layoutAlign = 'STRETCH'
+    title.textAutoResize = 'HEIGHT'
+    col.appendChild(title)
+
+    // 레일 — 점 + 가로선(장식). showRail이 이 프레임 전체를 접는다.
+    const rail = autoFrame('rail', 'HORIZONTAL')
+    rail.layoutAlign = 'STRETCH'
+    rail.counterAxisAlignItems = 'CENTER'
+    rail.itemSpacing = 8
+    const dot = figma.createEllipse()
+    dot.name = 'dot'
+    dot.resize(6, 6)
+    fillV(ctx, dot, vAccent)
+    rail.appendChild(dot)
+    const line = figma.createRectangle()
+    line.name = 'line'
+    line.resize(1, 1)
+    fillV(ctx, line, V_BORDER)
+    rail.appendChild(line)
+    line.layoutGrow = 1
+    col.appendChild(rail)
+
+    // 대표 사진 — 공용 플레이스홀더. ERA_RATIOS 4값은 전부 가로가 세로 이상(1x1~21x9)이라 세로 폭발
+    // 걱정 없이 colW/비율로 높이를 구한다(categories-data-kr-media.ts의 ratioBox와 같은 계산, maxH 캡
+    // 불필요 — 값 선택 자체가 그 캡 역할을 한다).
+    const mediaH = Math.round(colW / (ERA_RATIO_WH[ratio] ?? 1))
+    const media = placeholderPlate(ctx, colW, mediaH)
+    media.name = 'media'
+    col.appendChild(media)
+
+    const entries = autoFrame('entries', 'VERTICAL')
+    entries.layoutAlign = 'STRETCH'
+    entries.counterAxisSizingMode = 'FIXED'
+    entries.resize(colW, entries.height)
+    entries.primaryAxisSizingMode = 'AUTO'
+    entries.itemSpacing = 12
+    for (const entry of group.entries) {
+      const row = autoFrame('entry', 'VERTICAL')
+      row.layoutAlign = 'STRETCH'
+      row.counterAxisSizingMode = 'FIXED'
+      row.resize(colW, row.height)
+      row.primaryAxisSizingMode = 'AUTO'
+      row.itemSpacing = 4
+
+      const date = siteText(ctx, entry.date, 13, V_TEXT, true)
+      date.name = 'date'
+      date.layoutAlign = 'STRETCH'
+      date.textAutoResize = 'HEIGHT'
+      row.appendChild(date)
+
+      const titleText = siteText(ctx, entry.title, 12, V_SUB)
+      titleText.name = 'title'
+      titleText.layoutAlign = 'STRETCH'
+      titleText.textAutoResize = 'HEIGHT'
+      row.appendChild(titleText)
+
+      // description — showDescription이 그룹 안 '모든' 항목의 이 레이어를 한꺼번에 접는다
+      // (React도 entry 단위가 아니라 컴포넌트 전체에 걸리는 단일 prop이라 같은 그림이다).
+      const desc = siteText(ctx, ERA_DESCRIPTION, 12, 'color/secondary/600')
+      desc.name = 'description'
+      desc.layoutAlign = 'STRETCH'
+      desc.textAutoResize = 'HEIGHT'
+      row.appendChild(desc)
+
+      entries.appendChild(row)
+    }
+    col.appendChild(entries)
+
+    c.appendChild(col)
+  }
+
+  return c
+}
+
+// ══ DS/Highlight ═════════════════════════════════════════════════════
+// 문장 안 강조어 — EraTimeline과 함께 오너가 "별도 컴포넌트 및 스토리북 변수화"로 지시했다.
+// SiteSection.title(<Highlight>로 일부 단어만 강조)이 이 컴포넌트를 쓴다.
+//
+// 세트가 그리는 실체는 텍스트 레이어 하나뿐이라 children(ReactNode) 슬롯은 규약 §7의 이름 'content'로
+// TEXT를 열었다 — DS/Callout.content와 정확히 같은 처리다(children이 ds-props.mjs에서 code.slot으로
+// 분류돼 code.text 목록에 없으므로, N4는 이 TEXT를 'text-extra'로 잡는다. Callout이 이미 같은 이유로
+// ALLOWLIST에 있다 — Highlight도 같은 구조적 격차라 등록이 필요하다. scripts/**는 이 배치 소유가 아니라
+// 등록하지 않았다 — 보고 참고).
+//
+// 축: tone(accent·primary·success·warning·error) × weight(inherit·bold) = 5×2 = 10변형(상한 24 이내).
+const HIGHLIGHT_TONE_VAR: Record<string, string> = {
+  // accent — Highlight.module.css의 실제 CSS 폴백(섹션 밖)은 --ds-color-primary-800이지만, 이 문서는
+  // 이 파일 전체의 기본 accent(TONE='success' = SiteSection의 React 기본값)를 기준으로 그린다 —
+  // Highlight의 가장 흔한 실사용 자리가 accent='success' SiteSection 헤드라인 안이기 때문이다
+  // (HighlightStories의 InHeadline 예시와 같은 맥락).
+  accent: V_ACCENT_TEXT, // color/success/800
+  primary: 'color/primary/800',
+  success: 'color/success/800',
+  warning: 'color/warning/800',
+  error: 'color/error/700',
+}
+
+function renderHighlight(ctx: Ctx, combo: Record<string, string>): ComponentNode {
+  const tone = combo.tone ?? 'accent'
+  const bold = combo.weight === 'bold'
+  const varName = HIGHLIGHT_TONE_VAR[tone] ?? V_ACCENT_TEXT
+
+  const c = figma.createComponent()
+  c.layoutMode = 'HORIZONTAL'
+  c.primaryAxisSizingMode = 'AUTO'
+  c.counterAxisSizingMode = 'AUTO'
+  c.fills = []
+  const t = siteText(ctx, '자연', 24, varName, bold)
+  t.name = 'content'
+  c.appendChild(t)
   return c
 }
 
@@ -1174,10 +1314,10 @@ const SITE_CATEGORY: CategoryDef = {
       desc:
         '프론트 GNB. 좌 브랜드 / 우 메뉴 5개(활성 메뉴는 굵게 + 그린 밑줄) / 우 [1:1 문의]. ' +
         'transparent는 배경·보더 없이 히어로 위에 얹히는 변형이라 문서에서는 옅은 회색 면 위에 올려 배경이 비치는 것을 보여줍니다. ' +
-        'active(1~5)는 현재 페이지 메뉴 — 19. Site Screens의 5화면이 이 축으로 자기 메뉴를 켭니다.',
+        'active(1~5)는 현재 페이지 메뉴 — site-screens.ts의 5화면(18. Client Pages에 함께 그려짐)이 이 축으로 자기 메뉴를 켭니다.',
       // 축: transparent · sticky(둘 다 React 불리언 prop) + active(아래 사유). 2×2×5 = 20변형.
       // active는 React prop이 아니다 — 대응물은 `value`(선택된 메뉴 값, string)인데 "어느 메뉴가
-      // 굵고 밑줄인가"는 문자열이 아니라 시각 상태라 Figma에선 축으로만 표현된다. 19. Site Screens의
+      // 굵고 밑줄인가"는 문자열이 아니라 시각 상태라 Figma에선 축으로만 표현된다. site-screens.ts의
       // 5개 화면이 이 축으로 자기 메뉴를 켠다 → 지우면 화면 조립이 깨진다. ALLOWLIST에 사유 등록.
       build: (ctx, page) =>
         buildSet(
@@ -1252,24 +1392,6 @@ const SITE_CATEGORY: CategoryDef = {
       ],
     },
     {
-      key: 'SortBar',
-      setName: 'DS/SortBar',
-      eyebrow: 'MOLECULE · SITE',
-      desc: '목록 상단 정렬 바. 좌측 "전체 6개"(개수만 굵게), 우측 Select 2개(최신순 · 서비스별). 바 자체는 면을 깔지 않고 섹션 면 위에 그대로 얹힙니다.',
-      // state=default는 React prop이 아니라 Figma의 구조적 요구다 — 컴포넌트 세트는 베리언트 속성이
-      // 최소 1개 있어야 성립하는데 SortBar에는 유니온/불리언 prop이 하나도 없다. ALLOWLIST에 사유 등록.
-      build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/SortBar', [{ name: 'state', values: ['default'] }], (c) => renderSortBar(ctx, c), {
-          texts: [
-            { prop: 'totalLabel', layer: 'totalLabel', def: '전체' },
-            // total: number → price와 같은 이유로 TEXT. 레이어는 CSS 클래스(.count), 이름은 prop 그대로.
-            { prop: 'total', layer: 'count', def: '6개' },
-            { prop: 'totalSuffix', layer: 'totalSuffix', def: '' },
-          ],
-        }),
-      states: [{ caption: '기본', props: {} }],
-    },
-    {
       key: 'SiteFooter',
       setName: 'DS/SiteFooter',
       eyebrow: 'ORGANISM · SITE',
@@ -1321,48 +1443,158 @@ const SITE_CATEGORY: CategoryDef = {
       states: [{ caption: '기본', props: {} }],
     },
     {
-      key: 'InfoCard',
-      setName: 'DS/InfoCard',
-      eyebrow: 'MOLECULE · SITE',
-      desc: '오시는길의 정보 카드(Address · Phone · Email · Hours). 단일 컴포넌트이며 라벨/값 2줄과 아이콘은 인스턴스 속성으로 바꿉니다. 라벨은 흰 면 위 13px 글자라 그린 텍스트 셰이드(success-800)입니다.',
+      key: 'EraTimeline',
+      setName: 'DS/EraTimeline',
+      eyebrow: 'ORGANISM · SITE',
+      desc:
+        '연대별 연혁 표기 — 연대(era) 하나가 한 칸(열)이고 칸이 가로로 늘어섭니다. 세로 레일을 따라 내려가는 Timeline과는 다른 컴포넌트입니다(상태 축이 없습니다). ' +
+        'HistoryPage가 이 세트를 그대로 감싸 씁니다. showImage·showDescription·showRail은 media·description·rail 레이어를 개별로 접는 BOOLEAN이고, ' +
+        '레일 점 색은 accent(primary·success) 축을 따라 SiteSection과 같은 강조색을 그리며, 대표 사진 비율은 ratio(대표 4값) 축을 따릅니다.',
+      // 축 3개 = 3×2×4 = 24변형(상한 54 이내) — ratio 축을 세운 사유는 위 renderEraTimeline 앞 주석 참고.
       build: (ctx, page) =>
-        buildSet(ctx, page, 'DS/InfoCard', [{ name: 'state', values: ['default'] }], (c) => renderInfoCard(ctx, c), {
-          texts: [
-            { prop: 'Label', layer: 'Label', def: 'Address' },
-            { prop: 'Line 1', layer: 'Line 1', def: '서울특별시 성동구 아차산로 111' },
-            { prop: 'Line 2', layer: 'Line 2', def: '성수 쇼룸 2층 (성수동2가)' },
+        buildSet(
+          ctx,
+          page,
+          'DS/EraTimeline',
+          [
+            // 기본값(React columns=4·accent='success'·ratio='1x1')을 첫 값으로 둬 defaultVariant가 지금 모양과 같다.
+            { name: 'columns', values: ['4', '2', '3'] },
+            { name: 'accent', values: ['success', 'primary'] },
+            { name: 'ratio', values: ERA_RATIOS },
           ],
-          swaps: [{ prop: 'Icon', layer: 'Info Icon', defKey: '_Icon/MapPin' }],
-        }),
+          (c) => renderEraTimeline(ctx, c),
+          {
+            bools: [
+              { prop: 'showImage', layer: 'media', def: true },
+              { prop: 'showDescription', layer: 'description', def: true },
+              { prop: 'showRail', layer: 'rail', def: true },
+            ],
+          },
+        ),
       states: [
-        {
-          caption: 'Address',
-          props: {},
-          texts: { Label: 'Address', 'Line 1': '서울특별시 성동구 아차산로 111', 'Line 2': '성수 쇼룸 2층 (성수동2가)' },
-          swaps: { Icon: '_Icon/MapPin' },
-        },
-        {
-          caption: 'Phone',
-          props: {},
-          texts: { Label: 'Phone', 'Line 1': '02-1234-5678', 'Line 2': '평일 상담 · 부재 시 콜백' },
-          swaps: { Icon: '_Icon/Phone' },
-        },
-        {
-          caption: 'Email',
-          props: {},
-          texts: { Label: 'Email', 'Line 1': 'hello@spaceplanning.ai', 'Line 2': '견적 문의는 24시간 접수' },
-          swaps: { Icon: '_Icon/Envelope' },
-        },
-        {
-          caption: 'Hours',
-          props: {},
-          texts: { Label: 'Hours', 'Line 1': '평일 09:00 - 18:00', 'Line 2': '점심 12:30 - 13:30 · 주말 휴무' },
-          swaps: { Icon: '_Icon/Clock' },
-        },
+        { caption: '기본 — 4칸', props: {} },
+        { caption: '3칸', props: { columns: '3' } },
+        { caption: '2칸', props: { columns: '2' } },
+        { caption: 'primary 강조', props: { accent: 'primary' } },
+        { caption: '사진 OFF', props: { showImage: 'false' } },
+        { caption: '레일 OFF', props: { showRail: 'false' } },
+        { caption: '16:9 비율', props: { ratio: '16x9' } },
+      ],
+    },
+    {
+      key: 'Highlight',
+      setName: 'DS/Highlight',
+      eyebrow: 'ATOM · SITE',
+      desc:
+        '문장 안의 한 단어만 강조색으로 세우는 인라인 텍스트. 히어로 헤드라인의 강조어(SiteSection.title 안 <Highlight>)를 담당합니다. ' +
+        'tone=accent는 SiteSection의 강조색을 상속하는 기본값이고(이 문서는 success 기준으로 그립니다), primary·success·warning·error는 흰 배경에서 AA(4.5:1)를 넘는 고정 셰이드입니다.',
+      // 축 2개 = 5×2 = 10변형. children→content TEXT는 renderHighlight 주석 참고(ALLOWLIST 등록 필요).
+      build: (ctx, page) =>
+        buildSet(
+          ctx,
+          page,
+          'DS/Highlight',
+          [
+            { name: 'tone', values: ['accent', 'primary', 'success', 'warning', 'error'] },
+            { name: 'weight', values: ['inherit', 'bold'] },
+          ],
+          (c) => renderHighlight(ctx, c),
+          {
+            texts: [{ prop: 'content', layer: 'content', def: '자연' }],
+          },
+        ),
+      states: [
+        { caption: 'accent(기본)', props: {} },
+        { caption: 'primary', props: { tone: 'primary' } },
+        { caption: 'success', props: { tone: 'success' } },
+        { caption: 'warning', props: { tone: 'warning' } },
+        { caption: 'error', props: { tone: 'error' } },
+        { caption: 'bold', props: { weight: 'bold' } },
       ],
     },
   ],
 }
+
+// ── SortBar · InfoCard — 오너 확정(2026-07 개편)으로 '18. Client Pages'가 아니라 ────────
+// '15. Admin Component'에 그려진다. 근거:
+//  · SortBar — React SortBar는 Admin/ListToolbar(layout="site")의 파사드다(Storybook 타이틀이
+//    'Admin/ListToolbar'). 범주상 site가 아니라 admin이다.
+//  · InfoCard — 대응하는 React 컴포넌트가 없는 Figma 전용 molecule이다(verify-naming ALLOWLIST의
+//    'no-code' 사유 참고). categories*.ts(1~14 카테고리 페이지)는 건드리지 않기로 했으므로
+//    옮길 수 있는 기존 분류 페이지가 admin 뿐이다.
+// 렌더 함수·buildSet 선언은 그대로 이 파일(site.ts)에 둔다 — scripts/verify-screen-props.mjs의
+// SCREEN_FILES가 site-screens.ts → 'site' 레지스트리(=이 파일이 선언한 세트)만 보도록 고정돼 있어서
+// (scripts/**는 건드리지 않는다) 선언 파일을 옮기면 그 게이트가 깨진다. 그래서 "어느 파일이 선언했는가"와
+// "어느 페이지에 그려지는가"를 분리했다 — buildSet(ctx, adminPage, ...)로 노드만 다른 페이지에 붙인다.
+const RELOCATED_TO_ADMIN_DOCS: ComponentDoc[] = [
+  {
+    key: 'SortBar',
+    setName: 'DS/SortBar',
+    eyebrow: 'MOLECULE · ADMIN',
+    desc:
+      '목록 상단 정렬 바. 좌측 "전체 6개"(개수만 굵게), 우측 Select 2개(최신순 · 서비스별). ' +
+      'React SortBar는 Admin/ListToolbar(layout="site")의 파사드라 여기(Admin Component)에 둡니다 — ' +
+      "렌더 로직·색(그린 강조 포함)의 정본은 site.ts입니다. '18. Client Pages'의 상품 목록 화면이 이 세트의 인스턴스를 씁니다.",
+    // state=default는 React prop이 아니라 Figma의 구조적 요구다 — 컴포넌트 세트는 베리언트 속성이
+    // 최소 1개 있어야 성립하는데 SortBar에는 유니온/불리언 prop이 하나도 없다. ALLOWLIST에 사유 등록.
+    build: (ctx, page) =>
+      buildSet(ctx, page, 'DS/SortBar', [{ name: 'state', values: ['default'] }], (c) => renderSortBar(ctx, c), {
+        texts: [
+          { prop: 'totalLabel', layer: 'totalLabel', def: '전체' },
+          // total: number → price와 같은 이유로 TEXT. 레이어 이름 = prop 이름 그대로('total').
+          { prop: 'total', layer: 'total', def: '6개' },
+          { prop: 'totalSuffix', layer: 'totalSuffix', def: '' },
+        ],
+      }),
+    states: [{ caption: '기본', props: {} }],
+  },
+  {
+    key: 'InfoCard',
+    setName: 'DS/InfoCard',
+    eyebrow: 'MOLECULE · ADMIN',
+    desc:
+      '오시는길의 정보 카드(Address · Phone · Email · Hours). 대응하는 React 컴포넌트가 없는 Figma 전용 ' +
+      "molecule이라 여기(Admin Component)에 둡니다. 라벨은 흰 면 위 13px 글자라 그린 텍스트 셰이드(success-800)이고, " +
+      "'18. Client Pages'의 오시는길 화면이 이 세트의 인스턴스 4장을 씁니다.",
+    build: (ctx, page) =>
+      buildSet(ctx, page, 'DS/InfoCard', [{ name: 'state', values: ['default'] }], (c) => renderInfoCard(ctx, c), {
+        texts: [
+          { prop: 'Label', layer: 'Label', def: 'Address' },
+          { prop: 'Line 1', layer: 'Line 1', def: '서울특별시 성동구 아차산로 111' },
+          { prop: 'Line 2', layer: 'Line 2', def: '성수 쇼룸 2층 (성수동2가)' },
+        ],
+        swaps: [{ prop: 'Icon', layer: 'Info Icon', defKey: '_Icon/MapPin' }],
+      }),
+    states: [
+      {
+        caption: 'Address',
+        props: {},
+        texts: { Label: 'Address', 'Line 1': '서울특별시 성동구 아차산로 111', 'Line 2': '성수 쇼룸 2층 (성수동2가)' },
+        swaps: { Icon: '_Icon/MapPin' },
+      },
+      {
+        caption: 'Phone',
+        props: {},
+        texts: { Label: 'Phone', 'Line 1': '02-1234-5678', 'Line 2': '평일 상담 · 부재 시 콜백' },
+        swaps: { Icon: '_Icon/Phone' },
+      },
+      {
+        caption: 'Email',
+        props: {},
+        texts: { Label: 'Email', 'Line 1': 'hello@spaceplanning.ai', 'Line 2': '견적 문의는 24시간 접수' },
+        swaps: { Icon: '_Icon/Envelope' },
+      },
+      {
+        caption: 'Hours',
+        props: {},
+        texts: { Label: 'Hours', 'Line 1': '평일 09:00 - 18:00', 'Line 2': '점심 12:30 - 13:30 · 주말 휴무' },
+        swaps: { Icon: '_Icon/Clock' },
+      },
+    ],
+  },
+]
+/** RELOCATED_TO_ADMIN_DOCS의 세트 이름 — adoptSiteSets가 15(Admin Component) 페이지에서 이 이름만 골라 입양한다. */
+const RELOCATED_SET_NAMES = RELOCATED_TO_ADMIN_DOCS.map((d) => d.setName)
 
 // ── 사이트 페이지 생성 ───────────────────────────────────────────────
 // 세트는 페이지 오른쪽(x=1360)에 세로로 쌓고, 문서(오토레이아웃)에는 인스턴스만 배치한다(admin.ts와 동일).
@@ -1409,13 +1641,13 @@ export async function generateSite(
       set.y = sy
       sy += set.height + 48
       bindTokens(ctx, set) // 보더·마진·라운드·불투명도 변수 바인딩
-      sets.set(doc.setName, set) // = SITE_SETS — 화면(19)이 여기서 세트를 꺼낸다
+      sets.set(doc.setName, set) // = SITE_SETS — site-screens.ts(18에 함께 그려짐)가 여기서 세트를 꺼낸다
     } catch (e) {
       ctx.warnings.push(`${doc.setName} 세트 생성 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  const root = makeRoot(cat.title)
+  const root = makeRoot(ctx, cat.title)
   placeRoot(root, page)
   makeHeader(ctx, root, cat.title, cat.subtitle)
   for (const doc of cat.docs) {
@@ -1430,5 +1662,52 @@ export async function generateSite(
     if (!set) continue
     for (const st of doc.states) render.appendChild(variantItem(ctx, set, st))
   }
+
+  // ── SortBar·InfoCard — 오너 확정으로 15(Admin Component)에 그린다(RELOCATED_TO_ADMIN_DOCS 주석 참고) ──
+  // 15가 이미 있으면(보통 '어드민 컴포넌트'를 먼저·함께 돌렸을 때) 그 페이지에 이어 그리고,
+  // 없으면 임시로 이 페이지(18)에 그린다 — 위치만 다를 뿐 SITE_SETS 등록은 항상 동일해
+  // site-screens.ts의 inst()는 페이지 위치와 무관하게 그대로 찾는다.
+  const adminPage = figma.root.children.find((p) => p.name === PAGE_ADMIN)
+  const relocTarget = adminPage ?? page
+  if (!adminPage) {
+    ctx.warnings.push(
+      `'${PAGE_ADMIN}' 페이지가 없어 SortBar·InfoCard를 임시로 '${cat.pageName}'에 그렸습니다 — ` +
+        "'어드민 컴포넌트'를 생성한 뒤 '기존 삭제 후 재생성'으로 다시 돌리면 그 페이지로 옮겨 그립니다.",
+    )
+  }
+  const relocBaseY = maxBottom(relocTarget) + 48
+  const relocRoot = makeRoot(ctx, 'Site → Admin 이전')
+  relocRoot.x = 0
+  relocRoot.y = relocBaseY
+  relocTarget.appendChild(relocRoot)
+  makeHeader(
+    ctx,
+    relocRoot,
+    'Site → Admin 이전',
+    "React SortBar는 Admin/ListToolbar의 파사드, InfoCard는 대응 React 컴포넌트가 없는 Figma 전용 molecule이라 " +
+      "'18. Client Pages'가 아니라 여기 둡니다. 렌더 로직·색(그린 강조 포함)의 정본은 site.ts입니다.",
+  )
+  let ry = relocBaseY
+  for (const doc of RELOCATED_TO_ADMIN_DOCS) {
+    try {
+      const set = doc.build(ctx, relocTarget)
+      set.x = 1360
+      set.y = ry
+      ry += set.height + 48
+      bindTokens(ctx, set)
+      sets.set(doc.setName, set) // = SITE_SETS
+      const render = makeSection(ctx, relocRoot, {
+        eyebrow: doc.eyebrow,
+        name: doc.key,
+        desc: doc.desc,
+        meta: [`Set: ${doc.setName}`, `상태 ${doc.states.length}개`, 'Platform: Web'],
+        renderDir: 'WRAP',
+      })
+      for (const st of doc.states) render.appendChild(variantItem(ctx, set, st))
+    } catch (e) {
+      ctx.warnings.push(`${doc.setName} 세트 생성 실패: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   return ctx.warnings
 }

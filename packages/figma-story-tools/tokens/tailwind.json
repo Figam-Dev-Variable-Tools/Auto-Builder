@@ -6,6 +6,7 @@
     "error": "#EF4444",
     "success": "#22C55E",
     "warning": "#F59E0B",
+    "neutral": "#0F172A",
     "bg": "#FFFFFF",
     "bgSubtle": "#F9FAFB",
     "text": "#0F172A",
@@ -15,9 +16,31 @@
     "fontFamily": "'Inter', system-ui, sans-serif",
     "baseSize": 16,
     "scale": 1.25,
-    "sizes": { "xs": 10, "sm": 13, "md": 16, "lg": 20, "xl": 25, "xxl": 31 },
-    "weights": { "regular": 400, "medium": 500, "bold": 700 }
+    "sizes": {
+      "xs": 10,
+      "sm": 13,
+      "md": 16,
+      "lg": 20,
+      "xl": 25,
+      "xxl": 31
+    },
+    "weights": {
+      "regular": 400,
+      "medium": 500,
+      "bold": 700
+    }
   },
-  "radius": { "sm": 4, "md": 8, "lg": 12 },
-  "spacing": { "1": 4, "2": 8, "3": 12, "4": 16, "5": 20, "6": 24 }
+  "radius": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12
+  },
+  "spacing": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24
+  }
 }

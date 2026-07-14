@@ -3,6 +3,7 @@
 import { LOGOS_DATA } from '../logos-data'
 import { hexToRgb } from '../presets'
 import { svgToFigmaPath } from '../svg-path'
+import { bindFontVars, type Ctx, txt } from './foundations'
 
 const NUM = /-?\d*\.?\d+(?:e[+-]?\d+)?/gi
 
@@ -69,4 +70,28 @@ export function brandLogo(key: string, size: number): FrameNode | null {
     return null
   }
   return box
+}
+
+/**
+ * 브랜드 고정색 채우기 — 카카오·네이버 등 3rd-party 브랜드 마크는 사용자 테마 색으로 바뀌면 안 된다
+ * (카카오 노랑이 사용자 메인 컬러가 되면 그건 카카오가 아니다). brand-logos.ts가 이 파일처럼
+ * verify-bindings ALLOWLIST(B1) 대상이라 여기 두면 raw hex를 써도 게이트가 정확히 판단한다 —
+ * 호출부(예: 본인인증 수단 목록)를 위해 이 파일 밖에서도 쓸 수 있게 export한다.
+ */
+export function brandColorFill(node: GeometryMixin, hex: string) {
+  node.fills = [{ type: 'SOLID', color: hexToRgb(hex) }]
+}
+/** 브랜드 고정색 테두리(예: Google 버튼의 #DADCE0 규정 보더) — fill과 같은 근거. */
+export function brandColorStroke(node: MinimalStrokesMixin, hex: string) {
+  node.strokes = [{ type: 'SOLID', color: hexToRgb(hex) }]
+}
+
+/**
+ * 브랜드 고정색 텍스트(카카오 버튼 라벨 "카카오 로그인" 등) — 색은 브랜드 규정색으로 고정하되
+ * 크기·굵기·글씨체는 여전히 변수에 문다(오너: 폰트는 전부 변수 — 색만 못 바꾸는 것과는 별개다).
+ * 출처: src/ds/SocialLoginButton/brand.css "부록 E — 소셜 브랜드 규정표(변경 금지)".
+ */
+export function brandColorText(ctx: Ctx, chars: string, size: number, hex: string, bold = false): TextNode {
+  const t = txt(ctx, chars, size, hex, bold)
+  return bindFontVars(ctx, t, size, bold)
 }

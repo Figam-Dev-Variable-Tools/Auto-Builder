@@ -34,7 +34,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { extractFigmaSets } from './lib/figma-sets.mjs'
+import { extractFigmaSets, getValidIconKeys } from './lib/figma-sets.mjs'
 
 const require = createRequire(import.meta.url)
 const ts = require('typescript')
@@ -85,6 +85,8 @@ const parseFile = (abs) => ts.createSourceFile(abs, readFileSync(abs, 'utf8'), t
 const { specs, errors: extractErrors } = extractFigmaSets(root)
 // 추출기 자체가 못 읽은 게 있으면 그 세트의 속성 목록은 불완전하다 → 대조가 거짓말을 한다. 그대로 올린다.
 errors.push(...extractErrors)
+// INSTANCE_SWAP 값(아이콘 키) 검증의 단일 출처 — icons-data.ts를 새로 읽지 않고 재사용한다(D4).
+const validIconKeys = getValidIconKeys(root)
 
 /** 'admin' | 'site' 등 생성기 파일 이름 → 그 파일이 선언한 세트들 */
 const specsByGenerator = new Map()
@@ -193,6 +195,99 @@ for (const { file, registry } of SCREEN_FILES) {
       message: `SCREEN_FILES에 등록됐는데 inst() 호출이 0건이다 — 호출부가 사라졌거나 헬퍼 이름이 바뀌었다(검사기가 아무것도 안 보고 있다).`,
     })
   }
+}
+
+// ── 4) 문서(variantItem) states 대조 — 세 번째 사고를 미리 막는 자리 ──────
+// 화면(inst())과 나란한 두 번째 조립 통로다: categories-core.ts 등 5개 생성기가 문서 페이지에
+// variantItem(ctx, set, state)로 "이 컴포넌트는 이렇게 생겼다" 예시를 그린다. state.props/texts/swaps의
+// 이름이 세트에 없거나 값이 그 축·타입에 안 맞으면(오타 'showFotter' · 없는 축 값 'size: xl' · 'yes' 같은 불리언)
+// build-set.ts의 resolveStateProps가 **경고만 남기고 무시한다** — inst()가 화면에서 저지르는 것과 완전히
+// 같은 실패 모드다. setName은 이미 figma-sets.mjs가 buildSet 호출과 같은 자리에서 뽑았으므로(resolveDocStates)
+// 여기선 그 states 안의 이름·값만 세트 스펙과 대조한다. 이 화면 레지스트리(SCREEN_FILES)와 무관하게
+// 5개 생성기 전부를 본다 — 문서는 화면과 달리 admin/site 구분이 없다.
+let docStatesChecked = 0
+for (const spec of specs) {
+  if (!Array.isArray(spec.states)) continue // 추출 자체의 실패는 이미 errors에 올라 있다(E-UNPARSED-STATES 등)
+  const kinds = propKindsOf(spec)
+  for (const state of spec.states) {
+    docStatesChecked++
+    checkDocState(spec, state, kinds)
+  }
+}
+
+/** 문서 상태(state) 하나의 props/texts/swaps를 세트 스펙과 대조한다. 못 읽는 게 아니라 값 자체를 판정한다. */
+function checkDocState(spec, state, kinds) {
+  const line = state.__line ?? spec.line
+  const checkBucket = (bucketName, obj) => {
+    if (!obj) return
+    for (const name of Object.keys(obj)) {
+      const value = obj[name]
+      const kind = kinds.get(name)
+      if (!kind) {
+        violations.push({
+          rule: 'D1',
+          kind: 'doc-state-unknown',
+          file: spec.file,
+          line,
+          set: spec.setName,
+          prop: name,
+          near: nearest(name, [...kinds.keys()]),
+          fix: `문서 상태 '${state.caption}'(${bucketName}) — '${spec.setName}'에 '${name}' 속성이 없다. variantItem은 경고만 남기고 무시한다(문서에서 그 오버라이드가 조용히 사라진다).`,
+        })
+        continue
+      }
+      if (kind === 'BOOLEAN' && value !== 'true' && value !== 'false') {
+        violations.push({
+          rule: 'D2',
+          kind: 'doc-state-bad-bool',
+          file: spec.file,
+          line,
+          set: spec.setName,
+          prop: `${name}='${value}'`,
+          near: null,
+          fix: `문서 상태 '${state.caption}' — BOOLEAN 속성 '${name}'은 'true' 또는 'false' 문자열이어야 한다.`,
+        })
+        continue
+      }
+      // D4: INSTANCE_SWAP 값(아이콘 키)이 실재하는가. resolveStateProps는 ICON_COMPONENTS.get(raw)로
+      // 대조해 없으면 경고만 남기고 그 오버라이드를 버린다(build-set.ts:191-197) — D1(이름 존재)만 보고
+      // 넘어가면 이 실패 모드를 놓친다. kind가 여기 오려면 이름은 이미 세트에 실재하므로(D1 통과),
+      // 여기서 판정하는 것은 오직 값(아이콘 키 문자열)이다.
+      if (kind === 'INSTANCE_SWAP') {
+        if (typeof value !== 'string' || !validIconKeys.has(value)) {
+          violations.push({
+            rule: 'D4',
+            kind: 'doc-state-bad-icon-key',
+            file: spec.file,
+            line,
+            set: spec.setName,
+            prop: `${name}='${value}'`,
+            near: nearest(String(value), [...validIconKeys]),
+            fix: `문서 상태 '${state.caption}' — INSTANCE_SWAP 속성 '${name}'의 아이콘 키 '${value}'가 ICON_COMPONENTS에 없다. resolveStateProps가 경고만 남기고 그 오버라이드를 버린다(세트 기본 아이콘이 그대로 렌더된다).`,
+          })
+        }
+        continue
+      }
+      if (kind === 'VARIANT') {
+        const axis = spec.axes.find((a) => a.name === name)
+        if (axis && !axis.values.map(String).includes(String(value))) {
+          violations.push({
+            rule: 'D3',
+            kind: 'doc-state-bad-variant-value',
+            file: spec.file,
+            line,
+            set: spec.setName,
+            prop: `${name}='${value}'`,
+            near: axis.values.join(' | '),
+            fix: `문서 상태 '${state.caption}' — 축 '${name}'의 값이 아니다. setProperties가 던지고 variantItem이 catch로 삼켜 이 문서 아이템의 오버라이드가 전부 날아간다.`,
+          })
+        }
+      }
+    }
+  }
+  checkBucket('props', state.props)
+  checkBucket('texts', state.texts)
+  checkBucket('swaps', state.swaps)
 }
 
 /** inst() 호출 하나를 세트 스펙과 대조한다. 못 읽으면 unparsed에 올린다(건너뛰지 않는다). */
@@ -383,7 +478,12 @@ const failing = violations.length > 0 || errors.length > 0 || unparsed.length > 
 if (asJson) {
   console.log(
     JSON.stringify(
-      { violations, errors, unparsed, summary: { screens: screenCount, sets: setCount, desync: violations.length } },
+      {
+        violations,
+        errors,
+        unparsed,
+        summary: { screens: screenCount, sets: setCount, desync: violations.length, docStatesChecked },
+      },
       null,
       2,
     ),
@@ -418,16 +518,18 @@ if (failing) {
       .map(([k, n]) => `${k} ${n}`)
       .join(' · ') || '없음'
   console.error(
-    `verify-screen-props FAIL — 화면↔세트 속성 desync ${violations.length}건 / ${screenCount}화면 생성기 / ${setCount}세트\n` +
+    `verify-screen-props FAIL — 화면↔세트 속성 desync ${violations.length}건 / ${screenCount}화면 생성기 / ${setCount}세트 / 문서 states ${docStatesChecked}건 검사\n` +
       `  by rule : ${fmt(byRule)}\n` +
       `  by file : ${fmt(byFile)}\n` +
       `  미파싱 inst() 호출: ${unparsed.length}건${unparsed.length ? '  ← 검사되지 않은 호출이다. 조용히 통과시키지 않는다.' : ''}\n` +
-      (errors.length ? `  errors  : ${errors.length}건 (추출기/등록 오류 — 위 목록 참조)\n` : '') +
-      `\n  inst()는 없는 속성 이름을 경고만 하고 무시한다 — 다른 게이트가 전부 초록이어도 화면 오버라이드는 끊긴다.\n`,
+      (errors.length ? `  errors  : ${errors.length}건 (추출기/등록/문서 states 오류 — 위 목록 참조)\n` : '') +
+      `\n  inst()는 없는 속성 이름을 경고만 하고 무시한다 — 다른 게이트가 전부 초록이어도 화면 오버라이드는 끊긴다.\n` +
+      `  variantItem도 마찬가지다 — 문서 states의 이름·값이 틀려도 경고만 남기고 그 그림은 세트 기본값으로 조용히 렌더된다(D1~D3).\n`,
   )
   process.exit(1)
 }
 console.log(
   `verify-screen-props OK — ${screenCount}화면 생성기 · ${setCount}세트 · inst() 오버라이드 desync 0건\n` +
-    `  미파싱 inst() 호출 0건 (모든 호출을 실제로 대조했다)`,
+    `  미파싱 inst() 호출 0건 (모든 호출을 실제로 대조했다)\n` +
+    `  문서 states ${docStatesChecked}건 검사 · variantItem 오버라이드 desync 0건`,
 )

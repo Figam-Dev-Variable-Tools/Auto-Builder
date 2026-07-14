@@ -7,7 +7,7 @@
 //   (2) 매칭 안 되는 라인을 조용히 버렸다. "못 읽으면 통과"가 네이밍 드리프트를 숨긴 원인이므로,
 //   분류 불가 항목은 버리지 않고 unparsed[]로 올려 호출자가 E-UNPARSED로 실패시킨다.
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, dirname } from 'node:path'
+import { join, relative, dirname, basename } from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -36,11 +36,50 @@ export function indexComponents(root) {
         )
         if (cands.length === 1) tsx = cands[0]
       }
-      if (!tsx) continue
+      if (!tsx) {
+        // 이 폴더에 구현이 없다 — 그런데 §0-2가 정한 단일 출처 프리미티브(Image·Video·EmptyState·
+        // AdminTable·CrudDialog가 공유하는 Placeholder처럼)는 구현을 src/shared/*에 두고 여기엔
+        // 갤러리 스토리만 둔다(그 이유가 Placeholder.stories.tsx 자체에 주석으로 남아 있다 —
+        // §0-4대로 그 결정을 존중한다). "코드가 없다"고 단정하기 전에 그 스토리의 import를 따라가
+        // 실제 구현 파일을 찾는다 — 못 찾으면 그때 index에서 빠져 N1(no-code)로 실패한다.
+        const resolved = resolveSharedImpl(dir, entry)
+        if (resolved) {
+          index.set(entry, {
+            name: entry,
+            dir: dirname(resolved),
+            tsx: resolved,
+            cssBase: basename(resolved).replace(/\.tsx$/, ''),
+          })
+        }
+        continue
+      }
       index.set(entry, { name: entry, dir, tsx: join(dir, tsx), cssBase: tsx.replace(/\.tsx$/, '') })
     }
   }
   return index
+}
+
+/**
+ * <X>.stories.tsx의 import 선언에서 컴포넌트 이름과 같은 named import를 relative 경로로 찾아
+ * 실제 구현 파일(주로 src/shared/*)의 절대 경로를 되짚는다. 여러 후보(default export나 재선언)는
+ * 다루지 않는다 — named import 하나로 정확히 잡히지 않으면 추측하지 않고 null을 반환한다.
+ */
+function resolveSharedImpl(dir, componentName) {
+  const storyFile = join(dir, `${componentName}.stories.tsx`)
+  if (!existsSync(storyFile)) return null
+  const sf = ts.createSourceFile(storyFile, readFileSync(storyFile, 'utf8'), ts.ScriptTarget.ES2020, true)
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier)) continue
+    const spec = stmt.moduleSpecifier.text
+    if (!spec.startsWith('.')) continue
+    const clause = stmt.importClause
+    if (!clause?.namedBindings || !ts.isNamedImports(clause.namedBindings)) continue
+    const hit = clause.namedBindings.elements.some((el) => (el.propertyName ?? el.name).text === componentName)
+    if (!hit) continue
+    const target = resolvePath(dirname(storyFile), spec)
+    if (target && target.endsWith('.tsx')) return target
+  }
+  return null
 }
 
 /**
@@ -223,6 +262,25 @@ function classifyType(name, t, sf, optional, line, ctx, depth = 0) {
     return { ...base, kind: 'union', values: [t.literal.text] }
   }
 
+  // 인덱스드 액세스 타입 — `BadgeProps['appearance']`처럼 다른 타입의 멤버 하나를 가리킨다.
+  // ConsentList.appearance가 이 형태다: appearance?: BadgeProps['appearance']. 별칭을 따라가
+  // 그 멤버(appearance: 'solid'|'soft'|'outline')를 찾으면 재귀 분류로 그대로 풀린다 — 못 찾으면
+  // (제네릭 인덱스·계산된 키 등) 지어내지 않고 'other'로 떨어뜨려 축도 TEXT도 요구하지 않는다.
+  if (ts.isIndexedAccessTypeNode(t)) {
+    const { objectType, indexType } = t
+    if (ts.isTypeReferenceNode(objectType) && ts.isLiteralTypeNode(indexType) && ts.isStringLiteral(indexType.literal)) {
+      const alias = ctx?.resolve(objectType.typeName.getText(sf))
+      const key = indexType.literal.text
+      const member = alias && collectMembers(alias.type).find(
+        (m) => ts.isPropertySignature(m) && m.name && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)) && m.name.text === key,
+      )
+      if (member?.type) {
+        return classifyType(name, member.type, alias.sf, optional || !!member.questionToken, line, ctx, depth + 1)
+      }
+    }
+    return { ...base, kind: 'other' }
+  }
+
   return null
 }
 
@@ -267,6 +325,17 @@ function isStringish(node) {
  * string → TEXT / ReactNode → INSTANCE_SWAP / children → slot('content')
  * number·list는 축/속성이 될 수 없다(규약 §2·§4) — 따로 실어 규칙 엔진이 위반으로 잡게 한다.
  * callback·other는 검사 대상이 아니다.
+ *
+ * optionalText — "Figma에 있으면 정당하지만 코드가 요구하지는 않는" TEXT 이름.
+ * children 슬롯 하나가 유일한 출처다: 규약 §7이 슬롯의 레이어 이름을 'content'로 못박았고,
+ * 세트가 그 슬롯을 '텍스트 한 줄'로 그릴 때(Callout·Highlight·Card·Modal·Popover·BottomSheet)
+ * 그 레이어에 붙는 TEXT 속성의 이름도 'content'가 정답이다 — 규약이 허용하는 유일한 이름이다.
+ * 그런데 text에 넣으면 두 곳이 깨진다:
+ *   (1) build-story-manifest.mjs가 cls.text를 매니페스트로 직렬화하고 verify-mapping.mjs가
+ *       플러그인 내장 COMPONENT_MANIFEST와 deep-equal로 왕복 검증한다 → 없는 TEXT를 요구하게 된다.
+ *   (2) 슬롯을 텍스트로 그리지 않는 세트(children을 프레임으로 받는 Upload·Drawer·CrudDialog 등)에
+ *       'content' TEXT 누락(N4)을 새로 씌운다 — 그건 이미 N7(slot-missing)이 보는 자리다(중복 보고).
+ * 그래서 '요구'가 아니라 '허용'으로만 싣는다. 규칙 엔진은 여분(extra) 판정에서만 이걸 인정한다.
  */
 export function classifyProps(props) {
   const axes = []
@@ -288,7 +357,9 @@ export function classifyProps(props) {
     else if (p.kind === 'swap') swaps.push(p.name)
     else if (p.kind === 'children') slot = 'content'
   }
-  return { axes, text, booleans, swaps, numbers, lists, slot }
+  // 코드에 진짜 `content: string` prop이 있으면(Tooltip) 이미 text에 있다 — 중복으로 싣지 않는다.
+  const optionalText = slot && !text.includes(slot) ? [slot] : []
+  return { axes, text, booleans, swaps, numbers, lists, slot, optionalText }
 }
 
 /** 컴포넌트 함수 시그니처의 구조분해 기본값 파싱: `showIcon = false` → { showIcon: false } */

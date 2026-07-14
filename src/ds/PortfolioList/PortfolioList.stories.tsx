@@ -232,7 +232,8 @@ export const AllSections: Story = {
 /**
  * 대부분 OFF — 표만 남는다.
  * 헤더·탭·툴바·페이지 바·체크박스 열·드래그 핸들·관리 열이 전부 사라지고
- * 빈 자리나 여백이 남지 않는다(표 하단의 빈 footer 줄까지 접힌다).
+ * 빈 자리나 여백이 남지 않는다. 표 하단의 32px 빈 footer 줄도 AdminTable의
+ * showFooterWhenEmpty={false}(PortfolioList가 항상 넘긴다)로 접혀 남지 않는다.
  */
 export const Minimal: Story = {
   render: () => (

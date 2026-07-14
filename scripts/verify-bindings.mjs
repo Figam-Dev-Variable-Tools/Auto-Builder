@@ -11,12 +11,19 @@
  *
  * 검사 규칙:
  *   B1  면·선을 raw 색으로 칠하지 마라        → `fills = [solid(…)]`  대신 `bindFillVar(ctx, node, 'color/…', fallback)`
+ *       — `fills = [{ type: 'SOLID', color: {...} }]` 같은 **객체 리터럴 직접 대입**도 같은 하드코딩이다(잡는다).
+ *         단 `figma.variables.setBoundVariableForPaint({...}, 'color', v)` 의 placeholder 리터럴은 바인딩이므로 제외.
  *   B2  텍스트를 미바인딩으로 만들지 마라      → `txt(…)` 대신 `boundText(…)` (색·크기·굵기·글씨체를 전부 변수에 문다)
  *   B3  폰트를 리터럴로 박지 마라              → `fontSize = 14` · `fontName = { family: 'Inter' }`
  *   B4  바인딩 헬퍼를 복제하지 마라            → 정본 1벌만. (복제되면 사본 하나만 고쳐지고 나머지는 썩는다 —
  *                                               `buildSet` 4벌 · `variantItem` 3벌에서 실제로 그랬다.)
+ *   B5  텍스트 노드에 불투명도를 걸지 마라      → 리터럴(`x.opacity = 0.6`)뿐 아니라 삼항식·계산식
+ *       (`x.opacity = cond ? a : b`) 도 우변이 **리터럴 1이 아니면** 잡는다 — 정적으로 항상 1임을 증명할 수 없다.
  *
  * ALLOWLIST 에는 **왜 면제인지**를 반드시 적는다. 사유 없는 면제는 부채가 아니라 거짓말이다.
+ * 면제는 `file` 전체 또는 `file`+`line` 한 줄 단위로 걸 수 있다 — 한 파일에 진짜 위반과 정당한 예외가
+ * 같이 있으면(예: ImageCard 스크림은 정당, 같은 파일의 CTA 오버레이는 진짜 위반) 파일 전체를 면제하면
+ * 진짜 위반까지 가려진다. 그래서 `line` 이 있으면 그 줄에만 적용한다.
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -55,10 +62,24 @@ const ALLOWLIST = [
     reason: '페이지를 지우는 파일이라 요소를 그리지 않는다.',
     kind: 'permanent',
   },
+  {
+    file: 'categories-data-kr-media.ts',
+    rules: ['B1'],
+    line: 1565,
+    reason:
+      'ImageCard 오버레이 스크림(scrim="solid")은 테마와 무관하게 항상 어두워야 흰 글자 대비가 유지된다 — ' +
+      'React 원본(src/ds/ImageCard/ImageCard.module.css:120-122)도 "테마와 무관하게 항상 어두워야 텍스트(흰색)가 ' +
+      '읽히므로, 색 토큰이 아닌 알파 표현(rgb(0 0 0 / a))을 쓴다"고 명시하고 .scrimSolid를 raw rgb(0 0 0 / 0.45)로 ' +
+      '고정한다. Figma를 색 변수에 물리면 사용자가 배경색을 밝게 바꿀 때 스크림이 옅어져 정확히 React가 피하려던 ' +
+      '대비 붕괴가 재현된다 — 이건 미바인딩이 아니라 React와의 파리티다.',
+    kind: 'permanent',
+  },
 ]
 
-const isAllowed = (file, rule) =>
-  ALLOWLIST.some((a) => file.endsWith(a.file) && a.rules.includes(rule))
+const isAllowed = (file, rule, line) =>
+  ALLOWLIST.some(
+    (a) => file.endsWith(a.file) && a.rules.includes(rule) && (a.line === undefined || a.line === line),
+  )
 
 // ── 파일 수집 ────────────────────────────────────────────────────────────
 function walk(dir) {
@@ -121,8 +142,33 @@ for (const abs of files) {
       if (!r.re.test(code)) continue
       // 정본 헬퍼 안에서는 폴백 경로가 필요하다 (변수가 없을 때만 raw 색을 쓴다)
       if (canon) continue
-      if (isAllowed(rel, r.code)) continue
+      if (isAllowed(rel, r.code, i + 1)) continue
       violations.push({ code: r.code, file: rel, line: i + 1, src: code.trim(), msg: r.msg, fix: r.fix })
+    }
+
+    // B1b: `fills = [{ type: 'SOLID', ... }]` / `return { type: 'SOLID', ... }` — solid() 헬퍼를
+    // 거치지 않고 Paint 객체 리터럴을 직접 대입·반환한다. `solid(...)` 호출형만 보는 위 정규식의 사각지대다.
+    // `figma.variables.setBoundVariableForPaint({...placeholder...}, 'color', v)` 의 placeholder 리터럴은
+    // 그 자체가 바인딩 메커니즘(boundPaint()와 동일한 관용구, lib/bind.ts:20-22)이므로 제외한다 — 같은 줄이나
+    // 바로 앞 줄에 열린 `setBoundVariableForPaint(` 가 있으면 그 안이다.
+    if (!canon && /\{\s*type:\s*['"]SOLID['"]\s*,\s*color:/.test(code) && !isAllowed(rel, 'B1', i + 1)) {
+      const boundOpen = /setBoundVariableForPaint\s*\(\s*$/
+      const prev1 = lines[i - 1] ? lines[i - 1].replace(/\/\/.*$/, '') : ''
+      const prev2 = lines[i - 2] ? lines[i - 2].replace(/\/\/.*$/, '') : ''
+      const insideBoundCall = /setBoundVariableForPaint\s*\(/.test(code) || boundOpen.test(prev1) || boundOpen.test(prev2)
+      if (!insideBoundCall) {
+        violations.push({
+          code: 'B1',
+          file: rel,
+          line: i + 1,
+          src: code.trim(),
+          msg: '면·선을 raw 색 객체 리터럴로 칠했다 — 사용자가 컬러를 바꿔도 이 요소는 안 바뀐다',
+          fix:
+            "bindFillVar(ctx, node, 'color/<key>', fallbackHex) 를 써라. 색은 유지하되 불투명도만 얹고 싶으면 " +
+            "바인딩 후 스프레드하라: node.fills = [{ ...(node.fills[0] as SolidPaint), opacity }] " +
+            '(categories-shared.ts의 overlayAlpha가 이 패턴이다).',
+        })
+      }
     }
 
     // B5: 텍스트 노드에 불투명도를 걸었다.
@@ -130,17 +176,25 @@ for (const abs of files) {
     // 흐린 글자는 **불투명도가 아니라 색 토큰**으로 표현한다 — React 는 `--ds-color-secondary` 를 쓰고
     // 텍스트에 opacity 를 걸지 않는다. Figma 만 `color/secondary + opacity 0.6` 을 발명했다(screens.ts tMuted).
     // 불투명도를 쓰면 (a) 글자가 배경과 섞여 대비가 깨지고 (b) 사용자가 폰트 색을 바꿔도 흐림이 남는다.
-    if (!isAllowed(rel, 'B5')) {
-      const m = code.match(/([A-Za-z0-9_]+)\.opacity\s*=\s*([\d.]+)/)
-      if (m && Number(m[2]) < 1 && isTextNodeAt(m[1], i)) {
-        violations.push({
-          code: 'B5',
-          file: rel,
-          line: i + 1,
-          src: code.trim(),
-          msg: `텍스트 '${m[1]}' 에 불투명도 ${m[2]} — 폰트는 100% 여야 한다`,
-          fix: '불투명도를 지우고 **색 토큰**으로 표현하라 (예: color/secondary). React 는 텍스트에 opacity 를 쓰지 않는다.',
-        })
+    // 우변이 숫자 리터럴이 아니어도(삼항식·계산식) 정적으로 항상 1임을 증명할 수 없는 한 잡는다.
+    if (!isAllowed(rel, 'B5', i + 1)) {
+      const m = code.match(/([A-Za-z0-9_]+)\.opacity\s*=\s*([^;]+?);?\s*$/)
+      if (m) {
+        const rhs = m[1] && m[2] != null ? m[2].trim() : ''
+        const isLiteral = /^[\d.]+$/.test(rhs)
+        const provablyFull = isLiteral && Number(rhs) >= 1
+        if (!provablyFull && isTextNodeAt(m[1], i)) {
+          violations.push({
+            code: 'B5',
+            file: rel,
+            line: i + 1,
+            src: code.trim(),
+            msg: isLiteral
+              ? `텍스트 '${m[1]}' 에 불투명도 ${rhs} — 폰트는 100% 여야 한다`
+              : `텍스트 '${m[1]}' 에 계산식 불투명도 '${rhs}' — 리터럴이 아니라 항상 1임을 증명할 수 없다`,
+            fix: '불투명도를 지우고 **색 토큰**으로 표현하라 (예: color/secondary). React 는 텍스트에 opacity 를 쓰지 않는다.',
+          })
+        }
       }
     }
 

@@ -80,6 +80,7 @@ pnpm verify:parity        # 토큰·아이콘·로고·컴포넌트 커버리지
 pnpm verify:mapping       # Storybook props ↔ Figma 매니페스트
 pnpm verify:naming        # 코드 이름 ↔ Figma 속성/레이어 이름
 pnpm verify:screens       # 화면의 inst() 오버라이드 ↔ 세트 속성 이름
+pnpm verify:bindings      # Figma 생성기의 색·폰트가 실제로 Variables에 물렸는지 (raw hex·미바인딩 텍스트 금지)
 pnpm verify:guard         # git 가드 훅이 실제로 무는지 (결함 주입 33건)
 ```
 
@@ -93,6 +94,10 @@ pnpm verify:guard         # git 가드 훅이 실제로 무는지 (결함 주입
 > (특히 `SortBar`는 상품 10장짜리 화면에서 "6개"를 그리고 있었다.)
 >
 > **세트의 속성 이름을 바꿨으면 그 세트를 부르는 화면도 함께 고쳐라.** 개명은 규약 준수인 **동시에** 사고다.
+
+같은 `verify:screens`가 **문서 페이지**(`variantItem(ctx, set, state)`)의 `state.props/texts/swaps`도 본다(D1~D3) —
+이름 오타(`showFotter`)·없는 축 값(`size: 'xl'`)·`'true'|'false'`가 아닌 불리언은 `resolveStateProps`가
+경고만 남기고 무시하므로, 이 검사가 없으면 문서 그림이 **세트 기본값으로 조용히 렌더된다**(inst()와 같은 병).
 
 자세한 내용: `docs/naming-parity.md` §화면 조립 게이트
 

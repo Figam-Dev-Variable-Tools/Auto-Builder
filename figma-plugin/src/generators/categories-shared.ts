@@ -1,7 +1,10 @@
 // 카테고리 생성기 3분할의 공용 부품 — 렌더 헬퍼·색 바인딩·KR 폼 조각·문서 타입.
 // 왜 따로 두는가: DS/Form(Layout)이 KR 폼 헬퍼를 재사용하는 등 섹션 간 실제 공유가 있다.
 // 사본을 만들지 말고 여기서 가져다 써라. 세트 빌더 자체는 lib/build-set.ts가 정본이다.
-import { ACCENT, autoFrame, BORDER, boundPaint, type Ctx, INK, MUTED, solid, SUB, SURFACE, txt, WHITE } from './foundations'
+// boundText·bindFillVar·bindStrokeVar의 정본은 lib/bind.ts다(foundations.ts가 재수출) — 이 파일은
+// 예전에 자체 사본을 갖고 있었다(verify-bindings B4). 여기서 다시 export해 categories-core·
+// categories-data-kr-media·categories-nav-overlay의 기존 import 경로('./categories-shared')를 유지한다.
+import { ACCENT, autoFrame, bindFillVar, bindStrokeVar, BORDER, boundPaint, boundText, type Ctx, INK, MUTED, solid, SUB, SURFACE, WHITE } from './foundations'
 import { iconInstance } from './icon-vec'
 import { type State } from './lib/build-set'
 import { onToneHex, onVarName, solidToneHex, solidVarName } from './tone'
@@ -41,45 +44,19 @@ export function tintHex(hex: string, amt = 0.86): string {
   return '#' + ((mix(r) << 16) | (mix(g) << 8) | mix(b)).toString(16).padStart(6, '0')
 }
 
-// ── 색 바인딩 헬퍼 ────────────────────────────────────────────────────
-export function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: string, bold = false): TextNode {
-  const t = txt(ctx, chars, size, ctx.userColors[varName] ?? hex, bold)
-  const v = ctx.vars.get(varName)
-  if (v) t.fills = [boundPaint(v)]
-  // 오너: 텍스트 크기·굵기·글씨체도 변수로.
-  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
-  const sv = ctx.vars.get('font/size/' + size)
-  if (sv) {
-    try {
-      bind.setBoundVariable('fontSize', sv)
-    } catch {
-      /* skip */
-    }
-  }
-  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
-  if (wv) {
-    try {
-      bind.setBoundVariable('fontWeight', wv)
-    } catch {
-      /* skip */
-    }
-  }
-  if (ctx.fontFamilyVar) {
-    try {
-      bind.setBoundVariable('fontFamily', ctx.fontFamilyVar)
-    } catch {
-      /* skip */
-    }
-  }
-  return t
-}
-export function bindFillVar(ctx: Ctx, node: GeometryMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.fills = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
-}
-export function bindStrokeVar(ctx: Ctx, node: MinimalStrokesMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.strokes = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
+// ── 색 바인딩 헬퍼 — 정본은 lib/bind.ts, 여기서는 재수출만 한다 ────────
+export { boundText, bindFillVar, bindStrokeVar }
+
+// 이미지 스크림 위 반투명 흰 글자 — React(ImageCard.module.css .overlayDescription)는
+// `color: rgb(255 255 255 / 0.85)`로 그린다(paint 알파). 오너: "폰트에 불투명도 걸지 마라, 100%여야
+// 한다"는 **노드 opacity**(자간·그림자까지 통째로 흐려짐)를 금지한 것이지, React가 이미 쓰는 이
+// paint 알파(색 자체의 반투명)와는 다른 문제다 — React 값을 그대로 따른다.
+export const OVERLAY_DESC_ALPHA = 0.85
+/** 텍스트 노드의 fill(들어온 그대로, 변수 바인딩 포함)에 알파만 얹는다 — 노드 opacity는 건드리지 않는다. */
+export function overlayAlpha(node: TextNode, alpha: number) {
+  const fills = node.fills
+  if (!Array.isArray(fills) || !fills.length) return
+  node.fills = [{ ...(fills[0] as SolidPaint), opacity: alpha }]
 }
 
 // ── solid 면 · on-color 바인딩 ────────────────────────────────────────

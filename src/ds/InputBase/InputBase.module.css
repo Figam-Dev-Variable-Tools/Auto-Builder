@@ -1,3 +1,19 @@
+/*
+ * 인풋 사이즈 스케일(패딩) — TextField(단일 박스 렌더)와 InputBase(wrap+input 분리 렌더)가
+ * 같은 sm/md/lg 3단을 쓴다. 값을 두 CSS에 각각 리터럴로 적으면 나중에 한쪽만 고쳐 어긋나므로
+ * 여기 한 곳에 선언하고 TextField.module.css는 var()로 참조한다(:root라 모듈 스코프에 안 갇힌다).
+ * 7·10·13·14px는 --ds-spacing-*(4/8/12/16 그리드)에 정확히 맞지 않는데, 이미 화면에 나가 있는
+ * TextField 렌더와 픽셀 단위로 맞춰야 해서(회귀 금지) 그대로 옮겼다 — 그리드 값 재설계는 별도 배치에서.
+ */
+:root {
+  --input-size-sm-py: 7px;
+  --input-size-sm-px: 10px;
+  --input-size-md-py: 10px;
+  --input-size-md-px: 12px;
+  --input-size-lg-py: 13px;
+  --input-size-lg-px: 14px;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -30,7 +46,7 @@
   background: var(--ds-color-bg);
   border: 1px solid var(--ds-color-border);
   border-radius: var(--ds-radius-md);
-  padding: 0 12px;
+  padding: 0 var(--input-size-md-px);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -51,11 +67,30 @@
   color: var(--ds-color-text);
   background: transparent;
   border: none;
-  padding: 10px 0;
+  padding: var(--input-size-md-py) 0;
 }
 
 .input:focus {
   outline: none;
+}
+
+/* ── 크기 축(size) — 기본 md는 위 base 규칙이 곧 md라 별도 클래스가 없다 ── */
+.sm .inputWrap {
+  padding: 0 var(--input-size-sm-px);
+}
+
+.sm .input {
+  font-size: var(--ds-font-size-sm);
+  padding: var(--input-size-sm-py) 0;
+}
+
+.lg .inputWrap {
+  padding: 0 var(--input-size-lg-px);
+}
+
+.lg .input {
+  font-size: var(--ds-font-size-lg);
+  padding: var(--input-size-lg-py) 0;
 }
 
 /* placeholder도 실텍스트 — opacity로 흐리면 AA가 깨지므로 불투명 AA 셰이드 사용 */

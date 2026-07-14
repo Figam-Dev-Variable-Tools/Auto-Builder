@@ -1,8 +1,8 @@
 // 카테고리: Data · Date&Time · KR · Media · Templates · ETC.
 // categories.ts에서 기계적으로 분리(동작 변경 없음). 공용 부품은 categories-shared.ts.
-import { brandLogo } from './brand-logos'
-import { bindFillVar, bindOnFill, bindSolidFill, bindStrokeVar, boundText, type CategoryDef, type ComponentDoc, FIELD_W, fieldRow, inputShell, krFormCard, krPrimaryBtn, type KrSpec, krSubField, krTrailingBtn, onHex, PAGE_DATA, PAGE_DATETIME, PAGE_ETC, PAGE_KR, PAGE_MEDIA, PAGE_TEMPLATES, recolorIcon, recolorIconOn, tintHex } from './categories-shared'
-import { ACCENT, autoFrame, BORDER, boundPaint, type Ctx, INK, MUTED, solid, SUB, SURFACE, txt, WHITE } from './foundations'
+import { brandColorFill, brandColorStroke, brandColorText, brandLogo } from './brand-logos'
+import { bindFillVar, bindOnFill, bindSolidFill, bindStrokeVar, boundText, type CategoryDef, type ComponentDoc, FIELD_W, fieldRow, inputShell, krFormCard, krPrimaryBtn, type KrSpec, krSubField, krTrailingBtn, onHex, OVERLAY_DESC_ALPHA, overlayAlpha, PAGE_DATA, PAGE_DATETIME, PAGE_ETC, PAGE_KR, PAGE_MEDIA, PAGE_TEMPLATES, recolorIcon, recolorIconOn, tintHex } from './categories-shared'
+import { ACCENT, autoFrame, BORDER, type Ctx, INK, MUTED, SUB, SURFACE, WHITE } from './foundations'
 import { iconInstance } from './icon-vec'
 import { type Axis, buildSet, type PropSpec, type State } from './lib/build-set'
 import { onVarName } from './tone'
@@ -20,9 +20,7 @@ function renderAvatar(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.clipsContent = true
   // 아바타 = solid 면(color/solid-primary) + on-color 이니셜
   bindSolidFill(ctx, c, 'primary')
-  const initial = txt(ctx, '김', fs, onHex(ctx, 'primary'), true)
-  const iv = ctx.vars.get(onVarName('primary'))
-  if (iv) initial.fills = [boundPaint(iv)]
+  const initial = boundText(ctx, '김', fs, onVarName('primary'), onHex(ctx, 'primary'), true)
   // 레이어 = CSS 클래스(.initials). TEXT 속성은 이 글자를 만드는 React prop 이름(name)을 쓴다.
   initial.name = 'initials'
   c.appendChild(initial)
@@ -36,7 +34,9 @@ function renderAvatar(ctx: Ctx, combo: Record<string, string>): ComponentNode {
     const sv = status === 'busy' ? 'color/error' : status === 'offline' ? 'color/border' : 'color/success'
     const sh = status === 'busy' ? '#F04452' : status === 'offline' ? BORDER : '#00C471'
     bindFillVar(ctx, dot, sv, sh)
-    dot.strokes = [solid(WHITE)]
+    // React(Avatar.module.css .status)는 border: 2px solid var(--ds-color-bg) — 카드/페이지 배경과
+    // 같은 색 링으로 상태 점을 도려낸 것처럼 보이게 한다.
+    bindStrokeVar(ctx, dot, 'color/bg', WHITE)
     dot.strokeWeight = 2
     dot.name = 'Status'
     c.appendChild(dot)
@@ -301,7 +301,8 @@ function statusPill(ctx: Ctx, label: string, tintHex: string, varName: string, h
   p.paddingLeft = p.paddingRight = 10
   p.paddingTop = p.paddingBottom = 4
   p.cornerRadius = 999
-  p.fills = [solid(tintHex)]
+  // 연한 배경 = 톤의 90% 흰 틴트 셰이드(<tone>/50) — 오너: 팔레트도 전부 변수.
+  bindFillVar(ctx, p, varName + '/50', tintHex)
   p.appendChild(boundText(ctx, label, 12, varName, hex, true))
   return p
 }
@@ -561,7 +562,7 @@ function renderCarousel(ctx: Ctx, combo: Record<string, string>): ComponentNode 
   slide.primaryAxisAlignItems = 'CENTER'
   slide.counterAxisAlignItems = 'CENTER'
   slide.cornerRadius = 14
-  slide.fills = [solid('#EEF2FF')]
+  bindFillVar(ctx, slide, 'color/primary/50', '#EEF2FF')
   const st = boundText(ctx, '슬라이드 1 / 4', 16, 'color/primary', ACCENT, true)
   st.name = 'slide'
   slide.appendChild(st)
@@ -761,7 +762,9 @@ function renderKrAuthMethod(ctx: Ctx, combo: Record<string, string>): ComponentN
     dot.name = 'mark'
     dot.resize(28, 28)
     dot.cornerRadius = 8
-    dot.fills = [solid(mark)]
+    // mark는 카카오·네이버 등 3rd-party 브랜드 고정색이다 — 사용자가 메인 컬러를 바꿔도
+    // 카카오 노랑은 카카오 노랑이어야 한다(brand-logos.ts와 같은 근거로 raw hex 유지).
+    brandColorFill(dot, mark)
     r.appendChild(dot)
     const col = autoFrame('text', 'VERTICAL')
     col.itemSpacing = 2
@@ -1245,9 +1248,11 @@ function renderTplLogin(ctx: Ctx, _combo: Record<string, string>): ComponentNode
     b.itemSpacing = 8
     b.paddingTop = b.paddingBottom = 11
     b.cornerRadius = 8
-    b.fills = [solid(bg)]
+    // bg/fg는 소셜 브랜드 규정색이다 — React(SocialLoginButton/brand.css) 자신도 "변경 금지"로
+    // 프리셋과 무관한 고정값을 쓴다. 사용자 테마가 바뀌어도 카카오 노랑은 카카오 노랑이어야 한다.
+    brandColorFill(b, bg)
     if (bg === '#FFFFFF') {
-      b.strokes = [solid('#DADCE0')]
+      brandColorStroke(b, '#DADCE0') // Google 브랜드 규정 보더
       b.strokeWeight = 1
     }
     const logo = brandLogo(provider, 18)
@@ -1255,7 +1260,7 @@ function renderTplLogin(ctx: Ctx, _combo: Record<string, string>): ComponentNode
       logo.name = 'logo'
       b.appendChild(logo)
     }
-    b.appendChild(txt(ctx, label, 14, fg, true))
+    b.appendChild(brandColorText(ctx, label, 14, fg, true))
     social.appendChild(b)
   })
   add(social)
@@ -1498,10 +1503,10 @@ function ytPlayButton(): FrameNode {
   b.primaryAxisAlignItems = 'CENTER'
   b.counterAxisAlignItems = 'CENTER'
   b.cornerRadius = 12
-  b.fills = [solid('#FF0000')]
+  brandColorFill(b, '#FF0000')
   const tri = figma.createVector()
   tri.vectorPaths = [{ windingRule: 'NONZERO', data: 'M 0 0 L 14 8 L 0 16 Z' }]
-  tri.fills = [solid(WHITE)]
+  brandColorFill(tri, '#FFFFFF')
   tri.strokes = []
   b.appendChild(tri)
   return b
@@ -1548,7 +1553,7 @@ function renderYouTube(_ctx: Ctx, combo: Record<string, string>): ComponentNode 
   c.counterAxisAlignItems = 'CENTER'
   c.cornerRadius = 12
   c.clipsContent = true
-  c.fills = [solid('#0F0F0F')] // 유튜브 플레이어 크롬 — 브랜드 고정색(테마 토큰 대상 아님)
+  brandColorFill(c, '#0F0F0F') // 유튜브 플레이어 크롬 — 브랜드 고정색(테마 토큰 대상 아님)
   c.appendChild(ytPlayButton())
   return c
 }
@@ -1612,8 +1617,10 @@ function cardAction(ctx: Ctx, overlay: boolean): FrameNode {
   a.strokeWeight = 1
   a.strokeAlign = 'INSIDE'
   if (overlay) {
-    a.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.16 }]
-    a.strokes = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.6 }]
+    bindFillVar(ctx, a, 'color/bg', WHITE)
+    a.fills = [{ ...((a.fills as readonly Paint[])[0] as SolidPaint), opacity: 0.16 }]
+    bindStrokeVar(ctx, a, 'color/bg', WHITE)
+    a.strokes = [{ ...((a.strokes as readonly Paint[])[0] as SolidPaint), opacity: 0.6 }]
   } else {
     bindFillVar(ctx, a, 'color/bg', WHITE)
     bindStrokeVar(ctx, a, 'color/border', BORDER)
@@ -1677,7 +1684,10 @@ function renderImageCard(ctx: Ctx, combo: Record<string, string>): ComponentNode
     d.name = 'description'
     d.layoutAlign = 'STRETCH'
     d.textAutoResize = 'HEIGHT'
-    d.opacity = 0.9
+    // React(ImageCard.module.css .overlayDescription)는 흰 글자를 rgb(255 255 255 / 0.85)로 그린다 —
+    // 노드 opacity(폰트 전체를 흐리게)가 아니라 paint 알파다. 오너: "폰트는 100%" → 노드 opacity 금지,
+    // fill의 알파만 낮춰 자간·굵기·글씨체 바인딩은 100%로 유지한다.
+    overlayAlpha(d, OVERLAY_DESC_ALPHA)
     if (align === 'center') d.textAlignHorizontal = 'CENTER'
     body.appendChild(d)
     body.appendChild(cardAction(ctx, true))
@@ -1877,9 +1887,11 @@ function renderSocial(ctx: Ctx, combo: Record<string, string>): ComponentNode {
   c.itemSpacing = 8
   c.paddingTop = c.paddingBottom = lg ? 14 : 11
   c.cornerRadius = 8
-  c.fills = [solid(s.bg)]
+  // SOCIAL_STYLE = React(SocialLoginButton/brand.css) "부록 E — 소셜 브랜드 규정표(변경 금지)"와
+  // 같은 값 — 프리셋과 무관한 고정 브랜드 컬러라 brand-logos.ts의 raw-hex 헬퍼를 쓴다.
+  brandColorFill(c, s.bg)
   if (s.border) {
-    c.strokes = [solid(s.border)]
+    brandColorStroke(c, s.border)
     c.strokeWeight = 1
     c.strokeAlign = 'INSIDE'
   }
@@ -1888,7 +1900,7 @@ function renderSocial(ctx: Ctx, combo: Record<string, string>): ComponentNode {
     logo.name = 'logo'
     c.appendChild(logo)
   }
-  const t = txt(ctx, s.label, lg ? 16 : 14, s.fg, true)
+  const t = brandColorText(ctx, s.label, lg ? 16 : 14, s.fg, true)
   t.name = 'label'
   c.appendChild(t)
   return c
@@ -2326,8 +2338,13 @@ export const MEDIA_CATEGORY: CategoryDef = {
       setName: 'DS/ImageCard',
       eyebrow: 'MOLECULE · MEDIA',
       desc:
-        '이미지 카드 — layout(below·overlay) × align × scrim + eyebrow(분류 라벨) + 배지 + CTA. 비율은 대표 4값(변형 폭발 방지). ' +
+        '이미지 카드 — layout(below·overlay) × align × scrim(대표 2값) + eyebrow(분류 라벨) + 배지 + CTA. 비율은 대표 4값(변형 폭발 방지). ' +
         'fill(그리드 셀을 꽉 채움)은 격리된 컴포넌트 외형을 바꾸지 않는 컨텍스트 축이라 축 대신 문서화용 BOOLEAN 속성으로만 남깁니다.',
+      // 변형 축소(오너 지시 — 세트당 상한 54): ratio(4)×layout(2)×align(3)×scrim(3) = 72 → scrim을
+      // 대표 2값(gradient·none)으로 줄여 4×2×3×2 = **48**. scrim='solid'는 gradient와 시각적으로
+      // 유사한 '하단을 어둡게 깐다' 처리라 대표에서 뺐다(ratio의 10→4 축소와 같은 원칙 — 아래 axis-values
+      // 참고). Storybook의 Overlay Matrix 스토리는 3값을 전부 보여주므로 커버리지 손실은 Figma 세트
+      // 한정이다. verify-naming N2(axis-values) ALLOWLIST 갱신 필요(scripts/** 소유 밖 — 작업 보고 참고).
       build: (ctx, page) => {
         const set = buildSet(
           ctx,
@@ -2337,7 +2354,7 @@ export const MEDIA_CATEGORY: CategoryDef = {
             { name: 'ratio', values: CARD_RATIOS },
             { name: 'layout', values: ['below', 'overlay'] },
             { name: 'align', values: ['bottom', 'top', 'center'] },
-            { name: 'scrim', values: ['gradient', 'solid', 'none'] },
+            { name: 'scrim', values: ['gradient', 'none'] },
           ],
           (c) => renderImageCard(ctx, c),
           {
@@ -2362,7 +2379,6 @@ export const MEDIA_CATEGORY: CategoryDef = {
         { caption: 'Overlay · Bottom', props: { layout: 'overlay' } },
         { caption: 'Overlay · Top', props: { layout: 'overlay', align: 'top' } },
         { caption: 'Overlay · Center', props: { layout: 'overlay', align: 'center' } },
-        { caption: 'Overlay · Solid scrim', props: { layout: 'overlay', scrim: 'solid' } },
         { caption: 'Overlay · No scrim', props: { layout: 'overlay', scrim: 'none' } },
         { caption: 'Below · 1:1', props: { ratio: '1x1' } },
         { caption: 'Overlay · 21:9', props: { ratio: '21x9', layout: 'overlay' } },

@@ -303,6 +303,13 @@ export type AdminTableProps<T> = {
   onEmptyAction?: () => void
   /** 짝수 행 줄무늬 — 컬럼이 많은 긴 표에서 가로 추적을 돕는다. 기본 false(= 지금 화면 그대로) */
   striped?: boolean
+  /**
+   * 페이지 크기 Select · 일괄 처리 바 · 페이지네이션이 셋 다 없을 때도 하단 footer 줄(min-height 32px)을
+   * 그릴지. 기본 true(= 지금 화면 그대로 — 이 축을 쓰지 않는 소비자의 렌더는 안 바뀐다).
+   * false면 셋 다 없을 때 그 빈 줄을 gap까지 포함해 완전히 접는다(부모 flex의 gap은 렌더되는
+   * 자식 사이에만 붙으므로 footer 자체를 안 그리면 여백도 함께 사라진다).
+   */
+  showFooterWhenEmpty?: boolean
   /** 화면 문구를 통째로 갈아끼우는 단일 통로 — 개별 카피 prop이 우선한다 */
   labels?: AdminTableLabels
   /** 숫자·통화 포맷(문구가 아니라 포맷이다) — price/number 셀의 기본 표기를 바꾼다 */
@@ -483,6 +490,7 @@ export function AdminTable<T>({
   emptyKind = 'empty',
   onEmptyAction,
   striped = false,
+  showFooterWhenEmpty = true,
   labels,
   formatters,
   editIcon,
@@ -1132,6 +1140,8 @@ export function AdminTable<T>({
   const showPageSize = pageSize != null && onPageSizeChange != null
   const showToolbar = columnPicker || exportable
   const showBulk = selectedIds.length > 0 && (bulkActions.length > 0 || onBulkDelete != null)
+  // 셋 다 없으면 footer에 그릴 게 없다 — showFooterWhenEmpty=false인 소비자만 이 경우 줄 자체를 접는다.
+  const renderFooter = showFooterWhenEmpty || showPageSize || showBulk || showPagination
 
   return (
     <div className={styles.adminTable}>
@@ -1284,51 +1294,53 @@ export function AdminTable<T>({
         {loading && <Loading overlay label={resolveLabel(loadingLabel, L.loading)} />}
       </div>
 
-      <div className={styles.footer}>
-        <div className={styles.footerLeft}>
-          {showPageSize && (
-            <div className={styles.pageSize}>
-              <Select
-                value={String(pageSize)}
-                options={pageSizeOptions.map((size) => ({
-                  value: String(size),
-                  label: L.pageSizeOption(size),
-                }))}
-                onChange={(value) => onPageSizeChange(Number(value))}
-              />
-            </div>
-          )}
-          {showBulk && (
-            <div className={styles.bulk}>
-              <span className={styles.selectedCount}>{L.bulk.selectedCount(selectedIds.length)}</span>
-              {bulkActions.map((action) => (
-                <Button
-                  key={action.key}
-                  variant={action.tone ?? 'secondary'}
-                  appearance="outline"
-                  size="sm"
-                  label={action.label}
-                  showIcon={action.icon != null}
-                  icon={action.icon}
-                  onClick={() => action.onAction(selectedIds)}
+      {renderFooter && (
+        <div className={styles.footer}>
+          <div className={styles.footerLeft}>
+            {showPageSize && (
+              <div className={styles.pageSize}>
+                <Select
+                  value={String(pageSize)}
+                  options={pageSizeOptions.map((size) => ({
+                    value: String(size),
+                    label: L.pageSizeOption(size),
+                  }))}
+                  onChange={(value) => onPageSizeChange(Number(value))}
                 />
-              ))}
-              {onBulkDelete != null && (
-                <Button
-                  variant="error"
-                  appearance="outline"
-                  size="sm"
-                  label={L.bulk.delete}
-                  showIcon
-                  icon={<Trash2 size={14} />}
-                  onClick={() => onBulkDelete(selectedIds)}
-                />
-              )}
-            </div>
-          )}
+              </div>
+            )}
+            {showBulk && (
+              <div className={styles.bulk}>
+                <span className={styles.selectedCount}>{L.bulk.selectedCount(selectedIds.length)}</span>
+                {bulkActions.map((action) => (
+                  <Button
+                    key={action.key}
+                    variant={action.tone ?? 'secondary'}
+                    appearance="outline"
+                    size="sm"
+                    label={action.label}
+                    showIcon={action.icon != null}
+                    icon={action.icon}
+                    onClick={() => action.onAction(selectedIds)}
+                  />
+                ))}
+                {onBulkDelete != null && (
+                  <Button
+                    variant="error"
+                    appearance="outline"
+                    size="sm"
+                    label={L.bulk.delete}
+                    showIcon
+                    icon={<Trash2 size={14} />}
+                    onClick={() => onBulkDelete(selectedIds)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+          {showPagination && <Pagination page={page} totalPages={totalPages} onChange={onPageChange} />}
         </div>
-        {showPagination && <Pagination page={page} totalPages={totalPages} onChange={onPageChange} />}
-      </div>
+      )}
 
       {/* 메모 편집 — 셀 안이 아니라 표 루트에서 한 번만 띄운다 */}
       <Modal

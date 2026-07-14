@@ -1,9 +1,11 @@
-// 어드민 화면(스크린) 페이지 — 스토리북 어드민 14화면을 1920 폭 화면 프레임으로.
+// 어드민 화면(스크린) 페이지 — 스토리북 어드민 24화면을 1920 폭 화면 프레임으로.
+// (2026-07 §A 배치: 카테고리 관리/등록·메인비주얼 관리/등록·시공 문의 내역/상세·문의 설정·
+//  사용자 목록·상품 상세·상품 등록/수정 10종을 신설했다 — 오너 사이드바 6그룹 커버리지 완성.)
 //
 // 화면 = 사이드바(DS/AdminSidebar 인스턴스) + 콘텐츠 열. 사이드바의 active 베리언트가 화면마다 달라
 //   '지금 어느 메뉴인지'가 프레임 안에서 그대로 보인다. 메뉴 라벨의 단일 소스는 ./admin-menu(ADMIN_MENU)다.
 //
-// 오너 확정(2026-07): 화면은 '15. System - Admin'이 만든 컴포넌트 세트의 **인스턴스로 조립**한다.
+// 오너 확정(2026-07): 화면은 '15. System - Admin Component'가 만든 컴포넌트 세트의 **인스턴스로 조립**한다.
 //   화면이 프레임을 직접 그리면 컴포넌트를 고쳐도 화면이 안 바뀐다 — 그게 "왜 컴포넌트 변수 처리가
 //   안 되어 있냐"는 지적의 정체였다. 이제 페이지 헤더·표·오늘의 할일·정의 리스트·메모·타임라인·
 //   드롭존은 ADMIN_SETS에서 세트를 꺼내 createInstance → setProperties로 조립한다.
@@ -18,7 +20,10 @@ import {
   type Ctx,
   solid,
   boundPaint,
-  txt,
+  boundText,
+  bindFillVar,
+  bindStrokeVar,
+  bindTokens,
   setup,
   applyPageColorMode,
   INK,
@@ -29,14 +34,16 @@ import {
   WHITE,
 } from './foundations'
 import { iconInstance } from './icon-vec'
-import { ADMIN_SETS, adminSet, adoptAdminSets, propKeys } from './admin'
+import { ADMIN_SETS, adminSet, adoptAdminSets, propKeys, PAGE_ADMIN } from './admin'
 import { ADMIN_MENU, groupOfActive, type AdminActive } from './admin-menu'
 import type { PresetName } from '../presets'
 
 // 오너 규칙: 페이지 탭은 "순번. System - 이름". 카테고리(1~14) · Admin(15) · Layout(16) 다음 번호.
-const PAGE_SCREENS = '17. System - Admin Screens'
+// 오너 확정(2026-07 개편): '17. System - Admin Screens' → '17. System - Admin Pages'로 개명.
+const PAGE_SCREENS = '17. System - Admin Pages'
 // reset 대상(재생성 시 삭제) — reset.ts가 이 배열을 읽는다.
-export const SCREEN_PAGE_NAMES = [PAGE_SCREENS]
+// 옛 이름도 남겨 둔다 — 안 그러면 개명 전 파일의 유령 페이지가 영영 안 지워진다.
+export const SCREEN_PAGE_NAMES = [PAGE_SCREENS, '17. System - Admin Screens']
 
 // ── 밀도 규격(스펙) ──────────────────────────────────────────────────
 const SCREEN_W = 1920 // 화면 프레임 전체(사이드바 + 콘텐츠)
@@ -76,119 +83,11 @@ function tintHex(hex: string, amt = 0.86): string {
   return '#' + ((mix(r) << 16) | (mix(g) << 8) | mix(b)).toString(16).padStart(6, '0')
 }
 
-// ── 바인딩 헬퍼(categories.ts와 동일 규약) ───────────────────────────
-/** 텍스트 — 색·크기·굵기(·글씨체)를 변수에 바인딩. 화면 안 텍스트는 전부 이걸 쓴다. */
-function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: string, bold = false): TextNode {
-  const t = txt(ctx, chars, size, ctx.userColors[varName] ?? hex, bold)
-  const v = ctx.vars.get(varName)
-  if (v) t.fills = [boundPaint(v)]
-  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
-  const sv = ctx.vars.get('font/size/' + size)
-  if (sv) {
-    try {
-      bind.setBoundVariable('fontSize', sv)
-    } catch {
-      /* skip */
-    }
-  }
-  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
-  if (wv) {
-    try {
-      bind.setBoundVariable('fontWeight', wv)
-    } catch {
-      /* skip */
-    }
-  }
-  // ctx.fontFamilyVar가 null이면 절대 바인딩하지 않는다(미로드 폰트 바인딩 → 노드 생성 실패).
-  if (ctx.fontFamilyVar) {
-    try {
-      bind.setBoundVariable('fontFamily', ctx.fontFamilyVar)
-    } catch {
-      /* skip */
-    }
-  }
-  return t
-}
-function bindFillVar(ctx: Ctx, node: GeometryMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.fills = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
-}
-function bindStrokeVar(ctx: Ctx, node: MinimalStrokesMixin, varName: string, hex: string) {
-  const v = ctx.vars.get(varName)
-  node.strokes = [v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)]
-}
-/** 보더·패딩·간격·라운드·불투명도를 값이 맞는 변수에 후처리 바인딩(화면 프레임마다 1회). */
-function bindTokens(ctx: Ctx, root: SceneNode) {
-  // 인스턴스 내부는 건너뛴다 — 세트(15. Admin)에서 이미 바인딩됐고, 여기서 또 만지면
-  // 인스턴스에 의미 없는 오버라이드가 쌓여 "컴포넌트를 고쳐도 화면이 안 바뀌는" 상태로 되돌아간다.
-  const all: SceneNode[] = []
-  const walk = (n: SceneNode) => {
-    all.push(n)
-    if (n.type === 'INSTANCE') return
-    const kids = (n as unknown as { children?: readonly SceneNode[] }).children
-    if (kids) for (const k of kids) walk(k)
-  }
-  walk(root)
-  for (const node of all) {
-    const a = node as unknown as {
-      cornerRadius?: number | symbol
-      strokeWeight?: number | symbol
-      strokes?: readonly Paint[]
-      layoutMode?: string
-      paddingTop?: number
-      paddingRight?: number
-      paddingBottom?: number
-      paddingLeft?: number
-      itemSpacing?: number
-      opacity?: number
-      setBoundVariable: (field: string, v: Variable) => void
-    }
-    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
-      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
-      if (ov)
-        try {
-          a.setBoundVariable('opacity', ov)
-        } catch {
-          /* skip */
-        }
-    }
-    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
-      const rv = ctx.vars.get('radius/' + a.cornerRadius)
-      if (rv)
-        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
-          try {
-            a.setBoundVariable(c, rv)
-          } catch {
-            /* skip */
-          }
-        }
-    }
-    // 개별 보더(행 하단선 등)는 strokeWeight가 figma.mixed(symbol) → 자동으로 건너뛴다.
-    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
-      const bv = ctx.vars.get('border/' + a.strokeWeight)
-      if (bv)
-        try {
-          a.setBoundVariable('strokeWeight', bv)
-        } catch {
-          /* skip */
-        }
-    }
-    if (a.layoutMode && a.layoutMode !== 'NONE') {
-      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
-        const val = a[p]
-        if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('space/' + val)
-          if (sv)
-            try {
-              a.setBoundVariable(p, sv)
-            } catch {
-              /* skip */
-            }
-        }
-      }
-    }
-  }
-}
+// boundText·bindFillVar·bindStrokeVar·bindTokens의 정본은 lib/bind.ts다(foundations.ts가 재수출) —
+// 예전엔 categories.ts·admin.ts·layout-guide.ts·site.ts·site-screens.ts와 합쳐 6벌로 복제돼
+// 있었다(verify-bindings B4). 인스턴스 내부를 건너뛰는 동작은 bindTokens(ctx, root, { skipInstances: true })
+// 옵션으로 흡수했다 — 세트(15. Admin)에서 이미 바인딩된 인스턴스에 또 오버라이드를 쌓으면
+// "컴포넌트를 고쳐도 화면이 안 바뀌는" 상태로 되돌아간다(오너 지적의 핵심 증상).
 
 // ── 컴포넌트 인스턴스 조립 ───────────────────────────────────────────
 // 화면의 블록은 여기를 통해서만 컴포넌트가 된다. 세트가 없으면 null → 호출부가 draw* 폴백으로 내려간다.
@@ -199,7 +98,7 @@ type InstOpts = {
   props?: Record<string, string | boolean>
   name?: string
 }
-/** 세트가 없다고 이미 경고한 이름 — 14화면 × 같은 세트로 경고가 도배되는 걸 막는다. */
+/** 세트가 없다고 이미 경고한 이름 — 24화면 × 같은 세트로 경고가 도배되는 걸 막는다. */
 const warnedMissing = new Set<string>()
 
 /**
@@ -334,15 +233,32 @@ function outline(ctx: Ctx, f: FrameNode, radius = R_CARD) {
 // ── 타이포 숏컷 ──────────────────────────────────────────────────────
 const tBody = (ctx: Ctx, s: string, bold = false) => boundText(ctx, s, F_BODY, 'color/text', INK, bold)
 const tSub = (ctx: Ctx, s: string, size = F_BODY) => boundText(ctx, s, size, 'color/secondary', SUB)
-/** 흐린 보조 텍스트 — 색은 secondary 변수 + opacity 60(변수 바인딩 유지). */
+// 흐린 보조 텍스트 폴백 hex — SUB(#4E5968)를 44% 흰색과 섞은 값. tokens.ts의 SHADE_STEPS 300
+// 공식과 같다(mixHex(base, '#FFFFFF', 0.44)) → color/secondary/300 변수가 없을 때만 쓰인다.
+const MUTED_TINT = '#9CA2AA'
+/**
+ * 흐린 보조 텍스트 — color/secondary/300(연한 셰이드) 바인딩.
+ * React가 플레이스홀더·캡션에 쓰는 --ds-color-secondary-300과 같은 토큰이다
+ * (src/shared/placeholders.module.css:27 등). 예전엔 secondary + 노드 opacity 0.6으로 흉내 냈는데,
+ * 오너가 텍스트 opacity를 금지했다("폰트는 100%") — 셰이드 변수로 옮겨 글자 자체는 always 100%다.
+ */
 function tMuted(ctx: Ctx, s: string, size = F_BODY): TextNode {
-  const t = boundText(ctx, s, size, 'color/secondary', SUB)
-  t.opacity = 0.6
-  return t
+  return boundText(ctx, s, size, 'color/secondary/300', MUTED_TINT)
 }
 const tLink = (ctx: Ctx, s: string) => boundText(ctx, s, F_BODY, 'color/primary', ACCENT, true)
 
 // ── 원자(자체 구현 — admin.ts 인스턴스에 의존하지 않는다) ────────────
+// 조사 기록(2026-07 모듈화 검토): card()·flatCard()·cardHead()·table()·toolbar()·pagination()·
+// fieldRow()·defRow() 같은 '컨테이너' 원자들은 FRAME을 반환해서 호출부가 그 뒤에 자유롭게
+// appendChild로 내용을 채운다(회원 목록의 11열 표, 상품 등록의 4개 폼 섹션 등 화면마다 내용이 전부 다르다).
+// Figma의 컴포넌트 인스턴스(INSTANCE)는 이렇게 임의 자식을 나중에 끼워 넣을 수 없다 — 인스턴스의
+// 자식은 메인 컴포넌트가 정한 구조 그대로이고, 바꿀 수 있는 통로는 TEXT/BOOLEAN/INSTANCE_SWAP/VARIANT
+// 뿐이다(내용이 화면마다 다른 자유 슬롯이 없다). 그래서 DS/AdminCard(admin.ts에 이미 있지만 미사용)도
+// '임의 children을 담는 카드'가 아니라 내부 구조가 고정된 상품 카드 하나를 통째로 미러링한 것이다.
+// → 이 원자들을 인스턴스로 바꾸려는 시도는 하지 않았다: 바꾸려면 각 화면의 폼 섹션·표 내용을
+// 컴포넌트 안에 통째로 하드코딩해야 하는데, 그러면 화면마다 다른 실제 내용이 사라지거나
+// (표4/폼 섹션 등 여러 화면이 공유할 수 없는) 세트가 화면 수만큼 늘어난다. React의 FormSection·
+// AdminCard도 children을 ReactNode로 받는 구조라 이 자체가 Figma 파리티의 근본적 한계다.
 function icon(ctx: Ctx, key: string, size: number, varName = 'color/secondary', hex = SUB): SceneNode {
   const ic = iconInstance(key, key.replace('_Icon/', ''), size)
   // 인스턴스 안 벡터의 stroke를 변수로(없으면 리터럴). recolor는 INSTANCE·FRAME 폴백 모두 처리.
@@ -436,7 +352,7 @@ function toggleMini(ctx: Ctx, on: boolean): FrameNode {
   bindFillVar(ctx, t, on ? 'color/primary' : 'color/border', on ? ACCENT : BORDER)
   const knob = figma.createEllipse()
   knob.resize(14, 14)
-  knob.fills = [solid(WHITE)]
+  bindFillVar(ctx, knob, 'color/bg', WHITE)
   t.appendChild(knob)
   return t
 }
@@ -510,7 +426,18 @@ function textarea(ctx: Ctx, placeholder: string, h: number): FrameNode {
   f.appendChild(tMuted(ctx, placeholder))
   return f
 }
-/** 폼 한 줄 — 라벨(고정 폭) + 컨트롤. */
+/**
+ * 폼 한 줄 — 라벨(고정 폭) + 컨트롤.
+ *
+ * 조사 기록(2026-07): DS/FieldRow(admin.ts) 인스턴스로 바꾸지 않았다. 그 세트의 children 슬롯
+ * ('content')은 규약 §7용 자리표시 빈 입력 박스 하나로 고정 렌더된다(admin.ts renderFieldRow —
+ * miniInput(ctx, '', …), 값 없이 항상 빈 칸). 실제 화면의 control은 매번 다른 placeholder·값(예:
+ * '오크 원목 1200 서랍형 책상')을 보여주는데 그 텍스트는 TEXT 속성으로 열려 있지 않다. 게다가 Figma
+ * Plugin API는 인스턴스 안 프레임에 새 자식(control)을 붙이는 것 자체를 허용하지 않는다(TEXT·
+ * BOOLEAN·INSTANCE_SWAP 속성 오버라이드만 가능) — control을 통째로 밀어 넣을 방법이 없다.
+ * label·description(texts)만 살고 control이 항상 빈 칸으로 렌더되면 그것도 렌더 변경이라
+ * 이 헬퍼로 남긴다.
+ */
 function fieldRow(ctx: Ctx, label: string, control: FrameNode, required = false, labelW = 140): FrameNode {
   const row = hbox('Field / ' + label, 16)
   fill(row)
@@ -582,6 +509,18 @@ function cardHead(ctx: Ctx, title: string, right?: SceneNode, count?: string): F
 }
 
 // ── 표 ───────────────────────────────────────────────────────────────
+/**
+ * 관리 열 'btns' 셀 — 텍스트 버튼(예: '수정'·'삭제', '보기'·'삭제', '답변' 1개).
+ *
+ * 조사 기록(2026-07): DS/RowActions(admin.ts) 인스턴스로 바꾸지 않았다. 실제 React
+ * RowActions(src/ds/RowActions/RowActions.tsx)는 onView/onEdit/onDelete 중 넘긴 핸들러만 렌더한다 —
+ * CategoryList·InquiryManageList·HistoryList 등은 실제로 2개(edit+delete 또는 view+delete)만 쓰고,
+ * 3개를 동시에 쓰는 화면은 없다. 그런데 DS/RowActions 세트는 "문서 세트는 셋 다 보여준다"
+ * (admin.ts:1940 주석 그대로)로 만들어져 있어 view·edit·delete를 개별로 껐다 켤 BOOLEAN 축이 없다.
+ * inst()로 바꾸면 모든 행에 실제로는 없는 액션 아이콘이 하나씩 더 붙어 지금 렌더와도, 진짜 화면과도
+ * 달라진다(§0-4 렌더 불변 위반) — 세트에 showView/showEdit/showDelete 같은 BOOLEAN 3개가 추가되기
+ * 전까지는 텍스트 버튼으로 남긴다.
+ */
 type Align = 'left' | 'center' | 'right'
 type Cell =
   | string
@@ -717,7 +656,17 @@ function table(ctx: Ctx, width: number, cols: Col[], rows: Cell[][], summary?: C
   }
   return t
 }
-/** 카드 안 툴바(검색·필터·액션) — 표 위, 하단 1px 구분선. */
+/**
+ * 카드 안 툴바(검색·필터·액션) — 표 위, 하단 1px 구분선.
+ *
+ * 조사 기록(2026-07): DS/ListToolbar(admin.ts) 인스턴스로 바꾸지 않았다. 그 세트는 문서용 고정 조합
+ * 하나만 그린다(좌: 상태 Select 1개 + 검색 1개, 우: 정렬 Select 1개 + 건수 + 등록 버튼 1개 —
+ * admin.ts renderListToolbar). 화면마다 좌측 필터 Select 개수(문의 내역 2개·고객 목록 0개 등)와
+ * 우측 액션 버튼(적립금 지급·삭제·담당자 지정·필터 …)이 다른데, 세트의 texts는 totalLabel·totalUnit·
+ * searchPlaceholder·totalSuffix뿐이고 select 라벨·건수 숫자·action 라벨은 TEXT 속성이 아니다.
+ * 그대로 inst()를 쓰면 화면마다 필요 없는 Select가 하나 더 생기거나 실제 필터·버튼이 사라진다 —
+ * 이 헬퍼로 남긴다.
+ */
 function toolbar(ctx: Ctx, children: SceneNode[], right: SceneNode[] = []): FrameNode {
   const bar = hbox('Toolbar', 8)
   fill(bar)
@@ -786,7 +735,7 @@ function screenFrame(ctx: Ctx, name: string): FrameNode {
  *
  * 왜 셸을 화면이 갖는가: '지금 어느 메뉴에 있는지'는 화면마다 다르다. 라벨은 컴포넌트 TEXT 속성으로
  * 열려 있지 않고(그리고 인스턴스 내부 레이어를 화면이 만지는 건 이 파일의 금지 규약이다),
- * 선택 상태를 세트의 active 베리언트 축으로 만들어 화면은 축 값만 고른다 → 메뉴를 고치면 14화면이 함께 바뀐다.
+ * 선택 상태를 세트의 active 베리언트 축으로 만들어 화면은 축 값만 고른다 → 메뉴를 고치면 24화면이 함께 바뀐다.
  */
 function screenShell(ctx: Ctx, name: string, content: FrameNode, active: AdminActive): FrameNode {
   const shell = figma.createFrame()
@@ -927,7 +876,19 @@ function drawPageHeadText(ctx: Ctx, title: string, desc: string): FrameNode {
   t.appendChild(tSub(ctx, desc, 14))
   return t
 }
-/** 상태 탭 줄(전체/판매중/…) — 활성 탭은 하단 2px 강조. */
+/**
+ * 상태 탭 줄(전체/판매중/…) — 활성 탭은 하단 2px 강조. 6화면(상품·주문·대시보드·공지·문의·연혁)이
+ * 이 모양 그대로 반복한다 — React 대응은 CategoryTabs(variant='underline', items[].count)로 1:1이다.
+ *
+ * 조사 기록(2026-07): 세트로 뽑지 않았다. DS/CategoryTabs는 이미 categories-nav-overlay.ts가
+ * 만들어 두었지만(다른 페이지 소속), screens.ts의 inst()는 admin.ts가 등록한 ADMIN_SETS만 본다
+ * (scripts/verify-screen-props.mjs의 SCREEN_FILES가 'screens.ts → admin' 레지스트리로 고정해 뒀다 —
+ * 화면 파일이 참조할 수 있는 세트를 코드로 못박아 "몰래 다른 페이지 세트에 의존"을 막는 안전장치다).
+ * admin.ts에 같은 이름으로 다시 만들면 verify-mapping의 세트 이름 유일성 검사가 중복으로 잡는다.
+ * 이름을 바꿔 새로 만들면 그 자체가 '이름은 코드가 정한다' 규약 위반(CategoryTabs가 아닌 이름으로
+ * CategoryTabs를 미러링하는 셈)이다. 크로스 페이지 조회를 열려면 scripts/(검사기)나 categories*.ts를
+ * 고쳐야 하는데 둘 다 이 작업의 소유 범위 밖이라 손대지 않았다 — 오너 결정이 필요하다.
+ */
 function tabs(ctx: Ctx, items: Array<[string, string, boolean]>): FrameNode {
   const bar = hbox('Tabs', 4)
   fill(bar)
@@ -960,7 +921,17 @@ function tabs(ctx: Ctx, items: Array<[string, string, boolean]>): FrameNode {
   }
   return bar
 }
-/** 좌측 240 패널(그룹·부서·카테고리 트리). */
+/**
+ * 좌측 240 패널(그룹·부서 목록) — 고객 목록·운영진 2화면이 반복한다.
+ * React 대응은 GroupPanel(items[].count · footer 버튼)이지만 딱 1가지가 안 맞는다:
+ * 이 함수가 그리는 상단 '그룹'/'부서' 제목 + 필터 아이콘 줄은 GroupPanel.tsx에 없다
+ * (실제 화면 MemberList.tsx도 GroupPanel을 <aside> 리스트+footer만으로 쓰고 별도 제목을 씌우지 않는다).
+ *
+ * 조사 기록(2026-07): 세트로 뽑지 않았다. 제목 줄을 그대로 두고 세트를 만들면 React에 없는 축을
+ * Figma에만 새로 얹는 셈이라 파리티를 깨고(CLAUDE.md 규약 위반), 반대로 GroupPanel과 똑같이 제목을
+ * 지우면 두 화면의 렌더 결과가 바뀐다(이번 작업 금지 사항). 두 규칙이 정면으로 부딪혀서 오너 결정
+ * 없이는 어느 쪽으로도 진행하지 않았다.
+ */
 function sidePanel(ctx: Ctx, title: string, items: Array<[string, string, boolean]>, footer?: FrameNode): FrameNode {
   const p = vbox('Side Panel / ' + title, 4)
   p.counterAxisSizingMode = 'FIXED'
@@ -1024,7 +995,20 @@ function mainCol(w: number): FrameNode {
   m.resize(w, 100)
   return m
 }
-/** 통계 타일(대시보드·고객 상세). */
+/**
+ * 통계 타일(대시보드 3장·고객 상세 4장 — 총 7회). React 대응은 Statistics(items[].label/value/tone)다.
+ *
+ * 조사 기록(2026-07): 세트로 뽑지 않았다. 두 가지 이유가 겹친다.
+ *  1) DS/Statistics는 이미 categories-data-kr-media.ts가 만들어 뒀다(다른 페이지 소속) — tabs()와
+ *     같은 이유로 screens.ts의 inst()가 닿을 수 없고(admin.ts 레지스트리만 검사), 이름을 그대로
+ *     admin.ts에 다시 선언하면 세트 이름 중복으로 verify-mapping이 실패한다.
+ *  2) 설사 새로 만들 수 있어도 이 함수는 타일마다 아이콘을 그리는데, 실제 Statistics.tsx의
+ *     StatItem에는 icon 필드가 없다(label/value/delta/hint/tone뿐). 아이콘을 그대로 두면 React에
+ *     없는 축을 Figma 세트에 얹는 것이고, 아이콘을 빼면 두 화면의 렌더가 바뀐다 — 둘 다 이번
+ *     작업의 금지 사항과 부딪힌다. (참고: TodoSummary·ActivityLog는 비슷한 아이콘을 '항목별로
+ *     달라지는 실제 축'이 아니라 고정 데이터로 박아 넣어 이 문제를 피했는데, 그 예외는
+ *     scripts/verify-naming.mjs의 ALLOWLIST에 사유가 등록돼 있어야 하고 그 파일은 소유 범위 밖이다.)
+ */
 function statTile(ctx: Ctx, label: string, value: string, iconKey?: string, tone: Tone = 'primary'): FrameNode {
   const t = vbox('Stat / ' + label, 8)
   grow(t)
@@ -1507,6 +1491,13 @@ function screenProductList(ctx: Ctx): FrameNode {
 }
 
 // ══ 4. 주문 목록 ═════════════════════════════════════════════════════
+// 조사 기록(2026-07): orderRow(아래)는 이 화면 안에서만 2번(주문 2건) 반복돼 세트 후보로 검토했다.
+// 하지만 React의 OrderList는 AdminListPage 위에 조립된 화면 전체 컴포넌트(헤더·탭·툴바·행 40여 개
+// prop)이고, '5분할 카드 행' 자체는 OrderList.tsx 안의 인라인 JSX일 뿐 별도로 export된 컴포넌트가
+// 아니다. admin.ts가 지금까지 미러링한 세트(AdminSidebar·TodoSummary·DefinitionList 등)는 전부
+// 이렇게 독립적으로 이름 붙은 작은 컴포넌트였다 — 이름 없는 조각을 위해 'DS/OrderList' 같은 이름을
+// 새로 지어 붙이면 그 자체가 이름이 코드가 정한다는 규약과 어긋난다(실체 없는 이름을 미러링하는 셈).
+// 그래서 세트로 뽑지 않았다.
 /** 5분할 카드 행의 한 칸. */
 function orderCell(ctx: Ctx, title: string, w: number, growCell = false): FrameNode {
   const c = vbox('Order / ' + title, 8)
@@ -1838,6 +1829,14 @@ function screenDashboard(ctx: Ctx): FrameNode {
   s.appendChild(feeds)
 
   // 차트 + 기간별 분석표
+  //
+  // 조사 기록(2026-07): 두 블록 다 DS/AdminChart·DS/AnalyticsTable 인스턴스로 바꾸지 않았다. 두 세트
+  // 모두 데이터(막대 값·범례, 표의 columns·rows·summaries)가 배열이라 축이 될 수 없어 고정 데모
+  // 데이터로 박혀 있다 — AdminChart는 title/centerLabel 텍스트 축만 열려 있고 series 자체는
+  // renderAdminChart(admin.ts:4664-4696) 안에 '월별 매출 추이' 데모로 고정, AnalyticsTable도 같은
+  // 이유로 renderAnalyticsTable(admin.ts:4538) 안에 데모 표가 고정돼 있다. 세트로 바꾸면 이 화면의
+  // 방문자/페이지뷰/일자별 매출 수치가 전부 그 데모 값으로 대체된다 — 그래서 아래는 이 화면 전용
+  // 로컬 헬퍼(barChart·table)로 직접 그린다.
   const stats = hbox('Stats', GAP)
   fill(stats)
   stats.counterAxisAlignItems = 'MIN'
@@ -2139,6 +2138,11 @@ function screenCustomerDetail(ctx: Ctx): FrameNode {
   act.appendChild(meta2)
   right.appendChild(act)
 
+  // 조사 기록(2026-07): DS/ConsentList(admin.ts:3085 renderConsentList) 인스턴스로 바꾸지 않았다.
+  // 그 세트는 항목별 날짜 서브텍스트(이 화면의 '2024-03-11 동의' 같은 줄)와 토글 컨트롤이 없고
+  // (라벨 + 동의/미동의 배지만 그린다), 행 라벨 자체도 CONSENT_ITEMS에 고정돼 texts 축으로 열려
+  // 있지 않다(agreedLabel·deniedLabel은 상태 문구 하나를 공유할 뿐 항목별 문구가 아니다). 세트로
+  // 바꾸면 날짜·토글이 사라지고 라벨도 이 화면의 4개 동의 항목과 달라진다.
   const consent = card(ctx, '동의 정보', 12)
   consent.appendChild(cardHead(ctx, '동의 정보'))
   const consents: Array<[string, string, boolean]> = [
@@ -2801,6 +2805,12 @@ function screenProductForm(ctx: Ctx): FrameNode {
   body.counterAxisAlignItems = 'MIN'
 
   // 좌 — 앵커 네비
+  // 조사 기록(2026-07): DS/FormAnchorNav(admin.ts) 인스턴스로 바꾸지 않았다. 그 세트는 섹션 5개
+  // ('기본 정보'·'이미지'·'옵션'·'배송·반품'·'노출·기간', admin.ts FAN_SECTIONS)가 렌더 함수에 고정
+  // 상수로 박혀 있고 아이콘도 없다. 이 화면은 실제 7개 섹션(기본 정보·판매 정보·옵션·재고·이미지·
+  // 상세 설명·배송 정보·노출 설정)에 아이콘(_Icon/Info 등)·완료 체크·진행률 바까지 그린다. 섹션
+  // 라벨이 TEXT 속성으로 열려 있지 않아(activeKey처럼 "화면에 원래 안 보이는" 축이 아니라 실제로
+  // 보이는 문구다) 세트를 그대로 쓰면 7개 진짜 섹션이 5개 가짜 섹션으로 바뀐다 — 직접 그린다.
   const nav = vbox('Anchor Nav', 2)
   nav.counterAxisSizingMode = 'FIXED'
   nav.resize(PANEL_W, 100)
@@ -3369,6 +3379,1339 @@ function screenHistoryList(ctx: Ctx): FrameNode {
   return s
 }
 
+// ── §A 신설 화면 공용 원자 ───────────────────────────────────────────
+/** 정보 안내 박스(Callout 톤 info) — 아이콘 + 제목 + 본문. MainVisualForm 섹션 하단 도움말이 쓰는 모양(2곳)이다. */
+function calloutBox(ctx: Ctx, title: string, body: string): FrameNode {
+  const c = vbox('Callout / ' + title, 6)
+  fill(c)
+  pad(c, 12, 14)
+  c.cornerRadius = R_CTRL
+  bindFillVar(ctx, c, 'color/primary/100', tintHex(ACCENT))
+  const head = hbox('head', 6)
+  head.counterAxisAlignItems = 'CENTER'
+  head.appendChild(icon(ctx, '_Icon/Info', 14, 'color/primary', ACCENT))
+  head.appendChild(boundText(ctx, title, 12, 'color/primary', ACCENT, true))
+  c.appendChild(head)
+  const b = tSub(ctx, body, 12)
+  b.textAutoResize = 'HEIGHT'
+  b.layoutAlign = 'STRETCH'
+  c.appendChild(b)
+  return c
+}
+/** 단일 계열 막대 차트 — ProductDetail의 '최근 6개월 판매량'(AdminChart bar, 계열 1개)용. */
+function chartSingle(ctx: Ctx, h: number, labels: string[], values: number[]): FrameNode {
+  const max = Math.max(...values, 1)
+  const wrap = vbox('Chart', 12)
+  fill(wrap)
+  const plot = hbox('Plot', 0)
+  fill(plot)
+  plot.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  plot.counterAxisAlignItems = 'MAX'
+  plot.counterAxisSizingMode = 'FIXED'
+  plot.resize(plot.width, h)
+  pad(plot, 0, 12)
+  values.forEach((v) => {
+    const b1 = fixed('bar', 'VERTICAL', 28, Math.max(6, Math.round((v / max) * (h - 12))))
+    b1.cornerRadius = 5
+    bindFillVar(ctx, b1, 'color/primary', ACCENT)
+    plot.appendChild(b1)
+  })
+  wrap.appendChild(plot)
+  const axis = hbox('Axis', 0)
+  fill(axis)
+  axis.primaryAxisAlignItems = 'SPACE_BETWEEN'
+  pad(axis, 0, 12)
+  labels.forEach((l) => {
+    const cellw = hbox('x', 0)
+    cellw.primaryAxisAlignItems = 'CENTER'
+    cellw.counterAxisSizingMode = 'FIXED'
+    cellw.primaryAxisSizingMode = 'FIXED'
+    cellw.resize(60, 16)
+    cellw.appendChild(tMuted(ctx, l, 11))
+    axis.appendChild(cellw)
+  })
+  wrap.appendChild(axis)
+  return wrap
+}
+
+// ══ 15. 카테고리 관리 ════════════════════════════════════════════════
+// 오너 시안 + src/ds/CategoryList/CategoryList.tsx 1:1 — 드래그핸들·순번·브랜드(강조색)·
+// 카테고리명(이모지/이미지 표식)·설명·하위(뱃지 "N개")·등록일·활성화(토글)·관리(RowActions 수정·삭제).
+// 목데이터는 CategoryList.stories.tsx의 시공 분야 카테고리(도배·바닥재·욕실 리모델링 …) 그대로 옮겼다.
+function screenCategoryList(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '카테고리 관리')
+  s.appendChild(
+    pageHead(
+      ctx,
+      '카테고리 관리',
+      '1Depth 카테고리를 등록하고, 각 카테고리의 하위(2Depth)를 설정합니다.',
+      [btn(ctx, '카테고리 등록', 'primary', '_Icon/Plus')],
+    ),
+  )
+  // 탭 = 상태 필터(all/active/inactive) — 스토리 목데이터 18건과 같은 결
+  s.appendChild(
+    tabs(ctx, [
+      ['전체', '18', true],
+      ['활성', '16', false],
+      ['비활성', '2', false],
+    ]),
+  )
+
+  const c = flatCard(ctx, '카테고리 표')
+  c.appendChild(
+    toolbar(ctx, [
+      input(ctx, '전체 브랜드', 150, { trailIcon: '_Icon/ChevronDown' }),
+      input(ctx, '카테고리명·설명 검색', 260, { leadIcon: '_Icon/Search' }),
+      input(ctx, '순번순', 130, { trailIcon: '_Icon/ChevronDown' }),
+      tMuted(ctx, '18건', 12),
+    ]),
+  )
+  const cols: Col[] = [
+    { label: '', w: 40, align: 'center' },
+    { label: '순번', w: 56, align: 'center' },
+    { label: '브랜드', w: 110 },
+    { label: '카테고리명', w: 220, grow: true },
+    { label: '설명', w: 300 },
+    { label: '하위', w: 80, align: 'center' },
+    { label: '등록일', w: 110 },
+    { label: '활성화', w: 90, align: 'center' },
+    { label: '관리', w: 130, align: 'center' },
+  ]
+  const rows: Cell[][] = [
+    [
+      { t: 'drag' },
+      { t: 'strong', v: '1' },
+      { t: 'link', v: '한샘' },
+      { t: 'strong', v: '🧻 도배' },
+      { t: 'muted', v: '합지·실크 도배, 부분 보수 시공' },
+      { t: 'badge', v: '3개', tone: 'secondary' },
+      '2025-01-06',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'drag' },
+      { t: 'strong', v: '2' },
+      { t: 'link', v: '리바트' },
+      { t: 'strong', v: '🪵 바닥재' },
+      { t: 'muted', v: '장판·강마루·강화마루·데코타일' },
+      { t: 'badge', v: '4개', tone: 'secondary' },
+      '2025-01-06',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'drag' },
+      { t: 'strong', v: '3' },
+      { t: 'link', v: '자체 브랜드' },
+      { t: 'strong', v: '🛁 욕실 리모델링' },
+      { t: 'muted', v: '욕실 전체 철거 후 방수·타일·도기 교체' },
+      { t: 'badge', v: '2개', tone: 'secondary' },
+      '2025-01-06',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'drag' },
+      { t: 'strong', v: '4' },
+      { t: 'link', v: '한샘' },
+      { t: 'strong', v: '🍳 주방·싱크대' },
+      { t: 'muted', v: '싱크대 교체, 상판·타일 시공, 아일랜드 제작' },
+      { t: 'badge', v: '1개', tone: 'secondary' },
+      '2025-01-06',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'drag' },
+      { t: 'strong', v: '5' },
+      { t: 'link', v: '리바트' },
+      { t: 'thumb', v: '창호·샤시' },
+      { t: 'muted', v: '이중창 교체, 발코니 샤시, 방충망' },
+      { t: 'badge', v: '1개', tone: 'secondary' },
+      '2025-02-14',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+  ]
+  c.appendChild(table(ctx, INNER_W, cols, rows))
+  c.appendChild(pagination(ctx, '전체 18건 · 5건 표시'))
+  s.appendChild(c)
+  return s
+}
+
+// ══ 16. 카테고리 등록 ════════════════════════════════════════════════
+// 오너 시안 + src/ds/CategoryForm/CategoryForm.tsx 1:1 — 카드 '카테고리 정보' 하나뿐이다:
+// 브랜드*·카테고리명*·카테고리 이미지(업로더, 없으면 아이콘 선택)·설명·활성화.
+function screenCategoryForm(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '카테고리 등록')
+  s.appendChild(pageHead(ctx, '카테고리 등록', '', [btn(ctx, '저장', 'primary', '_Icon/Save')]))
+
+  const info = card(ctx, '카테고리 정보', 16)
+  info.appendChild(cardHead(ctx, '카테고리 정보', tMuted(ctx, '* 필수 항목', 12)))
+  info.appendChild(
+    fieldRow(ctx, '브랜드', input(ctx, '브랜드를 선택하세요', 0, { value: '한샘', trailIcon: '_Icon/ChevronDown' }), true),
+  )
+  info.appendChild(fieldRow(ctx, '카테고리명', input(ctx, '예: 거실 인테리어', 0, { value: '거실 인테리어' }), true))
+
+  // 카테고리 이미지 — '이미지 사용' 스위치 + (ON) 업로더/미리보기 또는 (OFF) 아이콘 선택
+  const imgField = vbox('Image Field', 10)
+  fill(imgField)
+  const switchRow = hbox('switch', 8)
+  switchRow.counterAxisAlignItems = 'CENTER'
+  switchRow.appendChild(tBody(ctx, '이미지 사용'))
+  switchRow.appendChild(toggleMini(ctx, true))
+  imgField.appendChild(switchRow)
+  const imgRow = hbox('img row', 16)
+  fill(imgRow)
+  imgRow.counterAxisAlignItems = 'MIN'
+  imgRow.appendChild(thumbBox(ctx, 160, 160, R_CTRL))
+  // 업로더 = DS/DropZone 인스턴스. 힌트는 CategoryForm.tsx의 실제 기본값(권장 640×640 · JPG/PNG · 2MB 이하).
+  const catDrop = inst(ctx, 'DS/DropZone', {
+    name: 'Category Image DropZone',
+    variant: { state: 'idle' },
+    props: {
+      label: '이미지를 끌어다 놓거나 클릭해서 선택하세요',
+      hint: '권장 640×640 · JPG/PNG · 2MB 이하',
+    },
+  })
+  imgRow.appendChild(catDrop ? instGrow(catDrop) : drawDropZone(ctx))
+  imgField.appendChild(imgRow)
+  info.appendChild(fieldRow(ctx, '카테고리 이미지', imgField))
+
+  info.appendChild(
+    fieldRow(
+      ctx,
+      '설명',
+      textarea(ctx, '아파트·주택 거실 시공 사례를 모아 보여주는 카테고리입니다. 대표 이미지는 목록 썸네일로도 함께 쓰입니다.', 90),
+    ),
+  )
+
+  const activeRow = hbox('active', 10)
+  activeRow.counterAxisAlignItems = 'CENTER'
+  activeRow.counterAxisSizingMode = 'FIXED'
+  activeRow.resize(activeRow.width, CTRL_H)
+  activeRow.appendChild(toggleMini(ctx, true))
+  activeRow.appendChild(tSub(ctx, '끄면 목록과 메뉴에서 이 카테고리가 노출되지 않습니다.'))
+  info.appendChild(fieldRow(ctx, '활성화', activeRow))
+  s.appendChild(info)
+
+  const footer = hbox('Footer', 8)
+  fill(footer)
+  footer.counterAxisAlignItems = 'CENTER'
+  footer.primaryAxisAlignItems = 'CENTER'
+  pad(footer, 16, 20)
+  bindFillVar(ctx, footer, 'color/bg', WHITE)
+  outline(ctx, footer)
+  footer.appendChild(btn(ctx, '취소', 'outline'))
+  footer.appendChild(btn(ctx, '저장', 'primary', '_Icon/Check'))
+  s.appendChild(footer)
+  return s
+}
+
+// ══ 17. 메인비주얼 관리 ══════════════════════════════════════════════
+// src/ds/MainVisualList/MainVisualList.tsx 1:1 — 탭(중고2·렌탈3·시공2)은 이 화면이 아니라
+// 부모가 걸러서 넘긴 값이라 무상태다. 렌탈 탭(3건, 이미지 없는 행 1건 포함)을 기본으로 보여준다.
+function screenMainVisualList(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '메인비주얼 관리')
+  s.appendChild(
+    pageHead(ctx, '메인 비주얼 관리', '메인 화면 상단에 노출되는 비주얼을 등록하고 순서를 관리합니다.', [
+      btn(ctx, '렌탈 메인 비주얼 등록', 'primary', '_Icon/Plus'),
+    ]),
+  )
+  s.appendChild(
+    tabs(ctx, [
+      ['중고', '2', false],
+      ['렌탈', '3', true],
+      ['시공', '2', false],
+    ]),
+  )
+
+  const c = flatCard(ctx, '메인비주얼 표')
+  c.appendChild(
+    toolbar(ctx, [
+      input(ctx, '전체 상태', 130, { trailIcon: '_Icon/ChevronDown' }),
+      input(ctx, '제목·문구 검색', 260, { leadIcon: '_Icon/Search' }),
+      input(ctx, '순번순', 130, { trailIcon: '_Icon/ChevronDown' }),
+      tMuted(ctx, '3건', 12),
+    ]),
+  )
+  const cols: Col[] = [
+    { label: '', w: 40, align: 'center', head: { t: 'check' } },
+    { label: '', w: 32, align: 'center' },
+    { label: '순번', w: 56, align: 'center' },
+    { label: '이미지', w: 70, align: 'center' },
+    { label: '타입', w: 84, align: 'center' },
+    { label: '제목', w: 260, grow: true },
+    { label: '등록일', w: 100 },
+    { label: '수정일', w: 100 },
+    { label: '등록자', w: 90 },
+    { label: '수정자', w: 90 },
+    { label: '활성화', w: 84, align: 'center' },
+    { label: '관리', w: 130, align: 'center' },
+  ]
+  const rows: Cell[][] = [
+    [
+      { t: 'check' },
+      { t: 'drag' },
+      { t: 'strong', v: '1' },
+      { t: 'img' },
+      { t: 'badge', v: '히어로', tone: 'primary' },
+      { t: 'link', v: '단기 렌탈 3일 무료 체험 이벤트' },
+      '2026-06-01',
+      '2026-07-02',
+      '김서연',
+      '홍성보',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'check' },
+      { t: 'drag' },
+      { t: 'strong', v: '2' },
+      { t: 'img' },
+      { t: 'badge', v: '히어로', tone: 'primary' },
+      { t: 'link', v: '월 렌탈 신규 고객 20% 할인' },
+      '2026-05-21',
+      '2026-05-29',
+      '이지훈',
+      '김서연',
+      { t: 'toggle', on: true },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+    [
+      { t: 'check' },
+      { t: 'drag' },
+      { t: 'strong', v: '3' },
+      { t: 'img' },
+      { t: 'badge', v: '서브', tone: 'secondary' },
+      { t: 'link', v: '현장 맞춤 장비 렌탈 상담 신청' },
+      '2026-03-14',
+      '2026-06-11',
+      '박준호',
+      '이지훈',
+      { t: 'toggle', on: false },
+      { t: 'btns', v: ['수정', '삭제'] },
+    ],
+  ]
+  c.appendChild(table(ctx, INNER_W, cols, rows))
+  c.appendChild(pagination(ctx, '전체 3건 · 3건 표시'))
+  s.appendChild(c)
+  // 재정렬 안내 — MainVisualList.tsx의 footerNote(핸들 드래그가 실제로 켜져 있을 때만 보인다)
+  const hint = hbox('Reorder Hint', 6)
+  hint.counterAxisAlignItems = 'CENTER'
+  hint.appendChild(icon(ctx, '_Icon/MoveVertical', 14))
+  hint.appendChild(tMuted(ctx, '핸들을 드래그하거나 화살표 키로 순번을 바꿉니다.', 12))
+  s.appendChild(hint)
+  return s
+}
+
+// ══ 18. 메인비주얼 등록 ══════════════════════════════════════════════
+// src/ds/MainVisualForm/MainVisualForm.tsx 1:1 — 카드 번호 1~4 고정: 배너 구분 · 문구·콘텐츠 ·
+// 이미지 · 링크·노출. 1·2번 카드 하단의 Callout(도움말)까지 문구 그대로 옮겼다.
+function screenMainVisualForm(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '메인비주얼 등록')
+  s.appendChild(
+    pageHead(ctx, '메인 비주얼 수정', '', [
+      badge(ctx, '활성', 'success'),
+      btn(ctx, '저장', 'primary', '_Icon/Save'),
+    ]),
+  )
+
+  // 1. 배너 구분
+  const c1 = card(ctx, '배너 구분', 14)
+  c1.appendChild(cardHead(ctx, '1. 배너 구분'))
+  c1.appendChild(fieldRow(ctx, '섹션', input(ctx, '섹션을 선택하세요', 0, { value: '렌탈', trailIcon: '_Icon/ChevronDown' }), true))
+  c1.appendChild(
+    calloutBox(
+      ctx,
+      '도움말',
+      '섹션은 저장 후 변경할 수 없습니다. 다른 섹션에 노출하려면 해당 섹션 목록에서 새로 등록하세요.',
+    ),
+  )
+  s.appendChild(c1)
+
+  // 2. 문구·콘텐츠 — '문구 사용' 밴드(toggleable FormSection)
+  // 조사 기록(2026-07): DS/FormSection(admin.ts) 인스턴스로 바꾸지 않았다. toggleable=true 축과
+  // title/toggleLabel 같은 texts는 이 카드 헤더와 그대로 맞지만, 본문(제목 textarea·오버라인 문구·
+  // 우측 메뉴 라벨·버튼 문구 입력 4개 + calloutBox)은 세트의 'content' 슬롯(자리표시 필드 2장 고정,
+  // admin.ts renderFormSection)에 넣을 수 없다 — Figma 인스턴스는 내부 프레임에 새 자식을 붙이는 것
+  // 자체가 안 된다(컴포넌트 속성 오버라이드만 가능). 헤더만 인스턴스로 바꾸고 본문을 밖에서 이어
+  // 붙이면 카드 하나가 인스턴스+일반 프레임으로 쪼개져 구조가 흐트러진다 — 카드 전체를 직접 그린다.
+  const c2 = card(ctx, '문구·콘텐츠', 14)
+  const c2Head = hbox('head', 8)
+  fill(c2Head)
+  c2Head.counterAxisAlignItems = 'CENTER'
+  c2Head.appendChild(boundText(ctx, '2. 문구·콘텐츠', 15, 'color/text', INK, true))
+  const c2Sp = hbox('sp', 0)
+  c2Head.appendChild(grow(c2Sp))
+  c2Head.appendChild(tSub(ctx, '문구 사용'))
+  c2Head.appendChild(toggleMini(ctx, true))
+  c2.appendChild(c2Head)
+  c2.appendChild(
+    fieldRow(ctx, '제목', textarea(ctx, '예: 사무실 이전, 중고 가구로 예산을 아끼세요', 56), true),
+  )
+  const c2Row = hbox('row', 12)
+  fill(c2Row)
+  c2Row.appendChild(grow(fieldRow(ctx, '오버라인 문구', input(ctx, '예: 신규 입고', 0), false, 110)))
+  c2Row.appendChild(grow(fieldRow(ctx, '우측 메뉴 라벨', input(ctx, '예: 중고 가구', 0), false, 110)))
+  c2.appendChild(c2Row)
+  c2.appendChild(
+    fieldRow(ctx, '버튼 문구', input(ctx, '예: 매물 보러가기', 0), false, 110),
+  )
+  c2.appendChild(
+    calloutBox(
+      ctx,
+      '도움말',
+      '오버라인 문구는 제목 위 작은 글씨로, 우측 메뉴 라벨은 메인 우측 퀵메뉴에 표시됩니다. 제목은 두 줄(60자) 안으로 맞추는 것을 권장합니다.',
+    ),
+  )
+  s.appendChild(c2)
+
+  // 3. 이미지 — 대표 1장
+  const c3 = card(ctx, '이미지', 14)
+  c3.appendChild(cardHead(ctx, '3. 이미지', tMuted(ctx, 'JPG·PNG 이미지 · 최대 10MB', 12)))
+  const imgRow = hbox('img', 16)
+  fill(imgRow)
+  imgRow.counterAxisAlignItems = 'MIN'
+  imgRow.appendChild(thumbBox(ctx, 200, 112, R_CTRL))
+  const bannerDrop = inst(ctx, 'DS/DropZone', {
+    name: 'Banner Image DropZone',
+    variant: { state: 'idle' },
+    props: {
+      label: '다른 이미지를 끌어다 놓거나 클릭해서 교체하세요',
+      hint: 'JPG·PNG 이미지 · 최대 10MB',
+    },
+  })
+  imgRow.appendChild(bannerDrop ? instGrow(bannerDrop) : drawDropZone(ctx))
+  c3.appendChild(imgRow)
+  s.appendChild(c3)
+
+  // 4. 링크·노출
+  const c4 = card(ctx, '링크·노출', 14)
+  c4.appendChild(cardHead(ctx, '4. 링크·노출'))
+  c4.appendChild(
+    fieldRow(ctx, '링크 URL', input(ctx, 'https://spaceplanning.ai/used', 0, { leadIcon: '_Icon/Link' })),
+  )
+  const visRow = hbox('vis', 10)
+  visRow.counterAxisAlignItems = 'CENTER'
+  visRow.counterAxisSizingMode = 'FIXED'
+  visRow.resize(visRow.width, CTRL_H)
+  visRow.appendChild(toggleMini(ctx, true))
+  visRow.appendChild(tSub(ctx, '클라이언트 페이지에 노출됩니다.'))
+  c4.appendChild(fieldRow(ctx, '활성화', visRow))
+  s.appendChild(c4)
+
+  const footer = hbox('Footer', 8)
+  fill(footer)
+  footer.counterAxisAlignItems = 'CENTER'
+  footer.primaryAxisAlignItems = 'CENTER'
+  pad(footer, 16, 20)
+  bindFillVar(ctx, footer, 'color/bg', WHITE)
+  outline(ctx, footer)
+  footer.appendChild(btn(ctx, '취소', 'outline'))
+  footer.appendChild(btn(ctx, '저장', 'primary', '_Icon/Check'))
+  s.appendChild(footer)
+  return s
+}
+
+// ══ 19. 시공 문의 내역(관리) ═════════════════════════════════════════
+// src/ds/InquiryManageList/InquiryManageList.tsx 1:1 — 챗봇으로 접수된 시공 문의.
+// 문의관리(inquiries) 메뉴 안에서 기존 '문의 내역'(문의게시판 데모)과는 다른 화면이라 이름을 갈랐다.
+function screenInquiryManageList(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '시공 문의 내역')
+  s.appendChild(
+    pageHead(ctx, '시공 문의 내역', '시공 문의 챗봇을 통해 접수된 신청 내역을 조회·관리합니다.', [
+      btn(ctx, '엑셀 다운로드', 'outline', '_Icon/Download'),
+    ]),
+  )
+  s.appendChild(
+    tabs(ctx, [
+      ['전체', '4', true],
+      ['대기중', '3', false],
+      ['답변완료', '1', false],
+      ['보류', '0', false],
+    ]),
+  )
+
+  const c = flatCard(ctx, '시공 문의 표')
+  c.appendChild(
+    toolbar(ctx, [
+      input(ctx, '신청자, 연락처, 이메일로 검색', 320, { leadIcon: '_Icon/Search' }),
+      input(ctx, '최신순', 130, { trailIcon: '_Icon/ChevronDown' }),
+      tMuted(ctx, '4건', 12),
+    ]),
+  )
+  const cols: Col[] = [
+    { label: '', w: 40, align: 'center', head: { t: 'check' } },
+    { label: '순번', w: 60, align: 'center' },
+    { label: '신청자', w: 200, grow: true },
+    { label: '연락처', w: 150 },
+    { label: '이메일', w: 220 },
+    { label: '신청일', w: 110 },
+    { label: '상태', w: 100, align: 'center' },
+    { label: '관리', w: 110, align: 'center' },
+  ]
+  const rows: Cell[][] = [
+    [
+      { t: 'check' },
+      { t: 'strong', v: '4' },
+      { t: 'link', v: '최유나' },
+      '010-7745-2213',
+      { t: 'muted', v: 'yuna.choi@gmail.com' },
+      '2026-07-12',
+      { t: 'badge', v: '답변완료', tone: 'success' },
+      { t: 'btns', v: ['보기', '삭제'] },
+    ],
+    [
+      { t: 'check' },
+      { t: 'strong', v: '3' },
+      { t: 'link', v: '박서준' },
+      '010-4821-7734',
+      { t: 'muted', v: 'seojun.park@gmail.com' },
+      '2026-07-11',
+      { t: 'badge', v: '대기중', tone: 'error' },
+      { t: 'btns', v: ['보기', '삭제'] },
+    ],
+    [
+      { t: 'check' },
+      { t: 'strong', v: '2' },
+      { t: 'link', v: '김민지' },
+      '010-3376-1902',
+      { t: 'muted', v: 'minji.kim@naver.com' },
+      '2026-07-09',
+      { t: 'badge', v: '대기중', tone: 'error' },
+      { t: 'btns', v: ['보기', '삭제'] },
+    ],
+    [
+      { t: 'check' },
+      { t: 'strong', v: '1' },
+      { t: 'link', v: '이도현' },
+      '010-2914-5580',
+      { t: 'muted', v: 'dohyun.lee@daum.net' },
+      '2026-07-07',
+      { t: 'badge', v: '대기중', tone: 'error' },
+      { t: 'btns', v: ['보기', '삭제'] },
+    ],
+  ]
+  c.appendChild(table(ctx, INNER_W, cols, rows))
+  c.appendChild(pagination(ctx, '전체 4건 · 4건 표시'))
+  s.appendChild(c)
+  return s
+}
+
+// ══ 20. 시공 문의 상세(관리) ═════════════════════════════════════════
+// src/ds/InquiryManageDetail/InquiryManageDetail.tsx 1:1 — [신청자 정보](3칸+동의배지+메타)
+// → [문의 응답](QaList) → [답변](토글 밴드 + textarea). 목데이터는 InquiryManageDetail.stories.tsx.
+function screenInquiryManageDetail(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '시공 문의 상세')
+  s.appendChild(
+    pageHead(ctx, '시공 문의 상세', '', [
+      badge(ctx, '대기중', 'warning'),
+      btn(ctx, '저장', 'primary', '_Icon/Save'),
+    ]),
+  )
+
+  // [신청자 정보] — 이름·연락처·이메일 3칸 + 동의 배지 + 메타 줄
+  const applicant = card(ctx, '신청자 정보', 14)
+  applicant.appendChild(cardHead(ctx, '신청자 정보'))
+  const triple = hbox('triple', 24)
+  fill(triple)
+  const fields: Array<[string, string]> = [
+    ['이름', '정하늘'],
+    ['연락처', '010-4872-1130'],
+    ['이메일', 'haneul.jung@example.com'],
+  ]
+  for (const [label, value] of fields) {
+    const f = vbox('f', 4)
+    grow(f)
+    f.appendChild(tSub(ctx, label, 12))
+    f.appendChild(tBody(ctx, value, true))
+    triple.appendChild(f)
+  }
+  applicant.appendChild(triple)
+  const consentRow = hbox('consent', 6)
+  consentRow.counterAxisAlignItems = 'CENTER'
+  consentRow.appendChild(badge(ctx, '개인정보 동의', 'success'))
+  consentRow.appendChild(badge(ctx, '마케팅 미동의', 'secondary'))
+  applicant.appendChild(consentRow)
+  applicant.appendChild(
+    tMuted(ctx, '신청일 2026-07-09 14:26 · 수정일 2026-07-12 10:03 · 수정자 김상담', 12),
+  )
+  s.appendChild(applicant)
+
+  // [문의 응답] — QaList(신청 폼에 입력된 Q1~Qn). 3건만 보여준다(전체 6건).
+  const qa = card(ctx, '문의 응답', 14)
+  qa.appendChild(cardHead(ctx, '문의 응답', undefined))
+  qa.appendChild(tSub(ctx, '신청 폼에 입력된 답변입니다.', 12))
+  const qaPairs: Array<[string, string]> = [
+    ['현재 운영 상태를 알려주세요.', '오픈 준비 중 (2026년 9월 오픈 예정)'],
+    ['지역은 어디인가요?', '서울 성동구 성수동2가'],
+    ['공간 종류를 선택해 주세요.', '카페 · 베이커리 (1층 로드샵)'],
+  ]
+  qaPairs.forEach(([q, a], i) => {
+    const item = vbox('qa', 6)
+    fill(item)
+    pad(item, 10, 0)
+    if (i < qaPairs.length - 1) bottomLine(ctx, item)
+    const qRow = hbox('q', 6)
+    qRow.counterAxisAlignItems = 'CENTER'
+    qRow.appendChild(boundText(ctx, 'Q' + (i + 1), 12, 'color/primary', ACCENT, true))
+    qRow.appendChild(tBody(ctx, q, true))
+    item.appendChild(qRow)
+    const aRow = hbox('a', 6)
+    aRow.counterAxisAlignItems = 'MIN'
+    aRow.appendChild(tMuted(ctx, 'A', 12))
+    aRow.appendChild(grow(wrapText(tSub(ctx, a, 13))))
+    item.appendChild(aRow)
+    qa.appendChild(item)
+  })
+  s.appendChild(qa)
+
+  // [답변] — 답변 사용 토글 밴드 + textarea(초안). DS/FormSection이 안 맞는 이유는 위 2번
+  // (screenMainVisualForm '문구·콘텐츠')과 같다 — 본문(fieldRow '답변 내용')을 세트 인스턴스 안에
+  // 넣을 방법이 없다.
+  const answer = card(ctx, '답변', 14)
+  const aHead = hbox('head', 8)
+  fill(aHead)
+  aHead.counterAxisAlignItems = 'CENTER'
+  aHead.appendChild(boundText(ctx, '답변', 15, 'color/text', INK, true))
+  const aSp = hbox('sp', 0)
+  aHead.appendChild(grow(aSp))
+  aHead.appendChild(tSub(ctx, '답변 사용'))
+  aHead.appendChild(toggleMini(ctx, true))
+  answer.appendChild(aHead)
+  answer.appendChild(tSub(ctx, '등록한 답변은 신청자 메일로 함께 발송됩니다.', 12))
+  answer.appendChild(
+    fieldRow(
+      ctx,
+      '답변 내용',
+      textarea(
+        ctx,
+        '안녕하세요, 문의 주셔서 감사합니다.\n보내주신 도면 기준으로 실링 스피커 6개 + 앰프 1대 구성을 제안드립니다.',
+        100,
+      ),
+      true,
+    ),
+  )
+  s.appendChild(answer)
+
+  const footer = hbox('Footer', 8)
+  fill(footer)
+  footer.counterAxisAlignItems = 'CENTER'
+  footer.primaryAxisAlignItems = 'CENTER'
+  pad(footer, 16, 20)
+  bindFillVar(ctx, footer, 'color/bg', WHITE)
+  outline(ctx, footer)
+  footer.appendChild(btn(ctx, '목록', 'outline', '_Icon/List'))
+  const fSp = hbox('sp', 0)
+  footer.appendChild(grow(fSp))
+  footer.appendChild(btn(ctx, '삭제', 'danger', '_Icon/Trash2'))
+  footer.appendChild(btn(ctx, '저장', 'primary', '_Icon/Save'))
+  s.appendChild(footer)
+  return s
+}
+
+// ══ 21. 문의 설정 ════════════════════════════════════════════════════
+// src/ds/InquirySettings/InquirySettings.tsx 1:1 — 탭 4개(문의 유형·자동화·알림·상태 배지) 중
+// 기본 탭 '문의 유형 관리'(SortableList: 핸들·순번·유형명/코드·사용배지·토글·RowActions)를 그린다.
+// 페이지 타이틀·설명은 AdminSuite의 menuMeta['inquiry-settings']를 그대로 옮겼다(컴포넌트 자체엔 헤더가 없다).
+//
+// 조사 기록(2026-07): 행을 DS/SortableList 인스턴스로, 우측 액션을 DS/RowActions 인스턴스로 바꾸지
+// 않았다. SortableList(admin.ts)는 축 3개(direction·disabled·handleOnly)뿐 texts/bools 오버라이드가
+// 하나도 없어(직전 배치가 이미 보고한 문제 그대로) 실제 문의 유형 5개(상품·배송·주문·결제·취소 문의)
+// 라벨을 넣을 통로가 없다. RowActions는 view·edit·delete를 개별로 껐다 켤 BOOLEAN이 없어(이 화면은
+// edit+delete 2개만 쓴다) 인스턴스로 바꾸면 없는 '상세보기' 아이콘이 하나 더 붙는다 — 둘 다 직접 그린다.
+function screenInquirySettings(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '문의 설정')
+  s.appendChild(pageHead(ctx, '문의 설정', '문의 유형·자동화·알림·상태 배지를 설정합니다.'))
+  s.appendChild(
+    tabs(ctx, [
+      ['문의 유형', '', true],
+      ['자동화', '', false],
+      ['알림', '', false],
+      ['상태 배지', '', false],
+    ]),
+  )
+
+  const c = card(ctx, '문의 유형 관리', 12)
+  c.appendChild(
+    cardHead(ctx, '문의 유형 관리', btn(ctx, '유형 추가', 'primary', '_Icon/Plus', 30)),
+  )
+  c.appendChild(
+    tSub(ctx, '접수 화면에 노출되는 유형입니다. 핸들을 끌거나 Ctrl/Cmd + ↑ ↓ 로 순서를 바꿉니다.', 12),
+  )
+  const types: Array<[string, string, boolean]> = [
+    ['상품 문의', 'product', true],
+    ['배송 문의', 'delivery', true],
+    ['주문 문의', 'order', true],
+    ['결제 문의', 'payment', true],
+    ['취소 문의', 'cancel', true],
+  ]
+  types.forEach(([label, key, enabled], i) => {
+    const row = hbox('Type / ' + label, 12)
+    fill(row)
+    row.counterAxisAlignItems = 'CENTER'
+    pad(row, 10, 4)
+    if (i < types.length - 1) bottomLine(ctx, row)
+    row.appendChild(icon(ctx, '_Icon/MoveVertical', 16))
+    row.appendChild(tMuted(ctx, String(i + 1), 12))
+    const main = vbox('main', 2)
+    grow(main)
+    main.appendChild(tBody(ctx, label, true))
+    main.appendChild(tMuted(ctx, key, 11))
+    row.appendChild(main)
+    row.appendChild(badge(ctx, enabled ? '사용' : '미사용', enabled ? 'success' : 'secondary'))
+    row.appendChild(toggleMini(ctx, enabled))
+    const rActions = hbox('actions', 6)
+    rActions.counterAxisAlignItems = 'CENTER'
+    const editB = iconBtn(ctx, '_Icon/Edit', 28)
+    const delB = iconBtn(ctx, '_Icon/Trash2', 28)
+    rActions.appendChild(editB)
+    rActions.appendChild(delB)
+    row.appendChild(rActions)
+    c.appendChild(row)
+  })
+  s.appendChild(c)
+  return s
+}
+
+// ══ 22. 사용자 목록 ══════════════════════════════════════════════════
+// src/ds/CustomerList/CustomerList.tsx 1:1 — 오너 확정 사이드바 '회원관리 › 사용자'.
+// 기존 '고객 목록' 화면(active=users)은 다른 컴포넌트(MemberList, 그룹 패널이 있는 화면)라서
+// 화면 이름을 '사용자 목록'으로 분리했다 — 실제 화면 타이틀(AdminTopbar 문구)은
+// CustomerList.tsx의 기본값 그대로 '고객 목록'이다(두 화면이 같은 문구를 보여줄 수 있다).
+function screenCustomerList(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '사용자 목록')
+  s.appendChild(
+    pageHead(ctx, '고객 목록', '가입한 일반회원·아티스트회원을 조회하고 메모를 관리합니다.', [
+      btn(ctx, '엑셀 다운로드', 'outline', '_Icon/Download'),
+    ]),
+  )
+  s.appendChild(
+    tabs(ctx, [
+      ['전체', '5', true],
+      ['일반회원', '2', false],
+      ['아티스트회원', '3', false],
+    ]),
+  )
+
+  const c = flatCard(ctx, '사용자 표')
+  c.appendChild(
+    toolbar(
+      ctx,
+      [input(ctx, '닉네임 · 계정 · 연락처로 검색', 320, { leadIcon: '_Icon/Search' }), tMuted(ctx, '5명', 12)],
+      [btn(ctx, '필터', 'outline', '_Icon/Filter')],
+    ),
+  )
+  const cols: Col[] = [
+    { label: '닉네임', w: 110 },
+    { label: '연락처', w: 130 },
+    { label: '이메일', w: 200 },
+    { label: '회원 유형', w: 100, align: 'center' },
+    { label: '가입 경로', w: 90, align: 'center' },
+    { label: '가입일', w: 100 },
+    { label: '주문', w: 60, align: 'right' },
+    { label: '누적 구매금액', w: 130, align: 'right' },
+    { label: '메모', w: 260, grow: true },
+  ]
+  const rows: Cell[][] = [
+    [
+      { t: 'link', v: '서준작가' },
+      { t: 'muted', v: '010-4821-7734' },
+      { t: 'link', v: 'seojun.kim@example.com' },
+      { t: 'badge', v: '아티스트회원', tone: 'primary' },
+      { t: 'badge', v: '이메일', tone: 'secondary' },
+      '2024-11-02',
+      '42',
+      '3,284,000원',
+      { t: 'muted', v: '배송 지연 클레임 건으로 3,000원 쿠폰 지급 완료.' },
+    ],
+    [
+      { t: 'link', v: '하윤' },
+      { t: 'muted', v: '010-2937-1120' },
+      { t: 'link', v: 'hayun.park@example.com' },
+      { t: 'badge', v: '일반회원', tone: 'secondary' },
+      { t: 'badge', v: '이메일', tone: 'secondary' },
+      '2025-03-18',
+      '7',
+      '412,000원',
+      { t: 'muted', v: '—' },
+    ],
+    [
+      { t: 'link', v: '도현스튜디오' },
+      { t: 'muted', v: '010-7645-8892' },
+      { t: 'link', v: 'dohyun.lee@example.com' },
+      { t: 'badge', v: '아티스트회원', tone: 'primary' },
+      { t: 'badge', v: '이메일', tone: 'secondary' },
+      '2025-09-04',
+      '0',
+      '0원',
+      { t: 'muted', v: '포트폴리오 검수 대기 중.' },
+    ],
+    [
+      { t: 'link', v: '은비' },
+      { t: 'muted', v: '010-3318-2047' },
+      { t: 'link', v: 'eunbi.choi@example.com' },
+      { t: 'badge', v: '일반회원', tone: 'secondary' },
+      { t: 'badge', v: '이메일', tone: 'secondary' },
+      '2026-01-27',
+      '3',
+      '128,500원',
+      { t: 'muted', v: '—' },
+    ],
+    [
+      { t: 'link', v: '예린' },
+      { t: 'muted', v: '010-5502-6613' },
+      { t: 'link', v: 'yerin.jung@example.com' },
+      { t: 'badge', v: '아티스트회원', tone: 'primary' },
+      { t: 'badge', v: '이메일', tone: 'secondary' },
+      '2026-07-12',
+      '0',
+      '0원',
+      { t: 'muted', v: '—' },
+    ],
+  ]
+  c.appendChild(table(ctx, INNER_W, cols, rows))
+  c.appendChild(pagination(ctx, '전체 5명 · 5명 표시'))
+  s.appendChild(c)
+  return s
+}
+
+/**
+ * 폴백 — DS/DefinitionList 세트가 없을 때의 상품 메타(상품코드·등록일·수정일·등록자).
+ * metaInst(아래)의 props와 같은 4행이다 — 문의 상세용 drawInquiryDefinitions(문의번호·유형·연락처…)를
+ * 여기서 재사용하면 상품 상세에 문의 데이터가 그려진다(2026-07 적대적 검증에서 지적된 오조합).
+ */
+function drawProductMetaDefinitions(ctx: Ctx): FrameNode {
+  const dl = vbox('dl', 0)
+  fill(dl)
+  dl.appendChild(defRow(ctx, '상품코드', 'SHOE-AERO-X2', { muted: true }))
+  dl.appendChild(defRow(ctx, '등록일', '2026-03-02'))
+  dl.appendChild(defRow(ctx, '수정일', '2026-07-12 17:40'))
+  const lastRow = defRow(ctx, '등록자', '김상품')
+  lastRow.strokes = []
+  dl.appendChild(lastRow)
+  return dl
+}
+/**
+ * 폴백 — DS/StatusTimeline 세트가 없을 때의 판매 진행 단계(등록→검수→판매중→판매종료).
+ * flowInst(아래)의 Step N/Step N Meta props와 같은 4단계다 — 문의 처리 이력용 drawInquiryLogs
+ * (문의 접수·담당자 확인)를 여기서 재사용하면 상품의 판매 흐름과 무관한 문의 이력이 그려진다.
+ */
+function drawProductFlow(ctx: Ctx): FrameNode {
+  const wrap = vbox('Flow', 0)
+  fill(wrap)
+  const steps: Array<[string, string, Tone]> = [
+    ['등록', '2026-03-02', 'secondary'],
+    ['검수', '완료', 'secondary'],
+    ['판매중', '진행중', 'primary'],
+    ['판매종료', '-', 'secondary'],
+  ]
+  steps.forEach(([title, meta, tone], i) => {
+    const r = hbox('step', 12)
+    fill(r)
+    r.counterAxisAlignItems = 'MIN'
+    pad(r, 12, 0)
+    if (i < steps.length - 1) bottomLine(ctx, r)
+    const dotWrap = fixed('dot', 'HORIZONTAL', 20, 20)
+    dotWrap.primaryAxisAlignItems = 'CENTER'
+    dotWrap.counterAxisAlignItems = 'CENTER'
+    const dot = figma.createEllipse()
+    dot.resize(8, 8)
+    const v = ctx.vars.get(`color/${tone}`)
+    dot.fills = [v ? boundPaint(v) : solid(TONE_HEX[tone])]
+    dotWrap.appendChild(dot)
+    r.appendChild(dotWrap)
+    const col = vbox('c', 4)
+    col.appendChild(tBody(ctx, title, true))
+    col.appendChild(tMuted(ctx, meta, 12))
+    r.appendChild(grow(col))
+    wrap.appendChild(r)
+  })
+  return wrap
+}
+
+// ══ 23. 상품 상세 ════════════════════════════════════════════════════
+// src/ds/ProductDetail/ProductDetail.tsx 1:1 — DetailLayout(본문 + aside). 목데이터는
+// ProductDetail.stories.tsx의 '에어로 러닝화 X2'(SHOE-AERO-X2)를 그대로 옮겼다.
+function screenProductDetail(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '상품 상세')
+  s.appendChild(
+    pageHead(ctx, '에어로 러닝화 X2 (남녀공용)', 'SHOE-AERO-X2 · 스포츠 > 러닝화', [
+      btn(ctx, '목록', 'outline', '_Icon/List'),
+      btn(ctx, '수정', 'outline', '_Icon/Edit'),
+      btn(ctx, '저장', 'primary', '_Icon/Save'),
+    ]),
+  )
+
+  const body = hbox('Body', GAP)
+  fill(body)
+  body.counterAxisAlignItems = 'MIN'
+
+  // ── 본문 ──
+  const main = mainCol(MAIN_W)
+
+  // 헤더 블록 — 상태 배지 · 태그 · 판매 토글 · 메타(DefinitionList)
+  const headCard = card(ctx, '상태', 12)
+  const badgeRow = hbox('badges', 8)
+  badgeRow.counterAxisAlignItems = 'CENTER'
+  badgeRow.appendChild(badge(ctx, '판매중', 'success'))
+  badgeRow.appendChild(badge(ctx, '스포츠 > 러닝화', 'primary'))
+  const badgeSp = hbox('sp', 0)
+  badgeRow.appendChild(grow(badgeSp))
+  const saleRow = hbox('sale', 8)
+  saleRow.counterAxisAlignItems = 'CENTER'
+  saleRow.appendChild(tSub(ctx, '판매'))
+  saleRow.appendChild(toggleMini(ctx, true))
+  badgeRow.appendChild(saleRow)
+  fill(badgeRow)
+  headCard.appendChild(badgeRow)
+  const metaInst = inst(ctx, 'DS/DefinitionList', {
+    name: 'Product Meta',
+    variant: { frame: 'flush', density: 'compact' },
+    props: {
+      'Label 1': '상품코드',
+      'Value 1': 'SHOE-AERO-X2',
+      'Label 2': '등록일',
+      'Value 2': '2026-03-02',
+      'Label 3': '수정일',
+      'Value 3': '2026-07-12 17:40',
+      'Label 4': '등록자',
+      'Value 4': '김상품',
+      'Show Row 5': false,
+      'Show Row 6': false,
+      'Show Row 7': false,
+    },
+  })
+  headCard.appendChild(metaInst ? instFill(metaInst) : drawProductMetaDefinitions(ctx))
+  main.appendChild(headCard)
+
+  // 상품 이미지 갤러리
+  const gallery = card(ctx, '상품 이미지', 12)
+  gallery.appendChild(cardHead(ctx, '상품 이미지', btn(ctx, '크게 보기', 'outline', '_Icon/Maximize2', 28), '총 3장 · 첫 번째가 대표 이미지'))
+  const thumbs = hbox('thumbs', 12)
+  fill(thumbs)
+  for (let i = 0; i < 3; i++) {
+    const th = thumbBox(ctx, 140, 140, R_CTRL)
+    if (i === 0) {
+      bindStrokeVar(ctx, th, 'color/primary', ACCENT)
+      th.strokeWeight = 2
+      th.strokeAlign = 'INSIDE'
+    }
+    thumbs.appendChild(th)
+  }
+  gallery.appendChild(thumbs)
+  main.appendChild(gallery)
+
+  // 기본 정보
+  const basic = card(ctx, '기본 정보', 0)
+  basic.appendChild(cardHead(ctx, '기본 정보'))
+  // defRow는 값이 문자열 하나뿐이라 '취소선+할인가+배지' 조합은 같은 모양을 직접 짠다(라벨 폭 120은 defRow와 동일).
+  const priceRowWrap = hbox('Def / 판매가', 12)
+  fill(priceRowWrap)
+  priceRowWrap.counterAxisAlignItems = 'CENTER'
+  pad(priceRowWrap, 10, 0)
+  bottomLine(ctx, priceRowWrap)
+  const priceLabel = hbox('Label', 0)
+  priceLabel.counterAxisSizingMode = 'FIXED'
+  priceLabel.primaryAxisSizingMode = 'FIXED'
+  priceLabel.resize(120, 20)
+  priceLabel.counterAxisAlignItems = 'CENTER'
+  priceLabel.appendChild(tSub(ctx, '판매가'))
+  priceRowWrap.appendChild(priceLabel)
+  const priceValRow = hbox('Value', 8)
+  priceValRow.counterAxisAlignItems = 'CENTER'
+  const strike = tMuted(ctx, '149,000원', 12)
+  strike.textDecoration = 'STRIKETHROUGH'
+  priceValRow.appendChild(strike)
+  priceValRow.appendChild(boundText(ctx, '129,000원', F_BODY, 'color/text', INK, true))
+  priceValRow.appendChild(badge(ctx, '13%', 'error'))
+  priceRowWrap.appendChild(grow(priceValRow))
+  basic.appendChild(priceRowWrap)
+  basic.appendChild(defRow(ctx, '재고', '78개'))
+  basic.appendChild(defRow(ctx, '배송비', '무료배송'))
+  const lastDef = defRow(ctx, '과세여부', '과세')
+  lastDef.strokes = []
+  basic.appendChild(lastDef)
+  main.appendChild(basic)
+
+  // 옵션
+  const options = card(ctx, '옵션', 12)
+  options.appendChild(cardHead(ctx, '옵션', undefined, '5개 옵션'))
+  const optCols: Col[] = [
+    { label: '옵션명', w: 140 },
+    { label: '옵션값', w: 220, grow: true },
+    { label: '추가금액', w: 110, align: 'right' },
+    { label: '재고', w: 90, align: 'right' },
+    { label: '사용', w: 90, align: 'center' },
+  ]
+  const optRows: Cell[][] = [
+    ['컬러 / 사이즈', '블랙 / 250', '-', '24', { t: 'badge', v: '사용', tone: 'success' }],
+    ['컬러 / 사이즈', '블랙 / 260', '-', '12', { t: 'badge', v: '사용', tone: 'success' }],
+    ['컬러 / 사이즈', '블랙 / 270', '-', { t: 'strong', v: '0' }, { t: 'badge', v: '사용', tone: 'success' }],
+    ['컬러 / 사이즈', '화이트 / 250', '5,000원', '8', { t: 'badge', v: '사용', tone: 'success' }],
+    ['컬러 / 사이즈', '화이트 / 260', '5,000원', '31', { t: 'badge', v: '사용', tone: 'success' }],
+  ]
+  options.appendChild(table(ctx, MAIN_W, optCols, optRows))
+  main.appendChild(options)
+
+  // 상세 설명 + 첨부
+  const desc = card(ctx, '상세 설명', 10)
+  desc.appendChild(cardHead(ctx, '상세 설명'))
+  desc.appendChild(boundText(ctx, '가벼움과 반발력을 동시에', 15, 'color/text', INK, true))
+  const p1 = tSub(ctx, '에어로 러닝화 X2는 235g(270 기준)의 경량 미드솔과 카본 플레이트를 결합해 장거리 러닝에서도 발목 피로를 줄여줍니다.')
+  p1.textAutoResize = 'HEIGHT'
+  p1.layoutAlign = 'STRETCH'
+  desc.appendChild(p1)
+  const p2 = tSub(ctx, '· 초경량 EVA 미드솔 · 통기성 니트 어퍼 · 미끄럼 방지 러버 아웃솔', 12)
+  desc.appendChild(p2)
+  const attRow = hbox('files', 8)
+  fill(attRow)
+  for (const f of ['상품_상세스펙.pdf', 'KC인증서.pdf']) {
+    const fr = hbox('file', 6)
+    fr.counterAxisAlignItems = 'CENTER'
+    pad(fr, 8, 10)
+    fr.cornerRadius = R_CTRL
+    bindFillVar(ctx, fr, 'color/bgSubtle', SURFACE)
+    fr.appendChild(icon(ctx, '_Icon/Paperclip', 14))
+    fr.appendChild(tSub(ctx, f, 12))
+    attRow.appendChild(fr)
+  }
+  desc.appendChild(attRow)
+  main.appendChild(desc)
+
+  // 탭 — 판매 통계 / 최근 주문 / 문의(건수만 표기, 판매 통계 패널을 기본으로 그린다)
+  main.appendChild(
+    tabs(ctx, [
+      ['판매 통계', '', true],
+      ['최근 주문', '4', false],
+      ['문의', '4', false],
+    ]),
+  )
+  const chartCard = card(ctx, '최근 6개월 판매량', 12)
+  chartCard.appendChild(cardHead(ctx, '최근 6개월 판매량'))
+  chartCard.appendChild(
+    chartSingle(ctx, 180, ['2월', '3월', '4월', '5월', '6월', '7월'], [128, 164, 142, 203, 251, 187]),
+  )
+  main.appendChild(chartCard)
+  body.appendChild(main)
+
+  // ── aside ──
+  const aside = vbox('Aside', GAP)
+  aside.counterAxisSizingMode = 'FIXED'
+  aside.resize(PANEL_W + 120, 100)
+
+  const stats = card(ctx, '재고 현황', 12)
+  stats.appendChild(cardHead(ctx, '재고 현황'))
+  const statsRow1 = hbox('r1', 12)
+  fill(statsRow1)
+  statsRow1.appendChild(statTile(ctx, '총 재고', '78개'))
+  statsRow1.appendChild(statTile(ctx, '품절 옵션', '1/5', undefined, 'warning'))
+  stats.appendChild(statsRow1)
+  const statsRow2 = hbox('r2', 12)
+  fill(statsRow2)
+  statsRow2.appendChild(statTile(ctx, '6개월 판매', '1,075개'))
+  statsRow2.appendChild(statTile(ctx, '미답변 문의', '1건', undefined, 'error'))
+  stats.appendChild(statsRow2)
+  aside.appendChild(stats)
+
+  const visibility = card(ctx, '노출 상태', 12)
+  visibility.appendChild(cardHead(ctx, '노출 상태'))
+  const dispRow = hbox('disp', 10)
+  dispRow.counterAxisAlignItems = 'CENTER'
+  dispRow.counterAxisSizingMode = 'FIXED'
+  dispRow.resize(dispRow.width, CTRL_H)
+  dispRow.appendChild(toggleMini(ctx, true))
+  dispRow.appendChild(tSub(ctx, '쇼핑몰 목록/검색 노출'))
+  visibility.appendChild(fieldRow(ctx, '전시 노출', dispRow))
+  const saleRow2 = hbox('sale2', 10)
+  saleRow2.counterAxisAlignItems = 'CENTER'
+  saleRow2.counterAxisSizingMode = 'FIXED'
+  saleRow2.resize(saleRow2.width, CTRL_H)
+  saleRow2.appendChild(toggleMini(ctx, true))
+  saleRow2.appendChild(tSub(ctx, '판매중'))
+  visibility.appendChild(fieldRow(ctx, '판매', saleRow2))
+  aside.appendChild(visibility)
+
+  const taxo = card(ctx, '카테고리 · 태그', 10)
+  taxo.appendChild(cardHead(ctx, '카테고리 · 태그', btn(ctx, '편집', 'ghost', '_Icon/Edit', 26)))
+  taxo.appendChild(tSub(ctx, '카테고리', 12))
+  const catChip = hbox('cat', 6)
+  catChip.appendChild(badge(ctx, '스포츠 > 러닝화', 'primary'))
+  taxo.appendChild(catChip)
+  taxo.appendChild(tSub(ctx, '태그', 12))
+  const tagChips = hbox('tags', 6)
+  ;['신상품', '베스트', '무료배송'].forEach((t) => tagChips.appendChild(badge(ctx, t, 'secondary')))
+  taxo.appendChild(tagChips)
+  aside.appendChild(taxo)
+
+  // 판매 진행 = DS/StatusTimeline 인스턴스(vertical)
+  const flow = card(ctx, '판매 진행', 12)
+  flow.appendChild(cardHead(ctx, '판매 진행'))
+  const flowInst = inst(ctx, 'DS/StatusTimeline', {
+    name: 'Product Flow',
+    variant: { direction: 'vertical' },
+    props: {
+      'Step 1': '등록',
+      'Step 1 Meta': '2026-03-02',
+      'Step 2': '검수',
+      'Step 2 Meta': '완료',
+      'Step 3': '판매중',
+      'Step 3 Meta': '진행중',
+      'Step 4': '판매종료',
+      'Step 4 Meta': '-',
+    },
+  })
+  flow.appendChild(flowInst ?? drawProductFlow(ctx))
+  aside.appendChild(flow)
+
+  const manager = card(ctx, '담당자', 0)
+  manager.appendChild(cardHead(ctx, '담당자'))
+  manager.appendChild(defRow(ctx, '담당 MD', '박엠디'))
+  manager.appendChild(defRow(ctx, '등록자', '김상품'))
+  const managerLast = defRow(ctx, '최근 수정', '2026-07-12 17:40')
+  managerLast.strokes = []
+  manager.appendChild(managerLast)
+  aside.appendChild(manager)
+
+  const quick = card(ctx, '빠른 액션', 8)
+  quick.appendChild(cardHead(ctx, '빠른 액션'))
+  quick.appendChild(fill(btn(ctx, '수정', 'outline', '_Icon/Edit')))
+  quick.appendChild(fill(btn(ctx, '복제', 'outline', '_Icon/Copy')))
+  quick.appendChild(fill(btn(ctx, '삭제', 'danger', '_Icon/Trash2')))
+  aside.appendChild(quick)
+
+  body.appendChild(aside)
+  s.appendChild(body)
+
+  const footer = hbox('Footer', 8)
+  fill(footer)
+  footer.counterAxisAlignItems = 'CENTER'
+  footer.primaryAxisAlignItems = 'CENTER'
+  pad(footer, 16, 20)
+  bindFillVar(ctx, footer, 'color/bg', WHITE)
+  outline(ctx, footer)
+  footer.appendChild(btn(ctx, '목록', 'outline'))
+  const fSp = hbox('sp', 0)
+  footer.appendChild(grow(fSp))
+  footer.appendChild(btn(ctx, '삭제', 'danger', '_Icon/Trash2'))
+  footer.appendChild(btn(ctx, '복제', 'outline', '_Icon/Copy'))
+  footer.appendChild(btn(ctx, '수정', 'outline'))
+  footer.appendChild(btn(ctx, '저장', 'primary'))
+  s.appendChild(footer)
+  return s
+}
+
+// ══ 24. 상품 등록/수정 ═══════════════════════════════════════════════
+// src/ds/ProductEditPage/ProductEditPage.tsx 1:1 — 좌 FormAnchorNav(10섹션) · 중앙 섹션 카드 ·
+// 우 MobilePreview. 목데이터는 ProductEditPage.stories.tsx의 '오크 원목 1200 서랍형 책상'.
+// (React ProductForm의 '상품 등록' 화면과는 다른 컴포넌트다 — 기존 12번 화면 '상품 등록'이 그 쪽이다.)
+function screenProductEditPage(ctx: Ctx): FrameNode {
+  const s = screenFrame(ctx, '상품 등록·수정')
+  s.appendChild(
+    pageHead(ctx, '상품 등록/수정', '이미지·가격·적립금·배송·옵션·SEO를 한 화면에서 편집합니다.', [
+      badge(ctx, '판매중', 'success'),
+      btn(ctx, '저장', 'primary', '_Icon/Save'),
+    ]),
+  )
+
+  const body = hbox('Body', GAP)
+  fill(body)
+  body.counterAxisAlignItems = 'MIN'
+
+  // 좌 — 앵커 내비(10섹션). DS/FormAnchorNav를 안 쓰는 이유는 위 screenProductForm과 같다 —
+  // 세트는 5개 고정 섹션·아이콘 없음이라 여기 10개 아이콘 섹션과 맞지 않는다.
+  const nav = vbox('Anchor Nav', 2)
+  nav.counterAxisSizingMode = 'FIXED'
+  nav.resize(PANEL_W, 100)
+  fillH(nav)
+  pad(nav, 16)
+  bindFillVar(ctx, nav, 'color/bg', WHITE)
+  outline(ctx, nav)
+  const anchors: Array<[string, string]> = [
+    ['상품 정보', '_Icon/Info'],
+    ['상세 설명', '_Icon/Type'],
+    ['가격', '_Icon/Coins'],
+    ['적립금', '_Icon/Percent'],
+    ['배송', '_Icon/Truck'],
+    ['재고', '_Icon/Package'],
+    ['옵션', '_Icon/Layers'],
+    ['상품 강조', '_Icon/Star'],
+    ['노출 설정', '_Icon/Eye'],
+    ['SEO', '_Icon/Search'],
+  ]
+  anchors.forEach(([label, iconKey], i) => {
+    const active = i === 0
+    const it = hbox('Anchor / ' + label, 8)
+    fill(it)
+    it.counterAxisAlignItems = 'CENTER'
+    pad(it, 10, 10)
+    it.cornerRadius = R_CTRL
+    if (active) bindFillVar(ctx, it, 'color/primary/100', tintHex(ACCENT))
+    else it.fills = []
+    it.appendChild(active ? icon(ctx, iconKey, 16, 'color/primary', ACCENT) : icon(ctx, iconKey, 16))
+    it.appendChild(
+      grow(
+        wrapText(
+          active
+            ? boundText(ctx, label, F_BODY, 'color/primary', ACCENT, true)
+            : boundText(ctx, label, F_BODY, 'color/text', INK),
+        ),
+      ),
+    )
+    nav.appendChild(it)
+  })
+  body.appendChild(nav)
+
+  // 중앙 — 섹션 카드
+  const form = vbox('Form', GAP)
+  grow(form)
+
+  const c1 = card(ctx, '상품 정보', 14)
+  c1.appendChild(cardHead(ctx, '상품 정보'))
+  const brandRow = hbox('brand', 12)
+  fill(brandRow)
+  brandRow.appendChild(grow(fieldRow(ctx, '브랜드', input(ctx, '브랜드를 선택하세요', 0, { value: '한샘', trailIcon: '_Icon/ChevronDown' }), true, 90)))
+  brandRow.appendChild(grow(fieldRow(ctx, '1차 카테고리', input(ctx, '1차 카테고리', 0, { value: '가구', trailIcon: '_Icon/ChevronDown' }), true, 100)))
+  brandRow.appendChild(grow(fieldRow(ctx, '2차 카테고리', input(ctx, '2차 카테고리', 0, { value: '책상·테이블', trailIcon: '_Icon/ChevronDown' }), false, 100)))
+  c1.appendChild(brandRow)
+  c1.appendChild(fieldRow(ctx, '상품명', input(ctx, '상품명을 입력하세요', 0, { value: '오크 원목 1200 서랍형 책상' }), true, 90))
+  const imgsRow = hbox('imgs', 12)
+  fill(imgsRow)
+  for (let i = 0; i < 3; i++) imgsRow.appendChild(thumbBox(ctx, 110, 110, R_CTRL))
+  const c1Drop = inst(ctx, 'DS/DropZone', {
+    name: 'Product Images DropZone',
+    variant: { compact: 'true' },
+    props: { label: '이미지 추가', hint: 'JPG·PNG 최대 10MB(최대 8장) · 3/8' },
+  })
+  imgsRow.appendChild(c1Drop ? instGrow(c1Drop) : drawDropZone(ctx))
+  c1.appendChild(fieldRow(ctx, '상품 이미지', imgsRow, false, 90))
+  c1.appendChild(fieldRow(ctx, '요약 문구', input(ctx, '예: 3분 조립, 5년 무상 A/S', 0, { value: '3분 조립 · 5년 무상 A/S' }), false, 90))
+  form.appendChild(c1)
+
+  const c2 = card(ctx, '가격', 14)
+  c2.appendChild(cardHead(ctx, '가격'))
+  const priceRow = hbox('price', 12)
+  fill(priceRow)
+  priceRow.appendChild(grow(fieldRow(ctx, '판매가', input(ctx, '0', 0, { value: '389,000원' }), true, 80)))
+  priceRow.appendChild(grow(fieldRow(ctx, '할인가', input(ctx, '0', 0, { value: '299,000원' }), false, 80)))
+  priceRow.appendChild(grow(fieldRow(ctx, '할인율', input(ctx, '-', 0, { value: '23% · 90,000원 할인' }), false, 80)))
+  c2.appendChild(priceRow)
+  form.appendChild(c2)
+
+  const c3 = card(ctx, '적립금 · 배송 · 재고', 14)
+  c3.appendChild(cardHead(ctx, '적립금 · 배송 · 재고'))
+  const pointRow = hbox('point', 12)
+  fill(pointRow)
+  const pointToggle = hbox('t', 8)
+  pointToggle.counterAxisAlignItems = 'CENTER'
+  pointToggle.counterAxisSizingMode = 'FIXED'
+  pointToggle.resize(pointToggle.width, CTRL_H)
+  pointToggle.appendChild(toggleMini(ctx, true))
+  pointToggle.appendChild(tSub(ctx, '판매가의 3%'))
+  pointRow.appendChild(grow(fieldRow(ctx, '적립금 지급', pointToggle, false, 90)))
+  pointRow.appendChild(grow(fieldRow(ctx, '배송비', input(ctx, '0', 0, { value: '3,000원(5만원 이상 무료)' }), false, 90)))
+  pointRow.appendChild(grow(fieldRow(ctx, '재고', input(ctx, '0', 0, { value: '42개' }), false, 90)))
+  c3.appendChild(pointRow)
+  form.appendChild(c3)
+
+  const c4 = card(ctx, '옵션', 14)
+  c4.appendChild(cardHead(ctx, '옵션', undefined, '3개'))
+  const optCols: Col[] = [
+    { label: '옵션명', w: 120 },
+    { label: '옵션값', w: 220, grow: true },
+    { label: '추가금액', w: 110, align: 'right' },
+    { label: '재고', w: 90, align: 'right' },
+  ]
+  const optRows: Cell[][] = [
+    ['색상', '내추럴 오크', '-', '24'],
+    ['색상', '월넛', '20,000원', '18'],
+    ['사이즈', '1400mm', '50,000원', '12'],
+  ]
+  c4.appendChild(table(ctx, MAIN_W, optCols, optRows))
+  form.appendChild(c4)
+
+  const c5 = card(ctx, '상품 강조 · 노출 설정', 12)
+  c5.appendChild(cardHead(ctx, '상품 강조 · 노출 설정'))
+  const highlightRow = hbox('highlights', 8)
+  highlightRow.counterAxisAlignItems = 'CENTER'
+  highlightRow.appendChild(badge(ctx, 'BEST', 'primary'))
+  highlightRow.appendChild(badge(ctx, 'MD 추천', 'primary'))
+  c5.appendChild(fieldRow(ctx, '강조 배지', highlightRow, false, 90))
+  const visRow2 = hbox('vis', 10)
+  visRow2.counterAxisAlignItems = 'CENTER'
+  visRow2.counterAxisSizingMode = 'FIXED'
+  visRow2.resize(visRow2.width, CTRL_H)
+  visRow2.appendChild(toggleMini(ctx, true))
+  visRow2.appendChild(tSub(ctx, '판매중 · 목록 노출 · 검색 노출'))
+  c5.appendChild(fieldRow(ctx, '노출 설정', visRow2, false, 90))
+  form.appendChild(c5)
+  body.appendChild(form)
+
+  // 우 — 모바일 미리보기(MobilePreview)
+  const side = vbox('Preview', 12)
+  side.counterAxisSizingMode = 'FIXED'
+  side.resize(320, 100)
+  side.appendChild(boundText(ctx, '모바일 미리보기', 14, 'color/text', INK, true))
+  const phone = vbox('Mobile', 0)
+  fill(phone)
+  phone.clipsContent = true
+  phone.cornerRadius = 20
+  bindFillVar(ctx, phone, 'color/bg', WHITE)
+  outline(ctx, phone, 20)
+  const hero = thumbBox(ctx, 320, 200, 0)
+  hero.layoutAlign = 'STRETCH'
+  phone.appendChild(hero)
+  const pc = vbox('Content', 10)
+  fill(pc)
+  pad(pc, 16)
+  const tagsRow = hbox('t', 6)
+  tagsRow.appendChild(badge(ctx, 'BEST', 'primary'))
+  tagsRow.appendChild(badge(ctx, 'MD 추천', 'primary'))
+  pc.appendChild(tagsRow)
+  const pname = boundText(ctx, '오크 원목 1200 서랍형 책상', 15, 'color/text', INK, true)
+  pname.textAutoResize = 'HEIGHT'
+  pname.layoutAlign = 'STRETCH'
+  pc.appendChild(pname)
+  const priceLine = hbox('price', 8)
+  priceLine.counterAxisAlignItems = 'CENTER'
+  priceLine.appendChild(boundText(ctx, '23%', 15, 'color/error', TONE_HEX.error, true))
+  priceLine.appendChild(boundText(ctx, '299,000원', 16, 'color/text', INK, true))
+  pc.appendChild(priceLine)
+  const old2 = tMuted(ctx, '389,000원', 12)
+  old2.textDecoration = 'STRIKETHROUGH'
+  pc.appendChild(old2)
+  const cta = hbox('CTA', 8)
+  fill(cta)
+  const cartBtn = btn(ctx, '장바구니', 'outline', undefined, 44)
+  cta.appendChild(grow(cartBtn))
+  const buyBtn = btn(ctx, '렌탈하기', 'primary', undefined, 44)
+  cta.appendChild(grow(buyBtn))
+  pc.appendChild(cta)
+  phone.appendChild(pc)
+  side.appendChild(phone)
+  side.appendChild(tMuted(ctx, '실제 상세페이지와 다르게 보일 수 있어요', 11))
+  body.appendChild(side)
+
+  s.appendChild(body)
+
+  const footer = hbox('Footer', 8)
+  fill(footer)
+  footer.counterAxisAlignItems = 'CENTER'
+  footer.primaryAxisAlignItems = 'CENTER'
+  pad(footer, 16, 20)
+  bindFillVar(ctx, footer, 'color/bg', WHITE)
+  outline(ctx, footer)
+  footer.appendChild(btn(ctx, '취소', 'outline'))
+  const fSp2 = hbox('sp', 0)
+  footer.appendChild(grow(fSp2))
+  footer.appendChild(btn(ctx, '임시저장', 'outline'))
+  footer.appendChild(btn(ctx, '저장', 'primary'))
+  s.appendChild(footer)
+  return s
+}
+
 // ── 생성 ─────────────────────────────────────────────────────────────
 // [화면 이름, 빌더, 사이드바 active 메뉴]. 배열 순서 = 캔버스 세로 배치 순서이며 사이드바 메뉴 순서를 따른다.
 // 'none' = 메뉴에 없는 화면(공지사항) — 사이드바는 그리되 아무 항목도 강조하지 않는다.
@@ -3376,20 +4719,31 @@ const SCREEN_BUILDERS: Array<[string, (ctx: Ctx) => FrameNode, AdminActive]> = [
   ['대시보드', screenDashboard, 'dashboard'],
   ['고객 목록', screenMemberList, 'users'],
   ['고객 상세', screenCustomerDetail, 'users'],
+  // 오너 확정 사이드바의 실제 '사용자' 라우트(CustomerList) — 위 '고객 목록'(MemberList)과는 다른 컴포넌트다.
+  ['사용자 목록', screenCustomerList, 'users'],
   ['운영진', screenStaffList, 'staff'],
+  ['카테고리 관리', screenCategoryList, 'categories'],
+  ['카테고리 등록', screenCategoryForm, 'categories'],
   ['상품 목록', screenProductList, 'products'],
   ['상품 등록', screenProductForm, 'products'],
+  ['상품 상세', screenProductDetail, 'products'],
+  ['상품 등록·수정', screenProductEditPage, 'products'],
   ['주문 목록', screenOrderList, 'orders'],
   ['문의 내역', screenInquiryList, 'inquiries'],
   ['문의 상세', screenInquiryDetail, 'inquiries'],
+  ['시공 문의 내역', screenInquiryManageList, 'inquiries'],
+  ['시공 문의 상세', screenInquiryManageDetail, 'inquiries'],
+  ['문의 설정', screenInquirySettings, 'inquiries'],
   ['회사소개 관리', screenCompanyForm, 'about'],
   ['연혁 관리', screenHistoryList, 'history'],
   ['포트폴리오 관리', screenPortfolioList, 'portfolio'],
   ['포트폴리오 등록', screenPortfolioForm, 'portfolio'],
+  ['메인비주얼 관리', screenMainVisualList, 'mainvisual'],
+  ['메인비주얼 등록', screenMainVisualForm, 'mainvisual'],
   ['공지사항', screenNotice, 'none'],
 ]
 
-/** 어드민 화면 14종을 1920 폭 프레임(사이드바 + 콘텐츠)으로 생성한다(세로 나열). */
+/** 어드민 화면 24종을 1920 폭 프레임(사이드바 + 콘텐츠)으로 생성한다(세로 나열). */
 export async function generateScreens(
   fontFamily: string,
   colors?: Record<string, string>,
@@ -3403,16 +4757,17 @@ export async function generateScreens(
   if (!figma.root.children.some((p) => p.name.indexOf('Icon System') >= 0)) {
     ctx.warnings.push('Icon System 페이지가 없어 화면 아이콘이 인라인 폴백됩니다 — 함께 생성하는 것을 권장합니다.')
   }
-  // 세트가 없으면(= 이번 실행에서 어드민 컴포넌트를 안 만들었으면) 파일에 이미 있는 '15. System - Admin'
-  // 페이지에서 세트를 입양해 본다. 그것도 없으면 14화면 전부 직접 그리기로 내려간다
+  // 세트가 없으면(= 이번 실행에서 어드민 컴포넌트를 안 만들었으면) 파일에 이미 있는 PAGE_ADMIN
+  // 페이지에서 세트를 입양해 본다. 그것도 없으면 24화면 전부 직접 그리기로 내려간다
   // → 그 상태에서는 컴포넌트를 고쳐도 화면이 안 바뀌므로 분명히 경고한다.
+  // 페이지 이름은 admin.ts의 PAGE_ADMIN을 그대로 쓴다(문자열을 두 곳에 적으면 개명 때 한쪽만 바뀐다).
   if (ADMIN_SETS.size === 0) {
     const adopted = adoptAdminSets()
     if (adopted > 0) {
-      ctx.warnings.push(`'15. System - Admin'의 기존 컴포넌트 세트 ${adopted}개로 화면을 조립합니다.`)
+      ctx.warnings.push(`'${PAGE_ADMIN}'의 기존 컴포넌트 세트 ${adopted}개로 화면을 조립합니다.`)
     } else {
       ctx.warnings.push(
-        "'15. System - Admin' 컴포넌트 세트가 없습니다 — 화면을 직접 그립니다. " +
+        `'${PAGE_ADMIN}' 컴포넌트 세트가 없습니다 — 화면을 직접 그립니다. ` +
           "'어드민 컴포넌트' 스코프를 함께 켜면 화면이 컴포넌트 인스턴스로 조립됩니다.",
       )
     }
@@ -3434,7 +4789,8 @@ export async function generateScreens(
       page.appendChild(frame)
       frame.x = 0
       frame.y = y
-      bindTokens(ctx, frame) // 보더·패딩·간격·라운드·불투명도 변수 바인딩(화면당 1회)
+      // 인스턴스 내부는 건너뛴다 — 세트(15. Admin)에서 이미 바인딩됐다(위 주석 참고).
+      bindTokens(ctx, frame, { skipInstances: true }) // 보더·패딩·간격·라운드·불투명도 변수 바인딩(화면당 1회)
       y += frame.height + SCREEN_GAP
     } catch (e) {
       ctx.warnings.push(`Screen/${name} 생성 실패: ${e instanceof Error ? e.message : String(e)}`)

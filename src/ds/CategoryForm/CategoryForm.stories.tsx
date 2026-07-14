@@ -2,9 +2,20 @@ import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react'
 import { FIGMA_FILE } from '../../shared/figma'
 import { mockImage } from '../../shared/mediaMock'
-import { CategoryForm, type CategoryFormProps, type CategoryValue } from './CategoryForm'
+import {
+  CategoryForm,
+  type CategoryFormProps,
+  type CategoryValue,
+} from './CategoryForm'
 
-/** 빈 등록 폼 — 이미지 사용 ON, 아직 업로드 전 */
+/** 브랜드 Select 옵션 — CategoryList 목데이터와 같은 시공 파트너사 3곳 */
+const BRANDS = [
+  { value: '한샘', label: '한샘' },
+  { value: '리바트', label: '리바트' },
+  { value: '자체 브랜드', label: '자체 브랜드' },
+]
+
+/** 빈 등록 폼 — 브랜드 미선택, 이미지 사용 ON, 아직 업로드 전 */
 const EMPTY_CATEGORY: CategoryValue = {
   name: '',
   useImage: true,
@@ -13,6 +24,7 @@ const EMPTY_CATEGORY: CategoryValue = {
 
 /** 작성이 끝난 카테고리 — 레퍼런스와 같은 결의 현실적 한글 목데이터 */
 const FILLED_CATEGORY: CategoryValue = {
+  brand: '한샘',
   name: '거실 인테리어',
   useImage: true,
   image: mockImage('거실', 'sand'),
@@ -22,6 +34,7 @@ const FILLED_CATEGORY: CategoryValue = {
 
 /** 이미지 사용 OFF — 업로드 영역이 사라지고 아이콘(이모지) 선택이 그 자리를 채운다 */
 const EMOJI_CATEGORY: CategoryValue = {
+  brand: '리바트',
   name: '주방·다이닝',
   useImage: false,
   emoji: '🍽️',
@@ -44,6 +57,7 @@ const meta = {
     value: EMPTY_CATEGORY,
     onChange: () => {},
     title: '카테고리 등록',
+    brands: BRANDS,
     onSubmit: () => {},
     onCancel: () => {},
     submitting: false,
@@ -51,6 +65,7 @@ const meta = {
   argTypes: {
     value: { control: false },
     onChange: { control: false },
+    brands: { control: false },
     errors: { control: false },
     show: { control: 'object' },
     title: { control: 'text' },
@@ -144,6 +159,7 @@ export const WithErrors: Story = {
   args: {
     value: { name: '', useImage: true, active: true },
     errors: {
+      brand: '브랜드를 선택하세요.',
       name: '카테고리명을 입력하세요.',
       image: '대표 이미지를 등록하세요.',
     },
@@ -192,12 +208,14 @@ export const Labels: Story = {
       sections: { info: 'Category details' },
       sectionDescriptions: { info: 'Shown in the catalog list and the top navigation.' },
       fields: {
+        brand: 'Brand',
         name: 'Category name',
         image: 'Category image',
         description: 'Description',
         active: 'Active',
       },
       placeholders: {
+        brand: 'Select a brand',
         name: 'e.g. Living room',
         description: 'Describe what belongs in this category.',
       },

@@ -5,6 +5,9 @@ name: Deploy TDS docs to GitHub Pages
 on:
   push:
     branches: [main]
+  # 게이트는 **머지 전에** 걸려야 의미가 있다 — PR 에서도 돌린다(배포는 main 에서만).
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +22,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── 검증 게이트 ────────────────────────────────────────────────────────
+  # 이 job 이 없던 동안, CLAUDE.md 가 "끝내기 전에 반드시" 돌리라는 6개 게이트는
+  # **사람/에이전트가 로컬에서 기억해서 돌려야만** 걸렸다. 안 돌려도 typecheck 만 초록이면
+  # 그대로 Pages 에 배포됐다 — 이 저장소가 이미 겪은 "되돌아간 파일도 타입체크는 통과해서
+  # 아무도 몰랐다"와 **똑같은 종류의 맹점**이다. 기억이 아니라 CI 가 강제한다.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # typecheck ×2 · parity · mapping · naming · screens · bindings · guard
+      - run: pnpm verify:all
+
   build:
+    needs: verify # 게이트가 빨간 코드는 배포되지 않는다
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +52,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
       - run: pnpm build:manifest
       - run: pnpm build-storybook
       - name: 사이트 조립 — 랜딩(/) + 컴포넌트 문서(/docs/) + Storybook(/storybook/) + 선언 파일
@@ -57,6 +76,8 @@ jobs:
 
   deploy:
     needs: build
+    # PR 에서는 게이트만 돌리고 배포하지 않는다 — 라이브는 main 만 바꾼다.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

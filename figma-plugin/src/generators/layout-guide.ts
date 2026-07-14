@@ -11,10 +11,11 @@ import {
   type Ctx,
   solid,
   boundPaint,
+  boundText,
+  bindTokens,
   fillColor,
   strokeColor,
   autoFrame,
-  txt,
   makeHeader,
   makeSection,
   setup,
@@ -70,109 +71,14 @@ const FONT_HEAD = 12
 const DOC_W = CANVAS_W + 80 * 2 + 24 * 2 // 2128
 const SOURCE_X = DOC_W + 152 // 플레이스홀더 컴포넌트 소스 열(문서 오른쪽)
 
-// ── 색·텍스트 바인딩 헬퍼(categories.ts와 같은 규약. 그쪽 로컬 함수라 여기서 동일 구현) ──
-function boundText(ctx: Ctx, chars: string, size: number, varName: string, hex: string, bold = false): TextNode {
-  const t = txt(ctx, chars, size, ctx.userColors[varName] ?? hex, bold)
-  const v = ctx.vars.get(varName)
-  if (v) t.fills = [boundPaint(v)]
-  const bind = t as unknown as { setBoundVariable: (field: string, v: Variable) => void }
-  const sv = ctx.vars.get('font/size/' + size)
-  if (sv) {
-    try {
-      bind.setBoundVariable('fontSize', sv)
-    } catch {
-      /* skip */
-    }
-  }
-  const wv = ctx.vars.get(bold ? 'font/weight/bold' : 'font/weight/regular')
-  if (wv) {
-    try {
-      bind.setBoundVariable('fontWeight', wv)
-    } catch {
-      /* skip */
-    }
-  }
-  // ctx.fontFamilyVar가 null이면 절대 바인딩하지 않는다(로드되지 않은 패밀리 → 노드 생성 실패).
-  if (ctx.fontFamilyVar) {
-    try {
-      bind.setBoundVariable('fontFamily', ctx.fontFamilyVar)
-    } catch {
-      /* skip */
-    }
-  }
-  return t
-}
+// boundText·bindTokens의 정본은 lib/bind.ts다(foundations.ts가 재수출) — 예전엔 categories.ts·admin.ts·
+// screens.ts·site.ts·site-screens.ts와 합쳐 6벌로 복제돼 있었다(verify-bindings B4).
 
 /** 변수 바인딩 + 알파(반투명 오버레이용). paint 단위 opacity라 자식 노드는 흐려지지 않는다. */
 function fillColorAlpha(ctx: Ctx, node: GeometryMixin, varName: string, hex: string, alpha: number) {
   const v = ctx.vars.get(varName)
   const base: SolidPaint = v ? boundPaint(v) : solid(ctx.userColors[varName] ?? hex)
   node.fills = [{ ...base, opacity: alpha }]
-}
-
-// 보더·패딩·라운드·불투명도를 값이 맞는 변수에 후처리 바인딩(categories.ts bindTokens와 동일 규약).
-function bindTokens(ctx: Ctx, root: SceneNode) {
-  const all: SceneNode[] = [root]
-  const rf = root as unknown as { findAll?: (cb: (n: SceneNode) => boolean) => SceneNode[] }
-  if (typeof rf.findAll === 'function') all.push(...rf.findAll(() => true))
-  for (const node of all) {
-    const a = node as unknown as {
-      cornerRadius?: number | symbol
-      strokeWeight?: number | symbol
-      strokes?: readonly Paint[]
-      layoutMode?: string
-      paddingTop?: number
-      paddingRight?: number
-      paddingBottom?: number
-      paddingLeft?: number
-      itemSpacing?: number
-      opacity?: number
-      setBoundVariable: (field: string, v: Variable) => void
-    }
-    if (typeof a.opacity === 'number' && a.opacity > 0 && a.opacity < 1) {
-      const ov = ctx.vars.get('opacity/' + Math.round(a.opacity * 100))
-      if (ov)
-        try {
-          a.setBoundVariable('opacity', ov)
-        } catch {
-          /* skip */
-        }
-    }
-    if (typeof a.cornerRadius === 'number' && a.cornerRadius > 0) {
-      const rv = ctx.vars.get('radius/' + a.cornerRadius)
-      if (rv)
-        for (const c of ['topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius']) {
-          try {
-            a.setBoundVariable(c, rv)
-          } catch {
-            /* skip */
-          }
-        }
-    }
-    if (typeof a.strokeWeight === 'number' && a.strokeWeight > 0 && a.strokes && a.strokes.length) {
-      const bv = ctx.vars.get('border/' + a.strokeWeight) // 1.5는 변수가 없어 리터럴 유지(플레이스홀더 획)
-      if (bv)
-        try {
-          a.setBoundVariable('strokeWeight', bv)
-        } catch {
-          /* skip */
-        }
-    }
-    if (a.layoutMode && a.layoutMode !== 'NONE') {
-      for (const p of ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const) {
-        const val = a[p]
-        if (typeof val === 'number' && val > 0) {
-          const sv = ctx.vars.get('space/' + val)
-          if (sv)
-            try {
-              a.setBoundVariable(p, sv)
-            } catch {
-              /* skip */
-            }
-        }
-      }
-    }
-  }
 }
 
 // ── 프레임 헬퍼 ───────────────────────────────────────────────────────
@@ -196,7 +102,7 @@ function noneFrame(name: string, w: number, h: number): FrameNode {
   return f
 }
 /** 문서 루트 — foundations.makeRoot와 같은 스펙이되 폭만 넓힌다(1920 실측 도면이 1240에 안 들어감). */
-function wideRoot(name: string, w: number): FrameNode {
+function wideRoot(ctx: Ctx, name: string, w: number): FrameNode {
   const root = figma.createFrame()
   root.name = name
   root.layoutMode = 'VERTICAL'
@@ -206,7 +112,7 @@ function wideRoot(name: string, w: number): FrameNode {
   root.counterAxisAlignItems = 'MIN'
   root.itemSpacing = 56
   root.paddingTop = root.paddingRight = root.paddingBottom = root.paddingLeft = 80
-  root.fills = [solid(SURFACE)]
+  fillColor(ctx, root, 'color/bgSubtle', SURFACE)
   return root
 }
 
@@ -804,7 +710,7 @@ function buildPlaceholder(ctx: Ctx, kind: PlaceholderKind): ComponentNode {
 /** 8종을 만들어 페이지(문서 오른쪽 소스 열)에 배치하고 맵에 등록. */
 function buildPlaceholders(ctx: Ctx, page: PageNode): void {
   PLACEHOLDER_COMPONENTS.clear()
-  const title = txt(ctx, 'Placeholder — 공용 플레이스홀더 8종 (라이브러리 게시 대상)', 16, INK, true)
+  const title = boundText(ctx, 'Placeholder — 공용 플레이스홀더 8종 (라이브러리 게시 대상)', 16, 'color/text', INK, true)
   page.appendChild(title)
   title.x = SOURCE_X
   title.y = 148
@@ -872,7 +778,7 @@ export async function generateLayoutGuide(
   // 컴포넌트(소스)는 페이지에 직접, 문서 안에는 인스턴스만 — 카테고리와 같은 규약.
   buildPlaceholders(ctx, page)
 
-  const root = wideRoot('Layout', DOC_W)
+  const root = wideRoot(ctx, 'Layout', DOC_W)
   placeRoot(root, page)
   makeHeader(
     ctx,

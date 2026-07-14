@@ -6,11 +6,14 @@ import {
   type AdminFormField,
 } from '../AdminFormPage/AdminFormPage'
 import { Toggle } from '../Toggle/Toggle'
+import type { SelectOption } from '../Select/Select'
 import { mergeLabels, type DeepPartialOneLevel } from '../../shared/labels'
 import styles from './CategoryForm.module.css'
 
 /** 카테고리 한 건의 값 — 화면이 들고 있는 유일한 상태 */
 export type CategoryValue = {
+  /** 이 카테고리를 등록하는 브랜드 — brands 옵션의 value와 맞아야 한다 */
+  brand?: string
   name: string
   /** true면 이미지 업로드, false면 아이콘(이모지) 선택으로 대체된다 */
   useImage: boolean
@@ -24,6 +27,7 @@ export type CategoryValue = {
 
 /** 필드별 에러 문구 — 있는 키만 해당 FieldRow가 에러 톤이 된다 */
 export type CategoryFormErrors = {
+  brand?: string
   name?: string
   image?: string
   description?: string
@@ -38,6 +42,8 @@ export type CategoryFormShow = {
   header?: boolean
   /** '카테고리 정보' 섹션 카드 전체 */
   info?: boolean
+  /** 브랜드 */
+  brand?: boolean
   /** 카테고리명 */
   name?: boolean
   /** 카테고리 이미지 / 아이콘 */
@@ -64,9 +70,9 @@ export type CategoryFormLabels = {
   /** 섹션 카드 설명 */
   sectionDescriptions: { info: string }
   /** 필드 라벨 */
-  fields: { name: string; image: string; description: string; active: string }
+  fields: { brand: string; name: string; image: string; description: string; active: string }
   /** 필드 플레이스홀더 */
-  placeholders: { name: string; description: string }
+  placeholders: { brand: string; name: string; description: string }
   /** 필드 보조설명(FieldRow 설명 줄) */
   helpers: { image: string; active: string }
   /** 이미지·아이콘 블록 */
@@ -96,6 +102,11 @@ export type CategoryFormProps = {
   title?: string
   /** @deprecated labels.description을 쓴다 */
   description?: string
+  /**
+   * 브랜드 Select 옵션 — 생략하면 빈 목록(화면이 채워야 실제로 고를 수 있다).
+   * value는 CategoryValue.brand와 맞아야 한다.
+   */
+  brands?: SelectOption[]
   /** 아이콘 선택 후보 — 생략하면 내부 기본 목록 */
   emojiOptions?: string[]
   errors?: CategoryFormErrors
@@ -141,12 +152,14 @@ export const DEFAULT_CATEGORY_FORM_LABELS: CategoryFormLabels = {
     info: '목록과 상단 메뉴에 노출되는 카테고리의 기본 정보입니다.',
   },
   fields: {
+    brand: '브랜드',
     name: '카테고리명',
     image: '카테고리 이미지',
     description: '설명',
     active: '활성화',
   },
   placeholders: {
+    brand: '브랜드를 선택하세요',
     name: '예: 거실 인테리어',
     description: '카테고리를 설명하는 문구를 입력하세요.',
   },
@@ -172,6 +185,7 @@ const MAX_IMAGE_MB = 2
 const DEFAULT_SHOW: Required<CategoryFormShow> = {
   header: true,
   info: true,
+  brand: true,
   name: true,
   image: true,
   description: true,
@@ -247,7 +261,7 @@ function EmojiPicker({
  * 이미지 업로드/썸네일/삭제는 AdminFormPage 셸이 갖는다.
  * 이 파일에 남는 것은 이 화면만의 것 세 가지뿐이다 —
  *   1) 값 타입    : CategoryValue / CategoryFormErrors
- *   2) 필드 선언  : 카테고리명 · 이미지(또는 아이콘) · 설명 · 활성화
+ *   2) 필드 선언  : 브랜드 · 카테고리명 · 이미지(또는 아이콘) · 설명 · 활성화
  *   3) 한국어 문구: 타이틀 · 섹션 제목 · 플레이스홀더 · 업로드 안내
  *
  * 두 종류의 ON/OFF가 있다(섞이지 않는다).
@@ -260,6 +274,7 @@ export function CategoryForm({
   labels,
   title,
   description,
+  brands = [],
   emojiOptions = [...DEFAULT_EMOJIS],
   errors,
   onSubmit,
@@ -288,6 +303,18 @@ export function CategoryForm({
   const s = { ...DEFAULT_SHOW, ...show }
 
   const fields: AdminFormField<CategoryValue>[] = []
+
+  if (s.brand) {
+    fields.push({
+      kind: 'select',
+      key: 'brand',
+      label: L.fields.brand,
+      required: true,
+      span: 2,
+      options: brands,
+      placeholder: L.placeholders.brand,
+    })
+  }
 
   if (s.name) {
     fields.push({
