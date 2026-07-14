@@ -166,7 +166,7 @@
   .ov .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--accent); background: var(--accent-soft); padding: 6px 13px; border-radius: 999px; }
   .ov h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 800; letter-spacing: -0.035em; margin: 20px 0 0; text-wrap: balance; }
   .ov p.lead { font-size: 17px; color: var(--ink-2); margin: 14px 0 0; max-width: 560px; text-wrap: balance; }
-  .ov-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 30px 0; max-width: 520px; }
+  .ov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 30px 0; max-width: 780px; }
   .ov-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 16px; }
   .ov-stat .big { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .ov-stat .big.hl { color: var(--accent); }
@@ -353,6 +353,21 @@
     window.scrollTo(0, 0)
   }
 
+  // 수치는 **빌드 때 소스에서 계산**한 ds-stats.json 에서 읽는다(scripts/build-site-stats.mjs).
+  // 손으로 적으면 썩는다 — 이 페이지도 "100% Figma 커버리지"를 박아두고 있었다.
+  var dsStats = null
+  function fillStats() {
+    if (!dsStats) return
+    document.querySelectorAll('[data-stat]').forEach(function (el) {
+      var v = dsStats[el.getAttribute('data-stat')]
+      if (v != null) el.textContent = String(v)
+    })
+  }
+  fetch('../ds-stats.json')
+    .then(function (r) { return r.ok ? r.json() : null })
+    .then(function (j) { dsStats = j; fillStats() })
+    .catch(function () { /* 값이 안 오면 '–' 로 남는다 — 거짓 숫자를 보여주는 것보다 낫다 */ })
+
   function renderOverview() {
     var total = comps.size
     var stories = 0
@@ -365,7 +380,12 @@
       '<div class="ov-stats">' +
       '<div class="ov-stat"><div class="big hl">' + total + '</div><div class="lbl">컴포넌트</div></div>' +
       '<div class="ov-stat"><div class="big">' + stories + '</div><div class="lbl">스토리(상태·베리언트)</div></div>' +
-      '<div class="ov-stat"><div class="big">100%</div><div class="lbl">Figma 커버리지</div></div>' +
+      // 예전엔 "100% Figma 커버리지"라고 **박아뒀다.** 숫자를 손으로 적으면 썩는다(랜딩도 아이콘 "60종"이
+      // 실제 298인 채로 방치돼 있었다). 실제 값은 빌드 때 소스에서 계산한 ds-stats.json 에서 읽는다.
+      '<div class="ov-stat"><div class="big" data-stat="figmaSets">–</div><div class="lbl">Figma 컴포넌트 세트</div></div>' +
+      '<div class="ov-stat"><div class="big" data-stat="adminScreens">–</div><div class="lbl">어드민 화면</div></div>' +
+      '<div class="ov-stat"><div class="big" data-stat="variablesTotal">–</div><div class="lbl">Variables (3프리셋)</div></div>' +
+      '<div class="ov-stat"><div class="big" data-stat="gates">–</div><div class="lbl">검증 게이트</div></div>' +
       '</div>' +
       '<div class="ov-links">' +
       '<a class="pill primary" href="#' + encodeURIComponent('0. 시작하기') + '">시작하기 가이드 →</a>' +
@@ -376,6 +396,7 @@
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>' +
       '왼쪽 목록에서 컴포넌트를 선택하면 모든 상태·베리언트가 실제 컴포넌트로 나타나요.</div>' +
       '</div>'
+    fillStats() // 개요는 라우팅마다 다시 그려진다 — 매번 채워야 값이 남는다
   }
 
   function storyCardsHtml(c) {
