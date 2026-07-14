@@ -167,7 +167,10 @@ try {
   for (const m of catSrc.matchAll(/setName: '(DS\/[^']+)'/g)) figmaSets.add(m[1])
   for (const m of catSrc.matchAll(/buildSet\(ctx, page, '(DS\/[^']+)'/g)) figmaSets.add(m[1])
   // KR·Templates는 setName을 'DS/'+key로 계산 → 헬퍼 인자에서 추출
-  for (const m of catSrc.matchAll(/kr(?:Field|Bespoke)Doc\('[^']*', '([^']+)'/g)) figmaSets.add('DS/' + m[1])
+  // 두 헬퍼 다 `(han, key, …)` 이고 setName = 'DS/' + **key**(2번째 인자)다 — 시그니처에서 확인했다.
+  // 줄바꿈 허용이 필수다: `krBespokeDoc(\n  'EmptyState',\n  'EmptyState',` 처럼 여러 줄로 쓴 호출을 놓치면
+  // 실재하는 세트를 "없다"고 판정한다(EmptyState·FilterBar·Dashboard·ListPage·Settings·Login 6개가 그랬다).
+  for (const m of catSrc.matchAll(/kr(?:Field|Bespoke)Doc\(\s*'[^']*',\s*'([^']+)'/g)) figmaSets.add('DS/' + m[1])
   figmaSets.add('DS/SocialLoginButton')
   figmaSets.add('DS/Chart')
 
@@ -261,10 +264,7 @@ try {
     // 오너 지시로 별도 컴포넌트화했으나 Figma 미러링이 아직 안 됐다. 다음 배치에서 세트 신설.
     EraTimeline: '연혁 표기 컴포넌트 — Figma 세트 신설 예정(누락 채우기 배치)',
     Highlight: '강조 텍스트 컴포넌트 — Figma 세트 신설 예정(누락 채우기 배치)',
-    KrAddressAutocomplete: 'KR 주소 자동완성 — Figma 세트 신설 예정(누락 채우기 배치)',
-    KrAddressForm: 'KR 주소 입력 — Figma 세트 신설 예정(누락 채우기 배치)',
-    KrCertAuth: 'KR 인증서 인증 — Figma 세트 신설 예정(누락 채우기 배치)',
-    InputBase: '입력 박스 프리미티브 — 스토리조차 없다. 스토리 + DS/InputBase 세트 신설 예정(누락 채우기 배치)',
+    InputBase: '입력 박스 프리미티브 — DS/InputBase 세트 신설 예정(오른쪽 아이콘 INSTANCE_SWAP + 전 축 베리언트)',
     // Admin/Templates 는 세트가 아니라 **화면**(17·18번 페이지)으로 그려진다.
     // 어떤 것이 세트여야 하고 어떤 것이 화면이어야 하는지 규칙이 아직 없다 → 17번 모듈화 배치에서 확정한다.
   }
